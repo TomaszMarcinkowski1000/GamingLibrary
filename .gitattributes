@@ -1,0 +1,15 @@
+# Normalize all text files to LF in the repo and on checkout.
+# Without this, Windows core.autocrlf=true checks out CRLF, and Prettier
+# (endOfLine defaults to "lf") fails every file — breaking `npm run lint`
+# and the pre-commit hook for any Windows contributor.
+* text=auto eol=lf
+
+# Known binaries — never normalize.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary
