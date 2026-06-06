@@ -220,25 +220,25 @@ Target scale is small (single collector, 50+ entries). The `user_id` index cover
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly to local Supabase (`supabase db reset` / `migration up`)
-- [x] 1.2 Table + 4 policies exist (`pg_policies` shows 4; `\d library_entries` shows columns + constraints)
+- [x] 1.1 Migration applies cleanly to local Supabase (`supabase db reset` / `migration up`) — 2699a9a
+- [x] 1.2 Table + 4 policies exist (`pg_policies` shows 4; `\d library_entries` shows columns + constraints) — 2699a9a
 
 #### Manual
 
-- [x] 1.3 Cross-user isolation: user B sees zero of user A's rows
-- [x] 1.4 INSERT guard: user B cannot insert a row owned by user A
-- [x] 1.5 Persistence: A's row survives a DB restart
-- [x] 1.6 `anon` role gets zero rows on select
+- [x] 1.3 Cross-user isolation: user B sees zero of user A's rows — 2699a9a
+- [x] 1.4 INSERT guard: user B cannot insert a row owned by user A — 2699a9a
+- [x] 1.5 Persistence: A's row survives a DB restart — 2699a9a
+- [x] 1.6 `anon` role gets zero rows on select — 2699a9a
 
 ### Phase 2: Shared types & DB-typed client
 
 #### Automated
 
-- [ ] 2.1 Types generate without error (`npm run db:types`)
-- [ ] 2.2 Type checking passes (`npm run typecheck`)
-- [ ] 2.3 Linting passes (`npm run lint`)
+- [x] 2.1 Types generate without error (`npm run db:types`)
+- [x] 2.2 Type checking passes (`npm run typecheck`)
+- [x] 2.3 Linting passes (`npm run lint`)
 
 #### Manual
 
-- [ ] 2.4 Typed `from("library_entries")` query shows schema-accurate autocomplete (scratch check, then discarded)
-- [ ] 2.5 `src/types.ts` exports `LibraryEntry`, `PlayStatus`, `PLAY_STATUS_LABELS`, `MetadataStatus` resolving to the migration shape
+- [x] 2.4 Typed `from("library_entries")` query shows schema-accurate autocomplete (scratch check, then discarded)
+- [x] 2.5 `src/types.ts` exports `LibraryEntry`, `PlayStatus`, `PLAY_STATUS_LABELS`, `MetadataStatus` resolving to the migration shape
