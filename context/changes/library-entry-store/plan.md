@@ -234,11 +234,11 @@ Target scale is small (single collector, 50+ entries). The `user_id` index cover
 
 #### Automated
 
-- [x] 2.1 Types generate without error (`npm run db:types`)
-- [x] 2.2 Type checking passes (`npm run typecheck`)
-- [x] 2.3 Linting passes (`npm run lint`)
+- [x] 2.1 Types generate without error (`npm run db:types`) — d44006e
+- [x] 2.2 Type checking passes (`npm run typecheck`) — d44006e
+- [x] 2.3 Linting passes (`npm run lint`) — d44006e
 
 #### Manual
 
-- [x] 2.4 Typed `from("library_entries")` query shows schema-accurate autocomplete (scratch check, then discarded)
-- [x] 2.5 `src/types.ts` exports `LibraryEntry`, `PlayStatus`, `PLAY_STATUS_LABELS`, `MetadataStatus` resolving to the migration shape
+- [x] 2.4 Typed `from("library_entries")` query shows schema-accurate autocomplete (scratch check, then discarded) — d44006e
+- [x] 2.5 `src/types.ts` exports `LibraryEntry`, `PlayStatus`, `PLAY_STATUS_LABELS`, `MetadataStatus` resolving to the migration shape — d44006e
