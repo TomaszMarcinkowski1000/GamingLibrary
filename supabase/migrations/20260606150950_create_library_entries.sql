@@ -6,7 +6,7 @@
 
 create table public.library_entries (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   title text not null,
   platform text not null,
   play_status text not null default 'not_played'

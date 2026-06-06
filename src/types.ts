@@ -10,7 +10,13 @@ import type { Database } from "@/db/database.types";
 
 // --- Library entry entity + DTOs ---
 
-export type LibraryEntry = Database["public"]["Tables"]["library_entries"]["Row"];
+export type LibraryEntry = Omit<
+  Database["public"]["Tables"]["library_entries"]["Row"],
+  "play_status" | "metadata_status"
+> & {
+  play_status: PlayStatus;
+  metadata_status: MetadataStatus | null;
+};
 export type LibraryEntryInsert = Database["public"]["Tables"]["library_entries"]["Insert"];
 export type LibraryEntryUpdate = Database["public"]["Tables"]["library_entries"]["Update"];
 

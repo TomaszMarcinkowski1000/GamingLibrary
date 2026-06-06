@@ -160,6 +160,12 @@ Generate row-level DB types, author the ergonomic domain types in `src/types.ts`
 
 **Contract**: Change `createServerClient(...)` to `createServerClient<Database>(...)`, importing `Database` from `@/db/database.types`. No behavioral change.
 
+#### 5. Ignore generated DB types from lint/format (addendum)
+
+**File**: `eslint.config.js`, `.prettierignore`
+
+**Intent**: The generated `src/db/database.types.ts` is re-emitted verbatim by `npm run db:types`; linting/formatting it would fail `strictTypeChecked` rules and cause diff churn. Ignoring it from both ESLint (flat-config `{ ignores }` entry) and Prettier (new `.prettierignore`) is what keeps `npm run lint` green (success criterion 2.3). Discovered during implementation, not in the original Changes list.
+
 ### Success Criteria:
 
 #### Automated Verification:
