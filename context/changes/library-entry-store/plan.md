@@ -220,15 +220,15 @@ Target scale is small (single collector, 50+ entries). The `user_id` index cover
 
 #### Automated
 
-- [ ] 1.1 Migration applies cleanly to local Supabase (`supabase db reset` / `migration up`)
-- [ ] 1.2 Table + 4 policies exist (`pg_policies` shows 4; `\d library_entries` shows columns + constraints)
+- [x] 1.1 Migration applies cleanly to local Supabase (`supabase db reset` / `migration up`)
+- [x] 1.2 Table + 4 policies exist (`pg_policies` shows 4; `\d library_entries` shows columns + constraints)
 
 #### Manual
 
-- [ ] 1.3 Cross-user isolation: user B sees zero of user A's rows
-- [ ] 1.4 INSERT guard: user B cannot insert a row owned by user A
-- [ ] 1.5 Persistence: A's row survives a DB restart
-- [ ] 1.6 `anon` role gets zero rows on select
+- [x] 1.3 Cross-user isolation: user B sees zero of user A's rows
+- [x] 1.4 INSERT guard: user B cannot insert a row owned by user A
+- [x] 1.5 Persistence: A's row survives a DB restart
+- [x] 1.6 `anon` role gets zero rows on select
 
 ### Phase 2: Shared types & DB-typed client
 
