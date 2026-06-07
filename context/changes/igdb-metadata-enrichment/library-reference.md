@@ -20,12 +20,21 @@ the Workers token gap.
 
 ```ts
 import { IGDBClient } from "@api-wrappers/igdb-wrapper";
+import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from "astro:env/server";
 
 const client = new IGDBClient({
-  clientId: process.env.TWITCH_CLIENT_ID!,
-  clientSecret: process.env.TWITCH_CLIENT_SECRET!,
+  clientId: TWITCH_CLIENT_ID,
+  clientSecret: TWITCH_CLIENT_SECRET,
 });
 ```
+
+> ⚠️ **Secrets convention (verified against the codebase, `research.md`).** This repo reads
+> server secrets **only** via `astro:env/server` — `process.env` is used nowhere and Astro's
+> managed secrets are **not** surfaced on it on workerd, so a `process.env.TWITCH_*` snippet would
+> read `undefined`. Declare both vars in `astro.config.mjs` env schema (`context: "server",
+> access: "secret"`) and in `.dev.vars(.example)`, then import from `astro:env/server` as above.
+> The wrapper takes credentials as explicit config, so this is a one-line source swap, not a
+> wrapper-level incompatibility.
 
 Full config interface:
 
@@ -129,6 +138,22 @@ is no first-class "seed the token from KV" API. The only interception points are
 `fetch` option** to cache/short-circuit the `id.twitch.tv/oauth2/token` POST. The in-memory token
 store otherwise re-fetches per cold isolate (25-active-token cap risk). Settle this explicitly in
 the plan.
+
+> ⚠️ **KV is greenfield here (verified against the codebase, `research.md`).** Earlier drafts of
+> this change assumed a pre-existing "SESSION KV binding." **There is none** — no `kv_namespaces`
+> in `wrangler.jsonc`, nothing in `astro.config.mjs` or the env typings. So the fetch-wrapping
+> approach above is sound *as a mechanism* but presumes infra that does not yet exist. To take it,
+> the plan must first (1) create a KV namespace + add a `[[kv_namespaces]]` binding to
+> `wrangler.jsonc`, and (2) read it per-request via `locals.runtime.env.<BINDING>` — a
+> Cloudflare-runtime pattern this codebase uses **nowhere** today. Note the scope split:
+> `astro:env/server` secrets resolve at module load, but a KV binding is only available
+> per-request, so a token-caching client cannot be a module-level singleton — it must be
+> constructed per-request so the wrapped `fetch` closes over the request's KV binding.
+>
+> **MVP off-ramp:** accept the wrapper's in-memory token store and per-cold-isolate re-minting
+> (within Twitch's ~60-day validity / 25-active-token budget) and defer all KV work. For
+> single-collector MVP traffic this is likely fine; choose it unless cold-isolate token churn is
+> shown to matter.
 
 ## 6. Error types (all extend `IGDBError`)
 

@@ -160,10 +160,26 @@ They land as a *new* migration under this change — F-02 amends F-01's schema b
 - Make **length** and **series** nullable in the contract; both have imperfect coverage.
 - Token management and the rate-limit guard (≤4 rps, ≤8 concurrent) are **handled by
   `@api-wrappers/igdb-wrapper`** — no need to hand-roll them.
+- **Secrets convention (verified against the codebase, `research.md`):** pass `TWITCH_CLIENT_ID`
+  /`TWITCH_CLIENT_SECRET` into the `IGDBClient` constructor from **`astro:env/server`**, not
+  `process.env` — this repo reads server secrets only via `astro:env/server` and they are not
+  surfaced on `process.env` on workerd. Declare both in `astro.config.mjs` env schema
+  (`context: "server", access: "secret"`) and `.dev.vars(.example)`. The wrapper takes credentials
+  as explicit config, so this is a source swap, not a wrapper incompatibility (see
+  `library-reference.md` §1).
 - **Workers nuance to settle in the plan:** the wrapper's token store is in-memory, but Workers
   isolates are ephemeral, so each cold isolate would re-fetch a Twitch token. Given Twitch's
   ~60-day validity and **25-active-token cap**, consider persisting the app access token in
-  **Cloudflare KV** (a SESSION KV binding already exists) to avoid token churn across isolates.
+  **Cloudflare KV** to avoid token churn across isolates.
+  - ⚠️ **Correction — KV is greenfield (verified against the codebase, `research.md`).** An
+    earlier draft of this note said "a SESSION KV binding already exists." **It does not** — there
+    is no `kv_namespaces` in `wrangler.jsonc`, nothing in `astro.config.mjs`, and no runtime/KV
+    typing. KV-backed token reuse is therefore a *net-new infra step*: the plan must create a KV
+    namespace + `[[kv_namespaces]]` binding and read it per-request via
+    `locals.runtime.env.<BINDING>` — a Cloudflare-runtime pattern used **nowhere** in this codebase
+    today (everything resolves secrets at module load via `astro:env/server`). Because a KV binding
+    is request-scoped, a token-caching client can't be a module-level singleton; construct it
+    per-request so the wrapped `fetch` closes over the request's binding.
   - ⚠️ **Token gap confirmed (see `library-reference.md` §5).** `IGDBClientConfig` exposes **no
     token store, token-injection, or token-provider option** — there is **no first-class "seed
     the wrapper from KV" API**. The only interception points are the config's `fetch` and
@@ -172,3 +188,6 @@ They land as a *new* migration under this change — F-02 amends F-01's schema b
     on miss, let the request through and write the response back). This is a deliberate plan
     decision, not a config flag — flag it in the plan as the chosen mechanism, or accept
     per-isolate re-minting if the 25-token cap is judged acceptable for MVP traffic.
+  - **MVP off-ramp (recommended):** given KV is greenfield, ship on the wrapper's in-memory token
+    store with per-cold-isolate re-minting (within the ~60-day / 25-active-token budget) and defer
+    KV unless token churn is shown to matter for the single-collector MVP.
