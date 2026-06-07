@@ -3,6 +3,7 @@
 # 10xDevs course materials — kept globally in ~/.claude, never committed here.
 # Run `10x get` from C:\Users\lordt\10x-course (skills junctioned to ~/.claude/skills),
 # not from this repo, so lesson content never lands here.
+.claude/commands/
 .claude/skills/
 .claude/prompts/
 .claude/.10x-cli-manifest.json
