@@ -464,27 +464,27 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [x] 3.1 Type checking passes
-- [x] 3.2 Build succeeds
-- [x] 3.3 Linting passes
+- [x] 3.1 Type checking passes — 1fbd643
+- [x] 3.2 Build succeeds — 1fbd643
+- [x] 3.3 Linting passes — 1fbd643
 
 #### Manual
 
-- [x] 3.4 Token-cache wrapper hit/miss logic reviewed
-- [x] 3.5 Factory constructs without throwing when creds present
+- [x] 3.4 Token-cache wrapper hit/miss logic reviewed — 1fbd643
+- [x] 3.5 Factory constructs without throwing when creds present — 1fbd643
 
 ### Phase 4: Lookup service (validation, queries, mapping, no-match contract)
 
 #### Automated
 
-- [ ] 4.1 Type checking passes
-- [ ] 4.2 Build succeeds
-- [ ] 4.3 Linting passes
+- [x] 4.1 Type checking passes
+- [x] 4.2 Build succeeds
+- [x] 4.3 Linting passes
 
 #### Manual
 
-- [ ] 4.4 Service returns discriminated IgdbLookupResult; no_match is a value not a throw
-- [ ] 4.5 Field mapping reviewed against schema columns
+- [x] 4.4 Service returns discriminated IgdbLookupResult; no_match is a value not a throw
+- [x] 4.5 Field mapping reviewed against schema columns
 
 ### Phase 5: Live verification & harness cleanup
 
