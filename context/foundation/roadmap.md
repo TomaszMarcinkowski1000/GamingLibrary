@@ -30,7 +30,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | ID    | Change ID                  | Outcome (user can …)                                            | Prerequisites              | PRD refs                  | Status   |
 | ----- | -------------------------- | --------------------------------------------------------------- | -------------------------- | ------------------------- | -------- |
 | F-01  | library-entry-store        | (foundation) user-isolated library-entry store exists           | —                          | NFR (isolation, persist)  | done     |
-| F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | ready    |
+| F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | done     |
 | F-03  | photo-identification-spike | (foundation) vision returns game+platform, ≥90% validated       | —                          | FR-005, Guardrails        | ready    |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | proposed |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | proposed |
@@ -90,7 +90,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - IGDB/Twitch API credentials must be registered (self-serve developer app) before the lookup can run — Owner: user. Block: no (planning + scaffolding can proceed; only live calls need the key).
   - Does IGDB reliably return an *overall length* value per title+platform (the recommender's length bucket depends on it)? — Owner: team. Block: no (handle missing length as "unbucketed"; S-07 absorbs the gap).
 - **Risk:** Made a foundation rather than folded into S-01 because three slices consume it and it carries an external integration with its own setup. Kept minimal — one lookup contract, not "all integrations." If length data is sparse, the recommender's length constraint degrades; that surfaces in S-07, not here.
-- **Status:** ready
+- **Status:** done
 
 ### F-03: Photo-identification spike
 
@@ -233,3 +233,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 (Empty on first generation. `/10x-archive` appends an entry here — and flips that item's `Status` to `done` — when a change whose `Change ID` matches the item is archived. Do NOT pre-populate.)
 
 - **F-01: (foundation) the smallest persistent, user-isolated library-entry store exists — one entry table carrying the user-facing fields (title, platform, play status, date-added, and the IGDB metadata fields), per-user RLS policies, and a shared entry type in `src/types.ts`. Nothing user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-06-library-entry-store/`. Lesson: —.
+- **F-02: (foundation) a server-side lookup that, given a title + platform, returns the five metadata fields (genre, overall length, release year, developer, release date) from IGDB, with a graceful "no match" result. Not user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-07-igdb-metadata-enrichment/`. Lesson: —.
