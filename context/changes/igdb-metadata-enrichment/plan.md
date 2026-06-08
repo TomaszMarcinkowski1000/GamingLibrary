@@ -450,28 +450,28 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [x] 2.1 Type checking passes with the new runtime typing
-- [x] 2.2 Build succeeds with the wrapper + KV binding present
-- [x] 2.3 Linting passes
-- [x] 2.4 wrangler.jsonc parses (successful build)
+- [x] 2.1 Type checking passes with the new runtime typing — ff7e83e
+- [x] 2.2 Build succeeds with the wrapper + KV binding present — ff7e83e
+- [x] 2.3 Linting passes — ff7e83e
+- [x] 2.4 wrangler.jsonc parses (successful build) — ff7e83e
 
 #### Manual
 
-- [x] 2.5 KV namespace appears in `wrangler kv namespace list`
-- [x] 2.6 locals.runtime.env.IGDB_TOKENS resolves as KVNamespace
+- [x] 2.5 KV namespace appears in `wrangler kv namespace list` — ff7e83e
+- [x] 2.6 locals.runtime.env.IGDB_TOKENS resolves as KVNamespace — ff7e83e
 
 ### Phase 3: KV token-cache fetch wrapper + per-request IGDB client factory
 
 #### Automated
 
-- [ ] 3.1 Type checking passes
-- [ ] 3.2 Build succeeds
-- [ ] 3.3 Linting passes
+- [x] 3.1 Type checking passes
+- [x] 3.2 Build succeeds
+- [x] 3.3 Linting passes
 
 #### Manual
 
-- [ ] 3.4 Token-cache wrapper hit/miss logic reviewed
-- [ ] 3.5 Factory constructs without throwing when creds present
+- [x] 3.4 Token-cache wrapper hit/miss logic reviewed
+- [x] 3.5 Factory constructs without throwing when creds present
 
 ### Phase 4: Lookup service (validation, queries, mapping, no-match contract)
 
