@@ -1,10 +1,10 @@
 ---
 change_id: library-entry-store
 title: Library-entry store — user-isolated entry table, RLS, and shared entry type
-status: impl_reviewed
+status: archived
 created: 2026-06-06
-updated: 2026-06-06
-archived_at: null
+updated: 2026-06-08
+archived_at: 2026-06-08T20:16:06Z
 ---
 
 ## Notes

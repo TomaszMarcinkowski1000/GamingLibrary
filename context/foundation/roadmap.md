@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-08
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -29,7 +29,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 
 | ID    | Change ID                  | Outcome (user can …)                                            | Prerequisites              | PRD refs                  | Status   |
 | ----- | -------------------------- | --------------------------------------------------------------- | -------------------------- | ------------------------- | -------- |
-| F-01  | library-entry-store        | (foundation) user-isolated library-entry store exists           | —                          | NFR (isolation, persist)  | ready    |
+| F-01  | library-entry-store        | (foundation) user-isolated library-entry store exists           | —                          | NFR (isolation, persist)  | done     |
 | F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | ready    |
 | F-03  | photo-identification-spike | (foundation) vision returns game+platform, ≥90% validated       | —                          | FR-005, Guardrails        | ready    |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | proposed |
@@ -75,7 +75,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Sequenced first because nothing can be stored without it. Kept minimal — one table + RLS, not a full data layer; the first consuming slice (S-01) still designs and exercises the columns through a real create/read. Over-modeling fields the recommender doesn't yet need is the main trap.
-- **Status:** ready
+- **Status:** done
 
 ### F-02: IGDB metadata enrichment
 
@@ -231,3 +231,5 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Done
 
 (Empty on first generation. `/10x-archive` appends an entry here — and flips that item's `Status` to `done` — when a change whose `Change ID` matches the item is archived. Do NOT pre-populate.)
+
+- **F-01: (foundation) the smallest persistent, user-isolated library-entry store exists — one entry table carrying the user-facing fields (title, platform, play status, date-added, and the IGDB metadata fields), per-user RLS policies, and a shared entry type in `src/types.ts`. Nothing user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-06-library-entry-store/`. Lesson: —.
