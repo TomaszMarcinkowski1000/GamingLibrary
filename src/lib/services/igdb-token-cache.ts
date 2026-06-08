@@ -59,7 +59,14 @@ export function createTokenCachingFetch(kv: KVNamespace): typeof fetch {
     }
 
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const cached = await kv.get<CachedToken>(KV_KEY, "json");
+
+    // KV is a cache: a read failure must degrade to a fresh mint, not break auth.
+    let cached: CachedToken | null = null;
+    try {
+      cached = await kv.get<CachedToken>(KV_KEY, "json");
+    } catch {
+      // KV unavailable or value unparseable — fall through to a fresh token mint.
+    }
 
     if (cached && cached.expires_at > nowSeconds) {
       const body: TwitchTokenResponse = {
@@ -78,12 +85,25 @@ export function createTokenCachingFetch(kv: KVNamespace): typeof fetch {
       return response;
     }
 
-    // Read from a clone so the original body stays intact for the wrapper.
-    const data = await response.clone().json<TwitchTokenResponse>();
+    // Read from a clone so the original body stays intact for the wrapper. A malformed
+    // body must not fail the call — hand the untouched response back and skip caching.
+    let data: TwitchTokenResponse;
+    try {
+      data = await response.clone().json<TwitchTokenResponse>();
+    } catch {
+      // Unexpected/empty body — hand the untouched response back and skip caching.
+      return response;
+    }
+
     const expiresAt = nowSeconds + data.expires_in;
     const ttl = Math.max(KV_MIN_TTL_SECONDS, data.expires_in - EXPIRY_SAFETY_MARGIN_SECONDS);
     const toCache: CachedToken = { access_token: data.access_token, expires_at: expiresAt };
-    await kv.put(KV_KEY, JSON.stringify(toCache), { expirationTtl: ttl });
+    // A cache-write failure must not fail the request — the real token is already in hand.
+    try {
+      await kv.put(KV_KEY, JSON.stringify(toCache), { expirationTtl: ttl });
+    } catch {
+      // Write failed — the real token is already in hand, so don't fail the request.
+    }
 
     return response;
   };

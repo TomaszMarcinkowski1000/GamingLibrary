@@ -128,8 +128,9 @@ function names(entities: { name?: string }[] | undefined): string[] {
  *
  * Runs the `games` search (filtered to the resolved platform when recognized), and on a
  * hit a follow-up `game_time_to_beats` query for length. Maps both into the discriminated
- * {@link IgdbLookupResult}. A miss is a returned `{ status: "no_match" }`, never a throw;
- * an empty `title`/`platform` throws a `ZodError`.
+ * {@link IgdbLookupResult}. An empty result is a returned `{ status: "no_match" }`, not a
+ * throw. Infrastructure failures still propagate: an empty `title`/`platform` throws a
+ * `ZodError`, and IGDB/Twitch transport, HTTP, or auth errors throw — callers must handle them.
  */
 export async function lookupGameMetadata(title: string, platform: string, kv: KVNamespace): Promise<IgdbLookupResult> {
   const input = lookupInputSchema.parse({ title, platform });
