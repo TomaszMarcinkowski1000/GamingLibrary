@@ -477,25 +477,25 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [x] 4.1 Type checking passes
-- [x] 4.2 Build succeeds
-- [x] 4.3 Linting passes
+- [x] 4.1 Type checking passes — 72d152a
+- [x] 4.2 Build succeeds — 72d152a
+- [x] 4.3 Linting passes — 72d152a
 
 #### Manual
 
-- [x] 4.4 Service returns discriminated IgdbLookupResult; no_match is a value not a throw
-- [x] 4.5 Field mapping reviewed against schema columns
+- [x] 4.4 Service returns discriminated IgdbLookupResult; no_match is a value not a throw — 72d152a
+- [x] 4.5 Field mapping reviewed against schema columns — 72d152a
 
 ### Phase 5: Live verification & harness cleanup
 
 #### Automated
 
-- [ ] 5.1 No harness references remain (lint + build pass)
-- [ ] 5.2 Type checking passes
+- [x] 5.1 No harness references remain (lint + build pass)
+- [x] 5.2 Type checking passes
 
 #### Manual
 
-- [ ] 5.3 Known title+platform returns populated matched result
-- [ ] 5.4 Nonsense title returns no_match without throwing
-- [ ] 5.5 KV token reuse confirmed (no re-mint on second call)
-- [ ] 5.6 Harness endpoint deleted
+- [x] 5.3 Known title+platform returns populated matched result
+- [x] 5.4 Nonsense title returns no_match without throwing
+- [x] 5.5 KV token reuse confirmed (no re-mint on second call)
+- [x] 5.6 Harness endpoint deleted

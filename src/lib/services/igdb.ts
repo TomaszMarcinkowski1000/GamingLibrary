@@ -152,7 +152,10 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     );
 
   if (platformIds.length > 0) {
-    gamesQuery = gamesQuery.where((g) => g.platforms.id.in(platformIds));
+    // `platforms` is an array of platform ids on the games endpoint, so filter the field
+    // directly (`platforms = (id,…)`). Filtering `platforms.id` is rejected by IGDB
+    // ("Invalid field name: 'game.platforms.id'").
+    gamesQuery = gamesQuery.where((g) => g.platforms.in(platformIds));
   }
 
   const game = await gamesQuery.limit(1).first();
