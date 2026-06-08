@@ -38,8 +38,8 @@ export type Database = {
         Row: {
           created_at: string
           date_bought: string | null
-          developer: string | null
-          genre: string | null
+          developer: string[] | null
+          genre: string[] | null
           id: string
           igdb_id: number | null
           length_hours: number | null
@@ -49,14 +49,15 @@ export type Database = {
           play_time_hours: number | null
           release_date: string | null
           release_year: number | null
+          series: string[] | null
           title: string
           user_id: string
         }
         Insert: {
           created_at?: string
           date_bought?: string | null
-          developer?: string | null
-          genre?: string | null
+          developer?: string[] | null
+          genre?: string[] | null
           id?: string
           igdb_id?: number | null
           length_hours?: number | null
@@ -66,14 +67,15 @@ export type Database = {
           play_time_hours?: number | null
           release_date?: string | null
           release_year?: number | null
+          series?: string[] | null
           title: string
           user_id?: string
         }
         Update: {
           created_at?: string
           date_bought?: string | null
-          developer?: string | null
-          genre?: string | null
+          developer?: string[] | null
+          genre?: string[] | null
           id?: string
           igdb_id?: number | null
           length_hours?: number | null
@@ -83,6 +85,7 @@ export type Database = {
           play_time_hours?: number | null
           release_date?: string | null
           release_year?: number | null
+          series?: string[] | null
           title?: string
           user_id?: string
         }

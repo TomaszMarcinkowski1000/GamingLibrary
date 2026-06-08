@@ -40,3 +40,26 @@ export const PLAY_STATUS_LABELS: Record<PlayStatus, string> = {
 export const METADATA_STATUSES = ["matched", "no_match"] as const;
 
 export type MetadataStatus = (typeof METADATA_STATUSES)[number];
+
+// --- IGDB lookup result (F-02) ---
+
+/**
+ * Discriminated result of `lookupGameMetadata(title, platform, kv)`.
+ *
+ * `matched` carries the five required metadata fields (genre, length, release year,
+ * developer, release date) plus the folded-in `series`. Field nullability mirrors IGDB
+ * coverage — `series` and `lengthHours` are the most likely to be absent. A `no_match`
+ * is a returned value, never a throw.
+ */
+export type IgdbLookupResult =
+  | {
+      status: "matched";
+      igdbId: number;
+      genre: string[];
+      developer: string[];
+      series: string[];
+      releaseYear: number | null;
+      releaseDate: string | null;
+      lengthHours: number | null;
+    }
+  | { status: "no_match" };

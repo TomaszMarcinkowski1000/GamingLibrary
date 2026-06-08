@@ -1,9 +1,9 @@
 ---
 change_id: igdb-metadata-enrichment
 title: IGDB metadata enrichment — lookup by title + platform returns the 5 metadata fields
-status: planned
+status: implementing
 created: 2026-06-07
-updated: 2026-06-07
+updated: 2026-06-08
 archived_at: null
 ---
 

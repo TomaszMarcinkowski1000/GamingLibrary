@@ -436,15 +436,15 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [ ] 1.1 Migration applies cleanly against local Supabase
-- [ ] 1.2 DB types regenerate without uncommitted drift
-- [ ] 1.3 Type checking passes
-- [ ] 1.4 Linting passes
+- [x] 1.1 Migration applies cleanly against local Supabase
+- [x] 1.2 DB types regenerate without uncommitted drift
+- [x] 1.3 Type checking passes
+- [x] 1.4 Linting passes
 
 #### Manual
 
-- [ ] 1.5 library_entries shows genre/developer/series as array columns
-- [ ] 1.6 IgdbLookupResult shape matches the five required fields + series
+- [x] 1.5 library_entries shows genre/developer/series as array columns
+- [x] 1.6 IgdbLookupResult shape matches the five required fields + series
 
 ### Phase 2: Config, dependencies & KV infrastructure
 
