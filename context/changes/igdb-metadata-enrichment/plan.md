@@ -490,12 +490,12 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [x] 5.1 No harness references remain (lint + build pass)
-- [x] 5.2 Type checking passes
+- [x] 5.1 No harness references remain (lint + build pass) — 013d922
+- [x] 5.2 Type checking passes — 013d922
 
 #### Manual
 
-- [x] 5.3 Known title+platform returns populated matched result
-- [x] 5.4 Nonsense title returns no_match without throwing
-- [x] 5.5 KV token reuse confirmed (no re-mint on second call)
-- [x] 5.6 Harness endpoint deleted
+- [x] 5.3 Known title+platform returns populated matched result — 013d922
+- [x] 5.4 Nonsense title returns no_match without throwing — 013d922
+- [x] 5.5 KV token reuse confirmed (no re-mint on second call) — 013d922
+- [x] 5.6 Harness endpoint deleted — 013d922
