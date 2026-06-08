@@ -436,29 +436,29 @@ No automated test runner is introduced (decision: typecheck/lint/build + manual 
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly against local Supabase
-- [x] 1.2 DB types regenerate without uncommitted drift
-- [x] 1.3 Type checking passes
-- [x] 1.4 Linting passes
+- [x] 1.1 Migration applies cleanly against local Supabase — cc8737a
+- [x] 1.2 DB types regenerate without uncommitted drift — cc8737a
+- [x] 1.3 Type checking passes — cc8737a
+- [x] 1.4 Linting passes — cc8737a
 
 #### Manual
 
-- [x] 1.5 library_entries shows genre/developer/series as array columns
-- [x] 1.6 IgdbLookupResult shape matches the five required fields + series
+- [x] 1.5 library_entries shows genre/developer/series as array columns — cc8737a
+- [x] 1.6 IgdbLookupResult shape matches the five required fields + series — cc8737a
 
 ### Phase 2: Config, dependencies & KV infrastructure
 
 #### Automated
 
-- [ ] 2.1 Type checking passes with the new runtime typing
-- [ ] 2.2 Build succeeds with the wrapper + KV binding present
-- [ ] 2.3 Linting passes
-- [ ] 2.4 wrangler.jsonc parses (successful build)
+- [x] 2.1 Type checking passes with the new runtime typing
+- [x] 2.2 Build succeeds with the wrapper + KV binding present
+- [x] 2.3 Linting passes
+- [x] 2.4 wrangler.jsonc parses (successful build)
 
 #### Manual
 
-- [ ] 2.5 KV namespace appears in `wrangler kv namespace list`
-- [ ] 2.6 locals.runtime.env.IGDB_TOKENS resolves as KVNamespace
+- [x] 2.5 KV namespace appears in `wrangler kv namespace list`
+- [x] 2.6 locals.runtime.env.IGDB_TOKENS resolves as KVNamespace
 
 ### Phase 3: KV token-cache fetch wrapper + per-request IGDB client factory
 

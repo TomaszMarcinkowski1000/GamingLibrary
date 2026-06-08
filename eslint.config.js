@@ -71,8 +71,9 @@ const astroConfig = tseslint.config({
 export default tseslint.config(
   includeIgnoreFile(gitignorePath),
   // Supabase-generated DB types are committed as-is and re-emitted verbatim by
-  // `npm run db:types`; linting/formatting them would only cause diff drift.
-  { ignores: ["src/db/database.types.ts"] },
+  // `npm run db:types`; the Cloudflare runtime types are likewise re-emitted by
+  // `npm run cf-typegen`. Linting/formatting either would only cause diff drift.
+  { ignores: ["src/db/database.types.ts", "worker-configuration.d.ts"] },
   baseConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],

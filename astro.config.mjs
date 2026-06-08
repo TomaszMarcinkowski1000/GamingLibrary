@@ -18,6 +18,8 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret", optional: true }),
       SUPABASE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      TWITCH_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
+      TWITCH_CLIENT_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });

@@ -12,4 +12,11 @@
   "observability": {
     "enabled": true,
   },
+  "kv_namespaces": [
+    {
+      "binding": "IGDB_TOKENS",
+      "id": "62fa277391214ef5889b1d29c048196e",
+      "preview_id": "1a7f6e20d9ed4ac6a1c5fa0a7b9d6581",
+    },
+  ],
 }
