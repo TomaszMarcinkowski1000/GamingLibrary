@@ -271,31 +271,31 @@ None — the F-01/F-02 schema is sufficient. No production migration deploy is p
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run lint`
-- [x] 2.3 Production build succeeds: `npm run build`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 46d3b98
+- [x] 2.2 Linting passes: `npm run lint` — 46d3b98
+- [x] 2.3 Production build succeeds: `npm run build` — 46d3b98
 
 #### Manual
 
-- [x] 2.4 `POST /api/library` with a known title+platform returns 201 with enriched entry
-- [x] 2.5 `POST` with junk title returns 201 with `metadata_status:'no_match'`, entry saved
-- [x] 2.6 `POST` with missing title/platform returns 400
-- [x] 2.7 `POST` while signed out returns 401
+- [x] 2.4 `POST /api/library` with a known title+platform returns 201 with enriched entry — 46d3b98
+- [x] 2.5 `POST` with junk title returns 201 with `metadata_status:'no_match'`, entry saved — 46d3b98
+- [x] 2.6 `POST` with missing title/platform returns 400 — 46d3b98
+- [x] 2.7 `POST` while signed out returns 401 — 46d3b98
 
 ### Phase 3: Browse page + Add dialog island
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run lint`
-- [ ] 3.3 Production build succeeds: `npm run build`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run lint`
+- [x] 3.3 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 3.4 Adding a known game enriches it and it appears on top of `/library`
-- [ ] 3.5 Adding an Evercade title saves with platform preserved; Evercade then selectable in combobox
-- [ ] 3.6 Save & add another clears form, keeps dialog open, adds multiple without navigation
-- [ ] 3.7 Pagination Prev/Next works across 20+ entries with correct bounds
-- [ ] 3.8 Empty library shows "Add your first game" empty-state
-- [ ] 3.9 `/library` while signed out redirects to `/auth/signin`
-- [ ] 3.10 A second user does not see the first user's entries (RLS isolation)
+- [x] 3.4 Adding a known game enriches it and it appears on top of `/library`
+- [x] 3.5 Adding an Evercade title saves with platform preserved; Evercade then selectable in combobox
+- [x] 3.6 Save & add another clears form, keeps dialog open, adds multiple without navigation
+- [x] 3.7 Pagination Prev/Next works across 20+ entries with correct bounds
+- [x] 3.8 Empty library shows "Add your first game" empty-state
+- [x] 3.9 `/library` while signed out redirects to `/auth/signin`
+- [x] 3.10 A second user does not see the first user's entries (RLS isolation)

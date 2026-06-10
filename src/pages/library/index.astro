@@ -1,0 +1,175 @@
+---
+import type { LibraryEntry } from "@/types";
+import Layout from "@/layouts/Layout.astro";
+import { createClient } from "@/lib/supabase";
+import { listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
+import { KNOWN_PLATFORMS } from "@/lib/platforms";
+import AddGameDialog from "@/components/library/AddGameDialog";
+
+const PAGE_SIZE = 20;
+
+const pageParam = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+let entries: LibraryEntry[] = [];
+let total = 0;
+let usedPlatforms: string[] = [];
+let loadError = false;
+
+if (supabase) {
+  try {
+    const [list, platforms] = await Promise.all([
+      listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE }),
+      listUsedPlatforms(supabase),
+    ]);
+    entries = list.entries;
+    total = list.total;
+    usedPlatforms = platforms;
+  } catch {
+    loadError = true;
+  }
+}
+
+// Merge curated + already-used platforms, curated order first, case-insensitive dedupe.
+const seen = new Set<string>();
+const platformOptions: string[] = [];
+for (const platform of [...KNOWN_PLATFORMS, ...usedPlatforms]) {
+  const key = platform.toLowerCase();
+  if (!seen.has(key)) {
+    seen.add(key);
+    platformOptions.push(platform);
+  }
+}
+
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+const hasPrev = page > 1;
+const hasNext = page < totalPages;
+const isEmpty = total === 0 && !loadError;
+
+function metadataLabel(entry: LibraryEntry): string | null {
+  return entry.metadata_status === "matched" ? null : "No metadata";
+}
+---
+
+<Layout title="My Library">
+  <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+    <div class="mx-auto max-w-5xl">
+      <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+            My Library
+          </h1>
+          <p class="mt-1 text-sm text-blue-100/60">
+            {total}
+            {total === 1 ? "game" : "games"}
+          </p>
+        </div>
+        {!isEmpty && <AddGameDialog platformOptions={platformOptions} client:load />}
+      </header>
+
+      {
+        loadError && (
+          <div class="rounded-xl border border-red-400/40 bg-red-500/10 p-4 text-sm text-red-200">
+            Couldn’t load your library right now. Please refresh and try again.
+          </div>
+        )
+      }
+
+      {
+        isEmpty && (
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+            <h2 class="text-xl font-semibold text-white">Your library is empty</h2>
+            <p class="max-w-sm text-sm text-blue-100/60">
+              Add your first game to start cataloguing your collection — we’ll fetch its metadata for you.
+            </p>
+            <AddGameDialog
+              platformOptions={platformOptions}
+              triggerLabel="Add your first game"
+              triggerSize="lg"
+              client:load
+            />
+          </div>
+        )
+      }
+
+      {
+        !isEmpty && !loadError && (
+          <>
+            <div class="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b border-white/10 text-xs tracking-wide text-blue-100/50 uppercase">
+                  <tr>
+                    <th class="px-4 py-3 font-medium">Title</th>
+                    <th class="px-4 py-3 font-medium">Platform</th>
+                    <th class="px-4 py-3 font-medium">Genre</th>
+                    <th class="px-4 py-3 font-medium">Year</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => {
+                    const noMeta = metadataLabel(entry);
+                    return (
+                      <tr class="border-b border-white/5 last:border-0">
+                        <td class="px-4 py-3">
+                          <span class="font-medium text-white">{entry.title}</span>
+                          {noMeta && (
+                            <span class="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">
+                              {noMeta}
+                            </span>
+                          )}
+                        </td>
+                        <td class="px-4 py-3 text-blue-100/80">{entry.platform}</td>
+                        <td class="px-4 py-3 text-blue-100/60">{entry.genre?.length ? entry.genre.join(", ") : "—"}</td>
+                        <td class="px-4 py-3 text-blue-100/60">{entry.release_year ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <nav class="mt-6 flex items-center justify-between text-sm" aria-label="Pagination">
+              {hasPrev ? (
+                <a
+                  href={`/library?page=${page - 1}`}
+                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
+                >
+                  ← Previous
+                </a>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  class="cursor-not-allowed rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white/30"
+                >
+                  ← Previous
+                </span>
+              )}
+
+              <span class="text-blue-100/60">
+                Page {page} of {totalPages}
+              </span>
+
+              {hasNext ? (
+                <a
+                  href={`/library?page=${page + 1}`}
+                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
+                >
+                  Next →
+                </a>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  class="cursor-not-allowed rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white/30"
+                >
+                  Next →
+                </span>
+              )}
+            </nav>
+          </>
+        )
+      }
+    </div>
+  </main>
+</Layout>

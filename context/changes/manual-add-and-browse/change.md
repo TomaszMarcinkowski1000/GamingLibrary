@@ -3,7 +3,7 @@ change_id: manual-add-and-browse
 title: Add a game manually, enrich it, and browse the library
 status: implementing
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-11
 archived_at: null
 ---
 
