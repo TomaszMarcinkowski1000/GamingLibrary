@@ -286,16 +286,16 @@ None — the F-01/F-02 schema is sufficient. No production migration deploy is p
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run lint`
-- [x] 3.3 Production build succeeds: `npm run build`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 0d78289
+- [x] 3.2 Linting passes: `npm run lint` — 0d78289
+- [x] 3.3 Production build succeeds: `npm run build` — 0d78289
 
 #### Manual
 
-- [x] 3.4 Adding a known game enriches it and it appears on top of `/library`
-- [x] 3.5 Adding an Evercade title saves with platform preserved; Evercade then selectable in combobox
-- [x] 3.6 Save & add another clears form, keeps dialog open, adds multiple without navigation
-- [x] 3.7 Pagination Prev/Next works across 20+ entries with correct bounds
-- [x] 3.8 Empty library shows "Add your first game" empty-state
-- [x] 3.9 `/library` while signed out redirects to `/auth/signin`
-- [x] 3.10 A second user does not see the first user's entries (RLS isolation)
+- [x] 3.4 Adding a known game enriches it and it appears on top of `/library` — 0d78289
+- [x] 3.5 Adding an Evercade title saves with platform preserved; Evercade then selectable in combobox — 0d78289
+- [x] 3.6 Save & add another clears form, keeps dialog open, adds multiple without navigation — 0d78289
+- [x] 3.7 Pagination Prev/Next works across 20+ entries with correct bounds — 0d78289
+- [x] 3.8 Empty library shows "Add your first game" empty-state — 0d78289
+- [x] 3.9 `/library` while signed out redirects to `/auth/signin` — 0d78289
+- [x] 3.10 A second user does not see the first user's entries (RLS isolation) — 0d78289
