@@ -160,15 +160,23 @@ Build the server-rendered paginated library page and the interactive Add-game di
 
 **Contract**: Props `{ options: string[]; value: string; onChange: (v: string) => void }`. Built on `Popover` + `Command`. Renders `options` as items; when the typed query matches no option, shows a `Create "<query>"` action that selects the free-text value. On selecting a freshly-created value, append it to the in-memory option list so it's immediately reusable within the session. Case-insensitive match/dedupe.
 
-#### 3. Add-game dialog island
+#### 3. Reusable game-form body (mode-extensible)
+
+**File**: `src/components/library/GameFormFields.tsx` (new)
+
+**Intent**: The dialog's form *body*, factored out as a standalone component so S-02 can grow it from "add" (title + platform) into a full add/edit field set without rewriting the dialog. S-01 builds only the add fields; the seam is the component boundary, not pre-built edit fields. (See S-02 design note in `context/foundation/roadmap.md`.)
+
+**Contract**: A controlled, presentational component — no fetch, no dialog, no submit logic. Props expose the field values + change handlers and the platform options, e.g. `{ values: { title: string; platform: string }; onChange: (patch: Partial<{title: string; platform: string}>) => void; errors?: Record<string, string>; platformOptions: string[] }`. Renders the title `input` and the `PlatformCombobox`. The value/onChange/errors shape is intentionally a record so S-02 can widen it to more fields without breaking the contract. Do **not** add edit-only fields now.
+
+#### 4. Add-game dialog island
 
 **File**: `src/components/library/AddGameDialog.tsx` (new)
 
-**Intent**: The interactive add surface launched from the library page; handles validation, the create call, and the Save vs Save-&-add-another flows.
+**Intent**: The interactive add surface launched from the library page; owns the dialog shell, validation, the create call, and the Save vs Save-&-add-another flows. Wraps `GameFormFields` — so when S-02 expands that body and adds an UPDATE path, this shell becomes the unified add/edit dialog.
 
-**Contract**: Props `{ platformOptions: string[] }`. State for `title`, `platform`, submit-pending, and error. Client-validates both required. On submit, `fetch('/api/library', { method:'POST', body: JSON.stringify({title, platform}) })`. **Save**: on success close the dialog and navigate to `/library` (page 1) so the new entry shows on top. **Save & add another**: on success clear fields, keep the dialog open, append any newly-created platform to the in-memory options, keep focus on title. Surface `400`/`500` errors inline. Trigger is an **Add game** button rendered by this island.
+**Contract**: Props `{ platformOptions: string[] }`. Holds the `values` record (`title`, `platform`), submit-pending, and error state; renders `GameFormFields` inside the `Dialog`. Client-validates both required. On submit, `fetch('/api/library', { method:'POST', body: JSON.stringify(values) })`. **Save**: on success close the dialog and navigate to `/library` (page 1) so the new entry shows on top. **Save & add another**: on success clear fields, keep the dialog open, append any newly-created platform to the in-memory options, keep focus on title. Surface `400`/`500` errors inline. Trigger is an **Add game** button rendered by this island. Structure the submit/close path as a single post-save seam (so S-02 can swap "close + navigate" for "reopen in edit mode").
 
-#### 4. Library browse page
+#### 5. Library browse page
 
 **File**: `src/pages/library/index.astro` (new)
 
@@ -176,7 +184,7 @@ Build the server-rendered paginated library page and the interactive Add-game di
 
 **Contract**: Reads `page` from `Astro.url.searchParams` (default 1). Gets `supabase = createClient(...)`; calls `listLibraryEntries(supabase, { page, pageSize: 20 })` and `listUsedPlatforms(supabase)`. Renders a table/card list of entries (title, platform, genre, release year, a "No metadata" indicator when `metadata_status==='no_match'`), newest first. Renders Prev/Next pagination as links (`?page=N`), disabled at bounds, derived from `total`. Mounts `<AddGameDialog platformOptions={merged} client:load />` where `merged` = `KNOWN_PLATFORMS` ∪ used platforms (case-insensitive dedupe). Empty-state (total 0): a prominent "Add your first game" message wrapping the same dialog trigger. Uses `Layout.astro`.
 
-#### 5. Protect the route + entry point
+#### 6. Protect the route + entry point
 
 **File**: `src/middleware.ts`, `src/pages/dashboard.astro`
 
