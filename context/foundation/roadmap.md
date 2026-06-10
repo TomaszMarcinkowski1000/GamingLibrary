@@ -131,6 +131,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Sequenced right after S-01 because it is the **correction path the photo auto-save (FR-006) depends on** — S-03 auto-saves identifications and relies on edit/delete to fix the ≤10% it gets wrong. Building it before S-03 keeps the north star's acceptance criteria satisfiable.
+- **Design note (from S-01 planning, 2026-06-10):** Implement edit as an **expansion of S-01's add dialog into a unified add/edit dialog**, not a separate edit screen. S-01 ships `AddGameDialog` with its form body factored into a reusable, mode-extensible `GameFormFields` component (title + platform only at add); S-02 grows that body to all editable fields and adds an UPDATE path (the F-01 RLS update policy already exists). The headline is "expand the add dialog," not "build an edit screen." This also lets S-01's post-save seam swap to "reopen the just-saved entry in edit mode for review/correction." **Watch the S-04 overlap:** `play_status` is editable here but S-04 (mark-play-status) owns that capability — decide during S-02 planning whether play-status lives in the dialog, inline on the list, or both, so the two slices don't build it twice.
 - **Status:** proposed
 
 ### S-03: Add a game via photo (auto-saved + identified)  — ★ north star
