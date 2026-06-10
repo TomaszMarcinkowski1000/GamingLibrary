@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-08
+updated: 2026-06-11
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -39,6 +39,8 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | proposed |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | proposed |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
+| S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
+| S-09  | enrichment-match-precision | avoid false-positive IGDB matches for thin/ambiguous titles     | F-02, S-01                 | FR-008                    | optional |
 
 ## Streams
 
@@ -197,6 +199,32 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** The PRD's stated reason-to-exist, but correctly sequenced *after* its data dependencies — it is only meaningful once the library can be populated (S-01) and statuses set (S-04). Its quality, not its existence, is the real risk, and that can only be judged once real entries exist; deterministic-only scoring (no LLM in v1) keeps it tractable.
 - **Status:** proposed
 
+### S-08: Reach the library directly after login  — ◇ optional
+
+- **Outcome:** after signing in the user lands on their library (or reaches it in a single, obvious step) rather than the current dashboard → library two-hop, and a persistent way back to the library exists.
+- **Change ID:** post-login-library-landing
+- **PRD refs:** US-04 (browsing the library is the primary post-login action); general navigation/usability
+- **Prerequisites:** S-01
+- **Parallel with:** any
+- **Blockers:** —
+- **Unknowns:**
+  - Should login redirect straight to `/library`, or should the dashboard be reframed as a library-first landing (keeping sign-out etc.)? — Owner: user. Block: no (decide during planning).
+- **Risk:** Pure UX polish surfaced during S-01 manual verification (2026-06-11) — the dashboard → library hop is an inconvenience, not a defect. **Optional:** gates no other slice; current navigation works. Low risk, mostly a redirect/nav decision.
+- **Status:** optional
+
+### S-09: Tighten IGDB match precision  — ◇ optional
+
+- **Outcome:** enrichment stops attaching false-positive metadata for thin or ambiguous search terms (e.g. title "e" on "Xbox Series X" should not match a real game); low-confidence IGDB results degrade to the existing `no_match` flag instead of wrong metadata.
+- **Change ID:** enrichment-match-precision
+- **PRD refs:** FR-008 (eager enrichment — quality of the match)
+- **Prerequisites:** F-02, S-01
+- **Parallel with:** any
+- **Blockers:** —
+- **Unknowns:**
+  - What confidence signal does IGDB expose to threshold on (name exactness, platform agreement, popularity/rating count), and where is the cut set without rejecting valid matches? — Owner: team. Block: no (investigate during planning, validate against a held-out sample of the collector's shelf).
+- **Risk:** Quality refinement of F-02's lookup, surfaced during S-01 manual verification (2026-06-11). **Optional:** the current behavior is "over-eager match," not data loss, and `no_match` already exists as the safe degrade. The real risk is mis-tuning the threshold and dropping valid matches; a held-out shelf sample bounds it.
+- **Status:** optional
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                  | Suggested issue title                                   | Ready for `/10x-plan` | Notes |
@@ -211,6 +239,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-05       | search-library-by-title    | Search library by title (duplicate-purchase check)      | no                    | Needs F-01, S-01 |
 | S-06       | filter-and-sort-library    | Filter & sort by status, platform, genre                | no                    | Needs F-01, S-01, S-04 |
 | S-07       | play-next-recommendation   | Deterministic "what should I play next?" recommender    | no                    | Needs F-01, F-02, S-01, S-04 |
+| S-08       | post-login-library-landing | Reach the library directly after login (no dashboard hop) | no                  | Optional UX polish; needs S-01 |
+| S-09       | enrichment-match-precision | Tighten IGDB match precision (avoid false positives)    | no                    | Optional; needs F-02, S-01 |
 
 ## Open Roadmap Questions
 
