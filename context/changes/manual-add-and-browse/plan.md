@@ -258,29 +258,29 @@ None — the F-01/F-02 schema is sufficient. No production migration deploy is p
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run lint`
-- [x] 1.3 Unit tests pass for `createLibraryEntry` mapping (matched / no_match / thrown→no_match / date_bought today)
-- [x] 1.4 Unit test: `KNOWN_PLATFORMS` minus Evercade all resolve in `PLATFORM_IDS_BY_NAME`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 40f06c2
+- [x] 1.2 Linting passes: `npm run lint` — 40f06c2
+- [x] 1.3 Unit tests pass for `createLibraryEntry` mapping (matched / no_match / thrown→no_match / date_bought today) — 40f06c2
+- [x] 1.4 Unit test: `KNOWN_PLATFORMS` minus Evercade all resolve in `PLATFORM_IDS_BY_NAME` — 40f06c2
 
 #### Manual
 
-- [x] 1.5 Confirmed Nintendo Switch 2 IGDB id (or dropped) via a live query
+- [x] 1.5 Confirmed Nintendo Switch 2 IGDB id (or dropped) via a live query — 40f06c2
 
 ### Phase 2: Create API route
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run lint`
-- [ ] 2.3 Production build succeeds: `npm run build`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run lint`
+- [x] 2.3 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 2.4 `POST /api/library` with a known title+platform returns 201 with enriched entry
-- [ ] 2.5 `POST` with junk title returns 201 with `metadata_status:'no_match'`, entry saved
-- [ ] 2.6 `POST` with missing title/platform returns 400
-- [ ] 2.7 `POST` while signed out returns 401
+- [x] 2.4 `POST /api/library` with a known title+platform returns 201 with enriched entry
+- [x] 2.5 `POST` with junk title returns 201 with `metadata_status:'no_match'`, entry saved
+- [x] 2.6 `POST` with missing title/platform returns 400
+- [x] 2.7 `POST` while signed out returns 401
 
 ### Phase 3: Browse page + Add dialog island
 
