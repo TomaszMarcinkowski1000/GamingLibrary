@@ -258,14 +258,14 @@ None — the F-01/F-02 schema is sufficient. No production migration deploy is p
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run lint`
-- [ ] 1.3 Unit tests pass for `createLibraryEntry` mapping (matched / no_match / thrown→no_match / date_bought today)
-- [ ] 1.4 Unit test: `KNOWN_PLATFORMS` minus Evercade all resolve in `PLATFORM_IDS_BY_NAME`
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run lint`
+- [x] 1.3 Unit tests pass for `createLibraryEntry` mapping (matched / no_match / thrown→no_match / date_bought today)
+- [x] 1.4 Unit test: `KNOWN_PLATFORMS` minus Evercade all resolve in `PLATFORM_IDS_BY_NAME`
 
 #### Manual
 
-- [ ] 1.5 Confirmed Nintendo Switch 2 IGDB id (or dropped) via a live query
+- [x] 1.5 Confirmed Nintendo Switch 2 IGDB id (or dropped) via a live query
 
 ### Phase 2: Create API route
 

@@ -65,14 +65,21 @@ const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["playstation 4", [48]],
   ["ps3", [9]],
   ["playstation 3", [9]],
+  ["ps2", [8]],
+  ["playstation 2", [8]],
   ["ps vita", [46]],
   ["playstation vita", [46]],
+  ["psp", [38]],
+  ["playstation portable", [38]],
+  ["switch 2", [508]],
+  ["nintendo switch 2", [508]],
   ["switch", [130]],
   ["nintendo switch", [130]],
   ["wii u", [41]],
   ["wii", [5]],
   ["nintendo 3ds", [37]],
   ["3ds", [37]],
+  ["nintendo ds", [20]],
   ["xbox series x", [169]],
   ["xbox series s", [169]],
   ["xbox series x|s", [169]],
@@ -91,7 +98,7 @@ function normalizePlatform(platform: string): string {
  * Resolve a free-text platform to IGDB platform id(s). Returns `[]` for an unrecognized
  * platform — the caller falls back to an unfiltered title search in that case.
  */
-function resolvePlatformIds(platform: string): number[] {
+export function resolvePlatformIds(platform: string): number[] {
   return PLATFORM_IDS_BY_NAME.get(normalizePlatform(platform)) ?? [];
 }
 
