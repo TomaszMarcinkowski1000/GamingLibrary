@@ -114,27 +114,15 @@ export async function listLibraryEntries(
 /**
  * Distinct non-null platform values already used in the current user's library.
  *
- * Deduped case-insensitively in JS (the first-seen casing wins), so the combobox can
- * offer a user's own past free-text platforms (e.g. "Evercade") alongside the curated list.
+ * Computed in Postgres via the `list_used_platforms` RPC (DISTINCT ON + per-user index)
+ * rather than selecting every row and deduping in JS, so cost stays flat as the library
+ * grows. Deduped case-insensitively, so the combobox can offer a user's own past
+ * free-text platforms (e.g. "Evercade") alongside the curated list.
  */
 export async function listUsedPlatforms(supabase: TypedSupabaseClient): Promise<string[]> {
-  const { data, error } = await supabase.from("library_entries").select("platform");
+  const { data, error } = await supabase.rpc("list_used_platforms");
   if (error) {
     throw error;
   }
-
-  const seen = new Set<string>();
-  const platforms: string[] = [];
-  for (const row of data) {
-    const value = row.platform.trim();
-    if (!value) {
-      continue;
-    }
-    const key = value.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      platforms.push(value);
-    }
-  }
-  return platforms;
+  return data;
 }

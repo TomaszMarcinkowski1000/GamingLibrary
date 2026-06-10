@@ -20,9 +20,11 @@ let loadError = false;
 
 if (supabase) {
   try {
+    // Platform options are a degradable nicety, so they resolve to [] on their own
+    // failure — only a true entries-query failure should blank the library.
     const [list, platforms] = await Promise.all([
       listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE }),
-      listUsedPlatforms(supabase),
+      listUsedPlatforms(supabase).catch(() => [] as string[]),
     ]);
     entries = list.entries;
     total = list.total;
