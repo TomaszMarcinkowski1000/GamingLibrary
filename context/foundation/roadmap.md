@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-11
+updated: 2026-06-10
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -32,7 +32,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | F-01  | library-entry-store        | (foundation) user-isolated library-entry store exists           | —                          | NFR (isolation, persist)  | done     |
 | F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | done     |
 | F-03  | photo-identification-spike | (foundation) vision returns game+platform, ≥90% validated       | —                          | FR-005, Guardrails        | ready    |
-| S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | proposed |
+| S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | proposed |
 | S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | proposed |
@@ -121,7 +121,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The first end-to-end create→enrich→display loop; de-risks F-01 and F-02 together through a real user capability and gives the recommender (S-07) a way to populate data without depending on the riskier photo path. Lowest-risk slice, deliberately not the north star but the safe feeder beneath it.
-- **Status:** proposed
+- **Status:** done
 
 ### S-02: Edit and delete a library entry
 
@@ -265,3 +265,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **F-01: (foundation) the smallest persistent, user-isolated library-entry store exists — one entry table carrying the user-facing fields (title, platform, play status, date-added, and the IGDB metadata fields), per-user RLS policies, and a shared entry type in `src/types.ts`. Nothing user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-06-library-entry-store/`. Lesson: —.
 - **F-02: (foundation) a server-side lookup that, given a title + platform, returns the five metadata fields (genre, overall length, release year, developer, release date) from IGDB, with a graceful "no match" result. Not user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-07-igdb-metadata-enrichment/`. Lesson: —.
+- **S-01: user can add a game by entering title + platform, have it auto-enriched with IGDB metadata (or saved with a "no metadata match" flag), and browse their library in a paginated view.** — Archived 2026-06-10 → `context/archive/2026-06-10-manual-add-and-browse/`. Lesson: —.

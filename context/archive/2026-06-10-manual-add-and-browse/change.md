@@ -1,10 +1,10 @@
 ---
 change_id: manual-add-and-browse
 title: Add a game manually, enrich it, and browse the library
-status: impl_reviewed
+status: archived
 created: 2026-06-10
-updated: 2026-06-11
-archived_at: null
+updated: 2026-06-10
+archived_at: 2026-06-10T23:18:45Z
 ---
 
 ## Notes
