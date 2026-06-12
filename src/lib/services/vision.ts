@@ -71,7 +71,7 @@ const PROMPT =
  * @param imageDataUrl A `data:image/<fmt>;base64,<data>` URL (built by the caller from the
  *   uploaded `File`). The route does the upload decode; this service only speaks to the model.
  * @throws if `OPENROUTER_API_KEY` is unset (mirrors `createIgdbClient`'s loud failure), or on
- *   a non-2xx OpenRouter response (carries the error body so the route/harness surfaces it).
+ *   a non-2xx OpenRouter response (status-only message; the upstream body is logged server-side, not surfaced).
  */
 export async function identifyGameFromPhoto(imageDataUrl: string): Promise<VisionIdentifyResult> {
   // Declared `optional` in the env schema so build/CI proceed without live creds; a call
@@ -102,15 +102,26 @@ export async function identifyGameFromPhoto(imageDataUrl: string): Promise<Visio
   });
 
   if (!response.ok) {
+    // Log the upstream body server-side (it may carry model slugs / quota hints) but never surface it:
+    // the route turns a thrown message into a client-facing 502, so keep it status-only to avoid leaking provider detail.
     const errorBody = await response.text();
-    throw new Error(`OpenRouter request failed (${response.status}): ${errorBody}`);
+    // eslint-disable-next-line no-console -- deliberate server-side diagnostic; never reaches the client
+    console.error(`OpenRouter request failed (${response.status}): ${errorBody}`);
+    throw new Error(`OpenRouter request failed (${response.status})`);
   }
 
   const envelope = envelopeSchema.parse(await response.json());
   const rawContent = envelope.choices[0].message.content;
 
   // Structured mode returns the JSON as a string in `message.content`; parse then validate.
-  const parsed = modelOutputSchema.parse(JSON.parse(rawContent));
+  // Despite strict structured output, a refusal or malformed payload is an honest abstain, not a
+  // transport failure — fold any parse/validation error to `unsure` rather than throwing a SyntaxError.
+  let parsed;
+  try {
+    parsed = modelOutputSchema.parse(JSON.parse(rawContent));
+  } catch {
+    return { status: "unsure", confidence: 0 };
+  }
 
   if (parsed.confidence < CONFIDENCE_THRESHOLD) {
     return { status: "unsure", confidence: parsed.confidence };

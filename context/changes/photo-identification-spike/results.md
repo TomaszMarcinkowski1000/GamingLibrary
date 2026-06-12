@@ -111,5 +111,3 @@ the work is grounding, not vision.
 ## Owner action
 
 - Production use requires `wrangler secret put OPENROUTER_API_KEY` (not needed for this local spike).
-</content>
-</invoke>

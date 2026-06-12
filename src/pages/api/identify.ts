@@ -37,14 +37,20 @@ type IdentifyResponse =
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
+// Max accepted upload. workerd has no Node `sharp`, so we can't downscale server-side; until S-03
+// adds a Worker-safe resize, cap the raw bytes instead. 10 MB clears a downscaled box photo with
+// headroom while bounding the base64 string we hold in memory (~33% inflation) and the vision payload.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 /**
  * Upload contract: a single non-empty image `File` under the fixed `photo` field. An absent,
- * empty, or non-image part is a client error (400), validated at the boundary like every other route.
+ * empty, oversized, or non-image part is a client error (400), validated at the boundary like every other route.
  */
 const uploadSchema = z.object({
   photo: z
     .instanceof(File, { message: "a `photo` image file is required" })
     .refine((file) => file.size > 0, "the uploaded `photo` is empty")
+    .refine((file) => file.size <= MAX_UPLOAD_BYTES, "the uploaded `photo` exceeds the 10 MB limit")
     .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), "unsupported image type (png/jpeg/webp/gif only)"),
 });
 

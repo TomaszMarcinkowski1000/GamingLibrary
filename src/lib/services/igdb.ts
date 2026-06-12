@@ -55,6 +55,10 @@ const lookupInputSchema = z.object({
 // unfiltered (best-effort) search rather than a forced `no_match`.
 //
 // Ids are IGDB v4 platform ids (https://api-docs.igdb.com platforms endpoint).
+//
+// DUPLICATED: the F-03 accuracy harness (scripts/identify-harness.mjs) keeps a hand-copy of this
+// map because it's plain .mjs dev tooling and can't import this TS module. If you grow this map,
+// mirror the change there too — otherwise harness scoring drifts silently from real grounding.
 const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["pc", [6]],
   ["windows", [6]],
