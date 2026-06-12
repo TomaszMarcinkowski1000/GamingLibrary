@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, envField } from "astro/config";
+import { defineConfig, envField, sessionDrivers } from "astro/config";
 
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
@@ -14,6 +14,14 @@ export default defineConfig({
     plugins: [tailwindcss()],
   },
   adapter: cloudflare({ imageService: "compile" }),
+  // Astro sessions are unused. The Cloudflare adapter otherwise auto-enables a
+  // KV-backed session store and injects a "SESSION" binding, which collides with
+  // our own KV bindings at deploy time. Pin a lightweight in-memory driver so the
+  // adapter skips the SESSION binding entirely. (sessionDrivers.null exists at
+  // runtime but is missing from Astro's exported types, so it fails typed lint.)
+  session: {
+    driver: sessionDrivers.lruCache(),
+  },
   env: {
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret", optional: true }),
