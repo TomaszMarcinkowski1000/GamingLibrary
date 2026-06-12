@@ -38,3 +38,10 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# F-03 spike fixtures: the collector's own shelf photos, their ground-truth labels,
+# and generated reports stay local and never enter version control. The format docs
+# (README + labels.example.csv) are the only tracked files under this dir.
+fixtures/shelf/*
+!fixtures/shelf/README.md
+!fixtures/shelf/labels.example.csv

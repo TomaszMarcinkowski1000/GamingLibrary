@@ -31,16 +31,16 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | ----- | -------------------------- | --------------------------------------------------------------- | -------------------------- | ------------------------- | -------- |
 | F-01  | library-entry-store        | (foundation) user-isolated library-entry store exists           | —                          | NFR (isolation, persist)  | done     |
 | F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | done     |
-| F-03  | photo-identification-spike | (foundation) vision returns game+platform, ≥90% validated       | —                          | FR-005, Guardrails        | ready    |
+| F-03  | photo-identification-spike | (foundation) vision reads game+platform ~95%; grounding-bound at 71% strict | —              | FR-005, Guardrails        | done     |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
-| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
+| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | proposed |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | proposed |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | proposed |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
 | S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
-| S-09  | enrichment-match-precision | avoid false-positive IGDB matches for thin/ambiguous titles     | F-02, S-01                 | FR-008                    | optional |
+| S-09  | enrichment-match-precision | precise IGDB grounding: collapse edition variants to base game + suppress false positives | F-02, S-01 | FR-005, FR-008            | proposed |
 
 ## Streams
 
@@ -49,7 +49,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | Stream | Theme                         | Chain                                                  | Note                                                                                      |
 | ------ | ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | A      | Library core (data + CRUD)    | `F-01` → `S-01` → `S-02` / `S-04` / `S-05` → `S-06`    | Everything builds on this; sequenced first. The north star joins it at `S-02`.            |
-| B      | Photo entry (killer feature)  | `F-03` → `S-03`                                        | `F-03` resolves the ≥90% guardrail (the `external` blocker); `S-03` joins Stream A at `S-02` (edit/delete = the photo auto-save correction path). |
+| B      | Photo entry (killer feature)  | `F-03` → `S-09` → `S-03`                               | `F-03` proved vision reads boxes at ~95% but the ≥90% *guardrail* is grounding-bound; `S-09` (edition-collapse + platform-alias grounding) is now the binding prerequisite that unblocks the north star, not an optional polish. `S-03` also joins Stream A at `S-02` (edit/delete = the photo auto-save correction path). |
 | C      | Metadata & recommendation     | `F-02` → `S-07`                                        | `F-02` enrichment also feeds `S-01`/`S-03`; `S-07` joins Stream A at `S-04` (play status drives ranking). |
 
 ## Baseline
@@ -105,9 +105,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - Vision-provider API key (OpenRouter or equivalent) must be plumbed in (`env.schema`, `.dev.vars`, Worker secret) — Owner: user. Block: no (self-serve; deploy plan already documents the wiring as deferred-until-needed).
-  - **Does the chosen vision model identify game + platform from box photos at ≥90% on the collector's own shelf?** — Owner: user/team. Block: yes — this is the binding guardrail; until the spike confirms it, S-03 stays `blocked`.
-- **Risk:** Promoted to its own foundation (not buried in S-03) precisely because `top_blocker = external` and `main_goal = validate-riskiest`: this is the single cheapest experiment that tells you whether v1 is viable. If accuracy < 90%, the photo path is cut and manual entry (S-01) becomes the primary path — better to learn that in a spike than after building the full capture UI. Latency (10s p95) is a secondary risk measured here.
-- **Status:** ready
+  - **Does the chosen vision model identify game + platform from box photos at ≥90% on the collector's own shelf?** — Owner: user/team. **Answered (2026-06-13, see `context/changes/photo-identification-spike/results.md`):** the *vision model* reads title+console at **~95%** on 116 real shelf photos, but the guardrail *as operationalized* (exact base-game IGDB id + platform via first-match grounding) measured **71.2%** — the gap is grounding granularity (first-match resolves to edition-variant ids: Deluxe/GOTY/Complete/Collector's…) plus harness platform-string bugs, **not** model capability. Latency p95 3.25s (PASS, ≤10s). The binding constraint moved from perception to grounding.
+- **Risk:** Promoted to its own foundation (not buried in S-03) precisely because `top_blocker = external` and `main_goal = validate-riskiest`: this is the single cheapest experiment that tells you whether v1 is viable. **Spike outcome:** the photo differentiator is *viable* — the model clears the perceptual bar — so the original "<90% → cut the photo path" reflex does **not** apply; the residual gap to 90% is bounded grounding work (edition-collapse / parent-game grounding — promote S-09 top-N — + platform-alias normalization), not a model swap. The pre-registered cut-to-manual-entry fallback (S-01 primary) stands only if that grounding follow-up fails to clear ~90% base-game id accuracy on a re-measure. Latency (10s p95) was a secondary risk and passed comfortably.
+- **Result:** ~95% title+console vision read; 71.2% strict id+platform (grounding-bound); p95 3.25s. Verdict: keep S-03 blocked pending grounding follow-up; do not cut. Full analysis: `context/changes/photo-identification-spike/results.md`.
+- **Status:** done
 
 ## Slices
 
@@ -141,14 +142,14 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** user can capture or upload a single-game photo from a browser (including mobile camera), the system proposes a game + platform, and the identified entry is auto-saved into the library with IGDB metadata attached; if identification fails, the user is offered the manual-entry path instead of an auto-saved guess.
 - **Change ID:** photo-to-library
 - **PRD refs:** US-01, FR-004, FR-005, FR-006, FR-008
-- **Prerequisites:** F-01, F-02, F-03, S-01 (manual-entry fallback), S-02 (edit/delete correction path)
+- **Prerequisites:** F-01, F-02, F-03, S-01 (manual-entry fallback), S-02 (edit/delete correction path), S-09 (edition-collapse grounding — the F-03 follow-up that closes the 71%→~90% guardrail gap; alternatively, a confirm-before-save UX can ship S-03 at the ~95% vision read without waiting on strict auto-save accuracy)
 - **Parallel with:** S-04, S-05
 - **Blockers:** —
 - **Unknowns:**
-  - Vision identification must clear ≥90% accuracy on the collector's shelf — Owner: user/team. Block: yes (resolved by F-03's spike; until then this slice cannot responsibly auto-save).
+  - Vision identification must clear ≥90% accuracy on the collector's shelf — Owner: user/team. Block: yes. **F-03 update (2026-06-13):** the vision read is ~95% (clears intent), but strict base-game id+platform grounding measured 71.2% — so this slice stays `blocked` on a **grounding follow-up**, not on the model. Unblock when edition-collapsing grounding (S-09 top-N / parent-game) + platform-alias normalization re-measure at ~90% base-game id accuracy. A **confirm-before-save** UX (model proposes → user one-tap accepts/corrects via the S-02 path) is the recommended way to ship this responsibly before strict auto-save accuracy is proven.
   - Does the in-browser mobile camera-capture path work end-to-end on the four mainstream browsers (NFR), with no required desktop step? — Owner: team. Block: no (a known mobile-web risk to validate during planning, not a sequencing blocker).
-- **Risk:** The validation milestone and the killer feature, placed as early as its prerequisites allow per the `market-feedback` goal. Its viability is gated entirely by F-03 — which is why F-03 is the recommended first move. If the guardrail fails, this slice is cut and the product falls back to S-01 as the entry path.
-- **Status:** blocked
+- **Risk:** The validation milestone and the killer feature, placed as early as its prerequisites allow per the `market-feedback` goal. Its viability is gated by F-03 — which is why F-03 was the recommended first move. **F-03 result reframes the gate:** the differentiator is viable (model reads boxes at ~95%); the photo path is **not** cut. The residual work is grounding-side (edition-collapse + platform normalization), and the S-01-as-primary fallback only triggers if that follow-up fails to clear ~90% on re-measure. See `context/changes/photo-identification-spike/results.md`.
+- **Status:** blocked (on grounding follow-up, not on the vision model — see F-03 result)
 
 ### S-04: Mark a game with a play status
 
@@ -212,18 +213,20 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Pure UX polish surfaced during S-01 manual verification (2026-06-11) — the dashboard → library hop is an inconvenience, not a defect. **Optional:** gates no other slice; current navigation works. Low risk, mostly a redirect/nav decision.
 - **Status:** optional
 
-### S-09: Tighten IGDB match precision  — ◇ optional
+### S-09: Tighten IGDB match precision  — ★ unblocks the north star
 
-- **Outcome:** enrichment stops attaching false-positive metadata for thin or ambiguous search terms (e.g. title "e" on "Xbox Series X" should not match a real game); low-confidence IGDB results degrade to the existing `no_match` flag instead of wrong metadata.
+- **Outcome:** IGDB grounding resolves to the **right** game entry, on two fronts: (1) **edition-variant collapse** — a box read as "Alan Wake II Deluxe Edition" / "Horizon Forbidden West Complete Edition" / "Bloodborne GOTY" / "Marvel's Spider-Man" grounds to the **base-game** id, not the edition-specific entry (via IGDB `parent_game`/version relationships or top-N + base-title match); and (2) **false-positive suppression** — thin or ambiguous search terms (e.g. title "e" on "Xbox Series X") degrade to the existing `no_match` flag instead of attaching wrong metadata. Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.
 - **Change ID:** enrichment-match-precision
-- **PRD refs:** FR-008 (eager enrichment — quality of the match)
+- **PRD refs:** FR-005 (photo identification — the ≥90% guardrail is grounding-bound per F-03), FR-008 (eager enrichment — quality of the match)
+- **Unlocks:** **S-03 (north star)** — F-03 measured the vision read at ~95% but the strict guardrail at 71.2% because first-match grounding lands on edition variants; closing that gap is this slice's job. Also raises enrichment quality for S-01 manual adds.
 - **Prerequisites:** F-02, S-01
-- **Parallel with:** any
+- **Parallel with:** S-02 (both on the path to unblocking S-03)
 - **Blockers:** —
 - **Unknowns:**
-  - What confidence signal does IGDB expose to threshold on (name exactness, platform agreement, popularity/rating count), and where is the cut set without rejecting valid matches? — Owner: team. Block: no (investigate during planning, validate against a held-out sample of the collector's shelf).
-- **Risk:** Quality refinement of F-02's lookup, surfaced during S-01 manual verification (2026-06-11). **Optional:** the current behavior is "over-eager match," not data loss, and `no_match` already exists as the safe degrade. The real risk is mis-tuning the threshold and dropping valid matches; a held-out shelf sample bounds it.
-- **Status:** optional
+  - What IGDB relationship/field collapses an edition variant to its base game reliably (`parent_game`, `version_parent`, category/version_title), and how to rank top-N so the base entry wins without dropping legitimately distinct games? — Owner: team. Block: no (investigate during planning; validate against the F-03 shelf sample where the failures are already enumerated — `context/changes/photo-identification-spike/results.md`).
+  - What confidence signal does IGDB expose to threshold false positives on (name exactness, platform agreement, popularity/rating count), and where is the cut set without rejecting valid matches? — Owner: team. Block: no (validate against a held-out shelf sample).
+- **Risk:** **Promoted from `optional` to load-bearing by the F-03 spike (2026-06-13):** it is now the binding prerequisite between the proven ~95% vision read and a shippable north-star S-03 — no longer a mere quality refinement. The false-positive half was surfaced during S-01 manual verification (2026-06-11); the edition-collapse half is the dominant F-03 error source. The real risk is over-collapsing (merging genuinely distinct titles) or mis-tuning the false-positive threshold and dropping valid matches; the F-03 shelf sample (failures already enumerated by case) bounds both. A re-run of the F-03 harness on a cleaned truth set is the acceptance check.
+- **Status:** proposed
 
 ## Backlog Handoff
 
@@ -231,16 +234,16 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | ---------- | -------------------------- | ------------------------------------------------------- | --------------------- | ----- |
 | F-01       | library-entry-store        | Library-entry store: table, RLS, shared entry type      | yes                   | Recommended after F-03; unblocks every slice |
 | F-02       | igdb-metadata-enrichment   | IGDB metadata enrichment (lookup by title + platform)   | yes                   | Needs IGDB/Twitch credentials before live calls |
-| F-03       | photo-identification-spike | Vision photo-ID spike + ≥90% accuracy validation        | yes                   | **Recommended first** — resolves the binding guardrail |
+| F-03       | photo-identification-spike | Vision photo-ID spike + ≥90% accuracy validation        | done                  | **Done (2026-06-13)** — vision ~95%, strict guardrail 71% (grounding-bound); see `results.md`. Binding work moved to S-09. |
 | S-01       | manual-add-and-browse      | Manual add + enriched + paginated library browse        | no                    | Needs F-01, F-02 |
 | S-02       | edit-and-delete-entry      | Edit any field; delete with confirm                     | no                    | Needs F-01, S-01 |
-| S-03       | photo-to-library           | Photo capture → identified, auto-saved enriched entry   | no                    | Blocked on F-03 guardrail; needs F-01/F-02/S-01/S-02 |
+| S-03       | photo-to-library           | Photo capture → identified, auto-saved enriched entry   | no                    | F-03 done (vision ~95%); now blocked on S-09 grounding (edition-collapse) for strict auto-save, or ship via confirm-before-save; needs F-01/F-02/S-01/S-02/S-09 |
 | S-04       | mark-play-status           | Mark play status (+ optional play time)                 | no                    | Needs F-01, S-01 |
 | S-05       | search-library-by-title    | Search library by title (duplicate-purchase check)      | no                    | Needs F-01, S-01 |
 | S-06       | filter-and-sort-library    | Filter & sort by status, platform, genre                | no                    | Needs F-01, S-01, S-04 |
 | S-07       | play-next-recommendation   | Deterministic "what should I play next?" recommender    | no                    | Needs F-01, F-02, S-01, S-04 |
 | S-08       | post-login-library-landing | Reach the library directly after login (no dashboard hop) | no                  | Optional UX polish; needs S-01 |
-| S-09       | enrichment-match-precision | Tighten IGDB match precision (avoid false positives)    | no                    | Optional; needs F-02, S-01 |
+| S-09       | enrichment-match-precision | Precise IGDB grounding: edition-collapse + false-positive suppression | yes      | **Load-bearing for S-03 north star** (per F-03); needs F-02, S-01 — both done |
 
 ## Open Roadmap Questions
 
@@ -255,7 +258,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Digital library integrations (Steam, GOG, PSN, Xbox Live).** Why parked: PRD §Non-Goals — physical-first by identity; digital storefronts dilute the persona and the business rule.
 - **Social / sharing features (friends, profiles, shared collections, comments, leaderboards).** Why parked: PRD §Non-Goals — v1 is single-collector; sharing would change the access-control model.
 - **Wishlists, deal tracking, series/collection grouping.** Why parked: PRD §Non-Goals — each is a sizable feature tangential to the "what should I play next?" decision.
-- **Edition-level precision (Standard vs. Legendary vs. GOTY vs. regional).** Why parked: PRD §Non-Goals — photo path identifies game + platform only; reliable edition recognition is the largest single cut in the 3-week budget. Deferred to v2.
+- **Edition-level precision (Standard vs. Legendary vs. GOTY vs. regional).** Why parked: PRD §Non-Goals — photo path identifies game + platform only; reliable edition recognition is the largest single cut in the 3-week budget. Deferred to v2. **Note (not in conflict with S-09):** S-09's edition-*collapse* is the inverse of edition *precision* — it deliberately maps "Bloodborne GOTY" / "…Complete Edition" to the single base-game id (consistent with "game + platform only"), rather than distinguishing editions. F-03 showed un-collapsed edition variants are the dominant guardrail-miss source.
 - **AI-augmented recommender.** Why parked: PRD §Non-Goals — v1 ships deterministic scoring only; LLM-assisted suggestions land in v2 once the scoring recommender's weaknesses are known.
 - **Multi-game-per-photo / shelf-scanning.** Why parked: PRD §Non-Goals — one game per photo in v1; multi-box segmentation doesn't fit the budget.
 

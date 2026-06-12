@@ -6,6 +6,7 @@ import eslintPluginAstro from "eslint-plugin-astro";
 import pluginReact from "eslint-plugin-react";
 import reactCompiler from "eslint-plugin-react-compiler";
 import eslintPluginReactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
 import path from "node:path";
 import tseslint from "typescript-eslint";
 
@@ -59,6 +60,27 @@ const reactConfig = tseslint.config({
   },
 });
 
+// Dev-only Node scripts (F-03 accuracy harness). These run in plain Node, not workerd, and do
+// dynamic JSON/CSV work the typed-program rules can't narrow — so disable type-aware linting here
+// and give them Node globals. `console` is the harness's report surface, so `no-console` is off.
+const scriptsConfig = tseslint.config({
+  files: ["scripts/**/*.{js,mjs,cjs}"],
+  extends: [tseslint.configs.disableTypeChecked],
+  languageOptions: {
+    globals: {
+      ...globals.node,
+      fetch: "readonly",
+      FormData: "readonly",
+      Blob: "readonly",
+      URL: "readonly",
+      URLSearchParams: "readonly",
+    },
+  },
+  rules: {
+    "no-console": "off",
+  },
+});
+
 const astroConfig = tseslint.config({
   files: ["**/*.astro"],
   rules: {
@@ -79,5 +101,6 @@ export default tseslint.config(
   eslintPluginAstro.configs["flat/recommended"],
   ...eslintPluginAstro.configs["flat/jsx-a11y-recommended"],
   astroConfig,
+  scriptsConfig,
   eslintPluginPrettier,
 );

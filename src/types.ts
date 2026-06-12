@@ -63,3 +63,17 @@ export type IgdbLookupResult =
       lengthHours: number | null;
     }
   | { status: "no_match" };
+
+// --- Vision identification result (F-03 spike) ---
+
+/**
+ * Discriminated result of `identifyGameFromPhoto(imageDataUrl)`.
+ *
+ * `identified` carries the model's proposed title + platform and its self-reported
+ * confidence. `unsure` is the explicit abstain — emitted when confidence falls below the
+ * service's threshold (the harness scores abstains separately from wrong answers). The
+ * discriminant field name `status` matches {@link IgdbLookupResult}.
+ */
+export type VisionIdentifyResult =
+  | { status: "identified"; title: string; platform: string; confidence: number }
+  | { status: "unsure"; confidence: number };
