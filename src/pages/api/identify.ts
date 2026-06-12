@@ -49,6 +49,15 @@ const uploadSchema = z.object({
 });
 
 /**
+ * Grounding-shortcut contract (GET): both query params are required, non-empty after trimming —
+ * same shape `lookupGameMetadata` enforces internally, validated here so a bad query is a clean 400.
+ */
+const groundingQuerySchema = z.object({
+  title: z.string().trim().min(1, "`title` query param is required"),
+  platform: z.string().trim().min(1, "`platform` query param is required"),
+});
+
+/**
  * Build a `data:<mime>;base64,<data>` URL from the uploaded bytes using Web APIs only (workerd has
  * no Node `Buffer`). Encode in chunks: `btoa(String.fromCharCode(...wholeArray))` blows the call
  * stack on a large byte spread (docs/openrouter.md §2).
@@ -61,6 +70,44 @@ function toBase64DataUrl(bytes: Uint8Array, mimeType: string): string {
   }
   return `data:${mimeType};base64,${btoa(binary)}`;
 }
+
+/**
+ * GET /api/identify?title=&platform= — truth-id grounding shortcut for the accuracy harness.
+ *
+ * The harness scores the model's grounded `igdbId` against the *truth* id of each labeled photo.
+ * To resolve that truth id through the exact same path the model output travels (so both sides are
+ * grounded symmetrically), it grounds `true_title` + `true_platform` here via `lookupGameMetadata`
+ * and reads back `{ igdbId, metadataStatus }`. Auth-gated and read-only — harmless in prod, but its
+ * only consumer is the dev harness. (The harness may instead pin `true_igdb_id` in labels.csv and
+ * skip this call entirely.)
+ */
+export const GET: APIRoute = async ({ url, locals }) => {
+  if (!locals.user) {
+    return Response.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const query = groundingQuerySchema.safeParse({
+    title: url.searchParams.get("title"),
+    platform: url.searchParams.get("platform"),
+  });
+  if (!query.success) {
+    return Response.json({ error: query.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
+  }
+
+  let grounding: IgdbLookupResult | null = null;
+  try {
+    grounding = await lookupGameMetadata(query.data.title, query.data.platform, env.IGDB_TOKENS);
+  } catch (error) {
+    // IGDB/Twitch transport, auth, or missing-KV failure — the harness needs to distinguish this
+    // from a clean no-match, so surface it as a 502 rather than a null id.
+    return Response.json({ error: error instanceof Error ? error.message : "IGDB grounding failed" }, { status: 502 });
+  }
+
+  return Response.json({
+    igdbId: grounding.status === "matched" ? grounding.igdbId : null,
+    metadataStatus: grounding.status,
+  });
+};
 
 export const POST: APIRoute = async ({ request, locals }) => {
   // Auth gate (mirror api/library/index.ts) — the route is shared with S-03, so it stays gated.

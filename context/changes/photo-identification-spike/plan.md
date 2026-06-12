@@ -296,27 +296,27 @@ The binding deliverable: run the harness over ~30–50 of the collector's own la
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run lint`
-- [x] 2.2 Production build passes: `npm run build`
+- [x] 2.1 Type checking passes: `npm run lint` — 67f008b
+- [x] 2.2 Production build passes: `npm run build` — 67f008b
 
 #### Manual
 
-- [x] 2.3 Authenticated multipart POST to `/api/identify` returns grounded `{title, platform, confidence, igdbId}`
-- [x] 2.4 Unauthenticated POST returns 401
-- [x] 2.5 Real game → non-null `igdbId`; unidentifiable image → `unsure`
-- [x] 2.6 Broken `OPENROUTER_API_KEY` yields a clean error response, not a stack trace
+- [x] 2.3 Authenticated multipart POST to `/api/identify` returns grounded `{title, platform, confidence, igdbId}` — 67f008b
+- [x] 2.4 Unauthenticated POST returns 401 — 67f008b
+- [x] 2.5 Real game → non-null `igdbId`; unidentifiable image → `unsure` — 67f008b
+- [x] 2.6 Broken `OPENROUTER_API_KEY` yields a clean error response, not a stack trace — 67f008b
 
 ### Phase 3: Accuracy harness + fixtures
 
 #### Automated
 
-- [ ] 3.1 Harness runs end-to-end on a 2–3 photo smoke fixture: `npm run harness`
-- [ ] 3.2 Type/lint clean per repo config: `npm run lint`
+- [x] 3.1 Harness runs end-to-end on a 2–3 photo smoke fixture: `npm run harness`
+- [x] 3.2 Type/lint clean per repo config: `npm run lint`
 
 #### Manual
 
-- [ ] 3.3 Smoke report shows sensible per-photo rows and correct aggregate math
-- [ ] 3.4 Abstain and angled breakdowns populate correctly
+- [x] 3.3 Smoke report shows sensible per-photo rows and correct aggregate math
+- [x] 3.4 Abstain and angled breakdowns populate correctly
 
 ### Phase 4: Run against the real shelf + record the verdict
 
