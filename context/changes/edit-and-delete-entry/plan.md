@@ -308,14 +308,14 @@ None — F-01's schema and RLS policies (including update + delete) are sufficie
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run lint`
-- [x] 3.3 Production build succeeds: `npm run build`
+- [x] 3.1 Type checking passes: `npm run typecheck` — f83d40e
+- [x] 3.2 Linting passes: `npm run lint` — f83d40e
+- [x] 3.3 Production build succeeds: `npm run build` — f83d40e
 
 #### Manual
 
-- [x] 3.4 Each row shows Edit + Delete; Edit opens pre-filled dialog; saved change appears on correct page after reload
-- [x] 3.5 Hand-edited metadata on a no_match entry persists but badge stays until a successful Re-fetch
-- [x] 3.6 Row Delete confirm removes entry; Cancel leaves it; deleting last row on a page lands on a valid page
-- [x] 3.7 A second user cannot edit or delete user 1's entries (PUT/DELETE 404 under RLS)
-- [x] 3.8 Add flow (header + empty-state) still works unchanged
+- [x] 3.4 Each row shows Edit + Delete; Edit opens pre-filled dialog; saved change appears on correct page after reload — f83d40e
+- [x] 3.5 Hand-edited metadata on a no_match entry persists but badge stays until a successful Re-fetch — f83d40e
+- [x] 3.6 Row Delete confirm removes entry; Cancel leaves it; deleting last row on a page lands on a valid page — f83d40e
+- [x] 3.7 A second user cannot edit or delete user 1's entries (PUT/DELETE 404 under RLS) — f83d40e
+- [x] 3.8 Add flow (header + empty-state) still works unchanged — f83d40e
