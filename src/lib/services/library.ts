@@ -1,7 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/db/database.types";
-import type { LibraryEntry, LibraryEntryInsert } from "@/types";
+import type { LibraryEntry, LibraryEntryInsert, LibraryEntryUpdate } from "@/types";
 import { lookupGameMetadata } from "./igdb";
+
+/**
+ * Thrown by `updateLibraryEntry`/`deleteLibraryEntry` when the targeted row does not exist —
+ * either a bad id or another user's row hidden by RLS (Supabase does not error on a no-row
+ * update/delete). Routes catch this to answer 404 instead of 500.
+ */
+export class EntryNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Library entry not found: ${id}`);
+    this.name = "EntryNotFoundError";
+  }
+}
 
 /**
  * Library entry service (S-01).
@@ -83,6 +95,48 @@ export async function createLibraryEntry(
     throw error;
   }
   return data as LibraryEntry;
+}
+
+/**
+ * Update a single library entry, writing the full editable field set as one patch (FR-010).
+ *
+ * Last-write-wins: the caller sends the complete editable set and we write it verbatim. RLS
+ * scopes the `.eq('id', id)` to the current user, so a wrong or foreign id matches zero rows —
+ * Supabase returns no error in that case, so we request the row back via `.select().single()`
+ * and translate the empty result (PostgREST `PGRST116`) into a thrown {@link EntryNotFoundError}.
+ * Never writes `id`/`user_id`/`created_at`.
+ */
+export async function updateLibraryEntry(
+  supabase: TypedSupabaseClient,
+  id: string,
+  patch: LibraryEntryUpdate,
+): Promise<LibraryEntry> {
+  const { data, error } = await supabase.from("library_entries").update(patch).eq("id", id).select().single();
+  if (error) {
+    // PGRST116 = "no rows returned" for a `.single()` that matched nothing → not found.
+    if (error.code === "PGRST116") {
+      throw new EntryNotFoundError(id);
+    }
+    throw error;
+  }
+  return data as LibraryEntry;
+}
+
+/**
+ * Delete a single library entry by id (FR-011, hard delete).
+ *
+ * RLS scopes the delete to the current user. A no-row delete (bad/foreign id) is silent in
+ * Supabase, so we `.select('id')` the deleted set back and throw {@link EntryNotFoundError}
+ * when it's empty, letting the route answer 404 rather than a misleading 204.
+ */
+export async function deleteLibraryEntry(supabase: TypedSupabaseClient, id: string): Promise<void> {
+  const { data, error } = await supabase.from("library_entries").delete().eq("id", id).select("id");
+  if (error) {
+    throw error;
+  }
+  if (data.length === 0) {
+    throw new EntryNotFoundError(id);
+  }
 }
 
 /**

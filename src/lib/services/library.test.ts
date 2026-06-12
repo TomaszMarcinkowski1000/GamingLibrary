@@ -6,7 +6,13 @@ import type { IgdbLookupResult } from "@/types";
 vi.mock("./igdb", () => ({ lookupGameMetadata: vi.fn() }));
 
 import { lookupGameMetadata } from "./igdb";
-import { createLibraryEntry, listLibraryEntries } from "./library";
+import {
+  EntryNotFoundError,
+  createLibraryEntry,
+  deleteLibraryEntry,
+  listLibraryEntries,
+  updateLibraryEntry,
+} from "./library";
 
 const mockLookup = vi.mocked(lookupGameMetadata);
 const KV = {} as unknown as KVNamespace;
@@ -97,6 +103,76 @@ describe("createLibraryEntry", () => {
       metadata_status: "no_match",
       date_bought: today,
     });
+  });
+});
+
+describe("updateLibraryEntry", () => {
+  /** Mock client for `.update(patch).eq('id', id).select().single()`, capturing the patch. */
+  function updateClient(result: { data: unknown; error: unknown }) {
+    let captured: Record<string, unknown> | undefined;
+    let eqArgs: [string, string] | undefined;
+    const single = vi.fn().mockResolvedValue(result);
+    const select = vi.fn(() => ({ single }));
+    const eq = vi.fn((column: string, value: string) => {
+      eqArgs = [column, value];
+      return { select };
+    });
+    const update = vi.fn((patch: Record<string, unknown>) => {
+      captured = patch;
+      return { eq };
+    });
+    return {
+      client: { from: vi.fn(() => ({ update })) } as never,
+      patch: () => captured,
+      eq: () => eqArgs,
+    };
+  }
+
+  it("writes the patch, scopes by id, and returns the updated row", async () => {
+    const row = { id: "row-1", title: "New Title" };
+    const { client, patch, eq } = updateClient({ data: row, error: null });
+
+    const result = await updateLibraryEntry(client, "row-1", { title: "New Title" });
+
+    expect(patch()).toEqual({ title: "New Title" });
+    expect(eq()).toEqual(["id", "row-1"]);
+    expect(result).toEqual(row);
+  });
+
+  it("throws EntryNotFoundError when the update matches no row (PGRST116)", async () => {
+    const { client } = updateClient({ data: null, error: { code: "PGRST116" } });
+
+    await expect(updateLibraryEntry(client, "missing", { title: "x" })).rejects.toBeInstanceOf(EntryNotFoundError);
+  });
+});
+
+describe("deleteLibraryEntry", () => {
+  /** Mock client for `.delete().eq('id', id).select('id')`. */
+  function deleteClient(result: { data: unknown[]; error: unknown }) {
+    let eqArgs: [string, string] | undefined;
+    const select = vi.fn().mockResolvedValue(result);
+    const eq = vi.fn((column: string, value: string) => {
+      eqArgs = [column, value];
+      return { select };
+    });
+    const del = vi.fn(() => ({ eq }));
+    return {
+      client: { from: vi.fn(() => ({ delete: del })) } as never,
+      eq: () => eqArgs,
+    };
+  }
+
+  it("deletes by id when a row is affected", async () => {
+    const { client, eq } = deleteClient({ data: [{ id: "row-1" }], error: null });
+
+    await expect(deleteLibraryEntry(client, "row-1")).resolves.toBeUndefined();
+    expect(eq()).toEqual(["id", "row-1"]);
+  });
+
+  it("throws EntryNotFoundError when the delete affects no row", async () => {
+    const { client } = deleteClient({ data: [], error: null });
+
+    await expect(deleteLibraryEntry(client, "missing")).rejects.toBeInstanceOf(EntryNotFoundError);
   });
 });
 
