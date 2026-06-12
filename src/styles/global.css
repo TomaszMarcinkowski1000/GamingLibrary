@@ -39,24 +39,29 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* Render native form controls (number spinners, date-picker calendar) and scrollbars dark so
+     they match the themed dialog instead of showing the browser's default light UI. */
+  color-scheme: dark;
+  /* Tinted toward the cosmic navy palette (bg-cosmic = #0a0e1a→#0f1529) so shadcn surfaces
+     (dialogs, selects, inputs) read as native dark-blue glass rather than neutral gray. */
+  --background: oklch(0.17 0.02 265);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.21 0.025 265);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.21 0.03 265);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.55 0.18 280);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.28 0.03 265);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --muted: oklch(0.28 0.03 265);
+  --muted-foreground: oklch(0.72 0.02 265);
+  --accent: oklch(0.3 0.04 270);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.55 0.18 280);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -120,5 +125,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* WebKit number spinners don't reliably honor `color-scheme: dark` (they keep a light box),
+     so drop the native spin buttons — the input still accepts typed numbers. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
