@@ -284,27 +284,27 @@ The binding deliverable: run the harness over ~30–50 of the collector's own la
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run lint`
-- [x] 1.2 Production build passes without the secret present: `npm run build`
+- [x] 1.1 Type checking passes: `npm run lint` — 562bbe4
+- [x] 1.2 Production build passes without the secret present: `npm run build` — 562bbe4
 
 #### Manual
 
-- [x] 1.3 Live call returns plausible `{title, platform, confidence}`; garbage image collapses to `unsure`
-- [x] 1.4 Calling without the secret throws a clear, named error
+- [x] 1.3 Live call returns plausible `{title, platform, confidence}`; garbage image collapses to `unsure` — 562bbe4
+- [x] 1.4 Calling without the secret throws a clear, named error — 562bbe4
 
 ### Phase 2: Upload route + IGDB grounding
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run lint`
-- [ ] 2.2 Production build passes: `npm run build`
+- [x] 2.1 Type checking passes: `npm run lint`
+- [x] 2.2 Production build passes: `npm run build`
 
 #### Manual
 
-- [ ] 2.3 Authenticated multipart POST to `/api/identify` returns grounded `{title, platform, confidence, igdbId}`
-- [ ] 2.4 Unauthenticated POST returns 401
-- [ ] 2.5 Real game → non-null `igdbId`; unidentifiable image → `unsure`
-- [ ] 2.6 Broken `OPENROUTER_API_KEY` yields a clean error response, not a stack trace
+- [x] 2.3 Authenticated multipart POST to `/api/identify` returns grounded `{title, platform, confidence, igdbId}`
+- [x] 2.4 Unauthenticated POST returns 401
+- [x] 2.5 Real game → non-null `igdbId`; unidentifiable image → `unsure`
+- [x] 2.6 Broken `OPENROUTER_API_KEY` yields a clean error response, not a stack trace
 
 ### Phase 3: Accuracy harness + fixtures
 
