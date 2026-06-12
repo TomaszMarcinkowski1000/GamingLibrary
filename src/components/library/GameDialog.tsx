@@ -93,14 +93,18 @@ export default function GameDialog({
   triggerSize = "default",
   entry,
 }: GameDialogProps) {
-  const isEdit = entry !== undefined;
-  const initialValues = entry ? mapEntryToValues(entry) : EMPTY;
-
   const [open, setOpen] = useState(false);
+  // After a successful ADD we keep this dialog open and flip it into edit mode, pre-filled with the
+  // freshly-enriched entry so the user can review/correct IGDB's result — the S-01 post-save seam
+  // realized ("reopen the just-saved entry in edit mode"). `entry` (a true edit) takes precedence;
+  // `savedEntry` is the in-place add→edit transition.
+  const [savedEntry, setSavedEntry] = useState<LibraryEntry | undefined>(undefined);
+  const activeEntry = entry ?? savedEntry;
+  const isEdit = activeEntry !== undefined;
   // Options are session-mutable: a freshly-created platform is appended so it's immediately
   // reusable across "Save & add another" rounds without a round-trip.
   const [options, setOptions] = useState<string[]>(platformOptions);
-  const [values, setValues] = useState<GameFormValues>(initialValues);
+  const [values, setValues] = useState<GameFormValues>(entry ? mapEntryToValues(entry) : EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -115,7 +119,7 @@ export default function GameDialog({
   const titleRef = useRef<HTMLInputElement>(null);
 
   function reset() {
-    setValues(entry ? mapEntryToValues(entry) : EMPTY);
+    setValues(activeEntry ? mapEntryToValues(activeEntry) : EMPTY);
     setErrors({});
     setServerError(null);
     setRefetchNoMatch(false);
@@ -152,16 +156,20 @@ export default function GameDialog({
     );
   }
 
-  /** The single post-save seam: validate, write (POST add / PUT edit), surface errors. */
-  async function save(): Promise<boolean> {
+  /**
+   * The single post-save seam: validate, write (POST add / PUT edit), surface errors.
+   * Returns `{ ok }` plus, on a successful ADD, the freshly-created `entry` so the caller can
+   * reopen it in edit mode.
+   */
+  async function save(): Promise<{ ok: boolean; created?: LibraryEntry }> {
     setServerError(null);
     if (!validate()) {
-      return false;
+      return { ok: false };
     }
     setPending(true);
     try {
-      const response = entry
-        ? await fetch(`/api/library/${entry.id}`, {
+      const response = activeEntry
+        ? await fetch(`/api/library/${activeEntry.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(mapValuesToBody(values)),
@@ -174,35 +182,47 @@ export default function GameDialog({
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
         setServerError(data?.error ?? "Something went wrong. Please try again.");
-        return false;
+        return { ok: false };
       }
       if (!isEdit) {
         rememberPlatform(values.platform);
         setSavedSinceOpen(true);
+        const data = (await response.json().catch(() => null)) as { entry?: LibraryEntry } | null;
+        return { ok: true, created: data?.entry };
       }
-      return true;
+      return { ok: true };
     } catch {
       setServerError("Network error. Please try again.");
-      return false;
+      return { ok: false };
     } finally {
       setPending(false);
     }
   }
 
   async function handleSave() {
-    if (await save()) {
-      if (isEdit) {
-        // Reload the current page (preserve ?page) so the SSR list reflects the edit.
-        window.location.reload();
-      } else {
-        // Navigate to page 1 so the new (newest) entry lands on top of the list.
-        window.location.assign("/library");
-      }
+    const result = await save();
+    if (!result.ok) {
+      return;
+    }
+    if (isEdit) {
+      // Reload the current page (preserve ?page) so the SSR list reflects the edit.
+      window.location.reload();
+    } else if (result.created) {
+      // Reopen the just-created entry in edit mode for review/correction — the dialog stays open
+      // and flips to edit (footer swaps "Save & add another" for Delete; metadata fields appear).
+      setSavedEntry(result.created);
+      setValues(mapEntryToValues(result.created));
+      setErrors({});
+      setServerError(null);
+      setRefetchNoMatch(false);
+    } else {
+      // Defensive: no entry came back — fall back to S-01's "navigate to the list" behavior.
+      window.location.assign("/library");
     }
   }
 
   async function handleSaveAndAddAnother() {
-    if (await save()) {
+    if ((await save()).ok) {
       reset();
       titleRef.current?.focus();
     }
@@ -262,9 +282,14 @@ export default function GameDialog({
     >
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="sm">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Edit"
+            title="Edit"
+            className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
+          >
             <Pencil />
-            Edit
           </Button>
         ) : (
           <Button size={triggerSize}>
@@ -273,7 +298,7 @@ export default function GameDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent ref={setContentEl}>
+      <DialogContent ref={setContentEl} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit game" : "Add a game"}</DialogTitle>
           <DialogDescription>
@@ -281,6 +306,9 @@ export default function GameDialog({
               ? "Update any field. Re-fetch metadata to pull fresh IGDB data for review."
               : "Enter a title and platform — we’ll fetch its metadata automatically."}
           </DialogDescription>
+          {isEdit && values.metadata_status !== "matched" && (
+            <span className="w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">No metadata</span>
+          )}
         </DialogHeader>
         <form
           className="space-y-4"
@@ -303,9 +331,9 @@ export default function GameDialog({
           />
           {serverError && <p className="text-destructive text-sm">{serverError}</p>}
           <DialogFooter>
-            {entry ? (
+            {activeEntry ? (
               <DeleteEntryDialog
-                entry={entry}
+                entry={activeEntry}
                 trigger={
                   <Button type="button" variant="destructive" disabled={pending}>
                     Delete

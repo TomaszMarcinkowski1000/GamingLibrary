@@ -293,29 +293,29 @@ None — F-01's schema and RLS policies (including update + delete) are sufficie
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run lint`
-- [x] 2.3 Production build succeeds: `npm run build`
+- [x] 2.1 Type checking passes: `npm run typecheck` — e2a25d6
+- [x] 2.2 Linting passes: `npm run lint` — e2a25d6
+- [x] 2.3 Production build succeeds: `npm run build` — e2a25d6
 
 #### Manual
 
-- [x] 2.4 Add mode unchanged: only Title + Platform; Save / Save-&-add-another work
-- [ ] 2.5 Edit mode renders all fields pre-filled; play-status select + chip inputs work
-- [ ] 2.6 Re-fetch fills metadata on match; shows "No match found" and keeps typed values on junk
-- [ ] 2.7 In-dialog Delete opens the AlertDialog and removes the entry on confirm
+- [x] 2.4 Add mode unchanged: only Title + Platform; Save / Save-&-add-another work — e2a25d6
+- [x] 2.5 Edit mode renders all fields pre-filled; play-status select + chip inputs work — e2a25d6
+- [x] 2.6 Re-fetch fills metadata on match; shows "No match found" and keeps typed values on junk — e2a25d6
+- [x] 2.7 In-dialog Delete opens the AlertDialog and removes the entry on confirm — e2a25d6
 
 ### Phase 3: Page integration (per-row islands)
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run lint`
-- [ ] 3.3 Production build succeeds: `npm run build`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run lint`
+- [x] 3.3 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 3.4 Each row shows Edit + Delete; Edit opens pre-filled dialog; saved change appears on correct page after reload
-- [ ] 3.5 Hand-edited metadata on a no_match entry persists but badge stays until a successful Re-fetch
-- [ ] 3.6 Row Delete confirm removes entry; Cancel leaves it; deleting last row on a page lands on a valid page
-- [ ] 3.7 A second user cannot edit or delete user 1's entries (PUT/DELETE 404 under RLS)
-- [ ] 3.8 Add flow (header + empty-state) still works unchanged
+- [x] 3.4 Each row shows Edit + Delete; Edit opens pre-filled dialog; saved change appears on correct page after reload
+- [x] 3.5 Hand-edited metadata on a no_match entry persists but badge stays until a successful Re-fetch
+- [x] 3.6 Row Delete confirm removes entry; Cancel leaves it; deleting last row on a page lands on a valid page
+- [x] 3.7 A second user cannot edit or delete user 1's entries (PUT/DELETE 404 under RLS)
+- [x] 3.8 Add flow (header + empty-state) still works unchanged

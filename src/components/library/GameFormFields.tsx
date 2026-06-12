@@ -119,7 +119,7 @@ export function GameFormFields({
               <SelectTrigger id="game-play-status" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {PLAY_STATUSES.map((status) => (
                   <SelectItem key={status} value={status}>
                     {PLAY_STATUS_LABELS[status]}
