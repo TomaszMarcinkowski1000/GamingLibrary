@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-10
+updated: 2026-06-12
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -33,7 +33,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | F-02  | igdb-metadata-enrichment   | (foundation) lookup by title+platform returns the 5 fields      | —                          | FR-008                    | done     |
 | F-03  | photo-identification-spike | (foundation) vision returns game+platform, ≥90% validated       | —                          | FR-005, Guardrails        | ready    |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
-| S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | proposed |
+| S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
 | S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | proposed |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | proposed |
@@ -134,7 +134,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** —
 - **Risk:** Sequenced right after S-01 because it is the **correction path the photo auto-save (FR-006) depends on** — S-03 auto-saves identifications and relies on edit/delete to fix the ≤10% it gets wrong. Building it before S-03 keeps the north star's acceptance criteria satisfiable.
 - **Design note (from S-01 planning, 2026-06-10):** Implement edit as an **expansion of S-01's add dialog into a unified add/edit dialog**, not a separate edit screen. S-01 ships `AddGameDialog` with its form body factored into a reusable, mode-extensible `GameFormFields` component (title + platform only at add); S-02 grows that body to all editable fields and adds an UPDATE path (the F-01 RLS update policy already exists). The headline is "expand the add dialog," not "build an edit screen." This also lets S-01's post-save seam swap to "reopen the just-saved entry in edit mode for review/correction." **Watch the S-04 overlap:** `play_status` is editable here but S-04 (mark-play-status) owns that capability — decide during S-02 planning whether play-status lives in the dialog, inline on the list, or both, so the two slices don't build it twice.
-- **Status:** proposed
+- **Status:** done
 
 ### S-03: Add a game via photo (auto-saved + identified)  — ★ north star
 
@@ -266,3 +266,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-01: (foundation) the smallest persistent, user-isolated library-entry store exists — one entry table carrying the user-facing fields (title, platform, play status, date-added, and the IGDB metadata fields), per-user RLS policies, and a shared entry type in `src/types.ts`. Nothing user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-06-library-entry-store/`. Lesson: —.
 - **F-02: (foundation) a server-side lookup that, given a title + platform, returns the five metadata fields (genre, overall length, release year, developer, release date) from IGDB, with a graceful "no match" result. Not user-facing on its own.** — Archived 2026-06-08 → `context/archive/2026-06-07-igdb-metadata-enrichment/`. Lesson: —.
 - **S-01: user can add a game by entering title + platform, have it auto-enriched with IGDB metadata (or saved with a "no metadata match" flag), and browse their library in a paginated view.** — Archived 2026-06-10 → `context/archive/2026-06-10-manual-add-and-browse/`. Lesson: —.
+- **S-02: user can edit any field of a library entry after creation, and delete an entry behind a confirmation step.** — Archived 2026-06-12 → `context/archive/2026-06-11-edit-and-delete-entry/`. Lesson: —.
