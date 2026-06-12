@@ -1,10 +1,10 @@
 ---
 change_id: photo-identification-spike
 title: Photo-identification spike — vision game+platform ID + ≥90% accuracy validation
-status: impl_reviewed
+status: archived
 created: 2026-06-11
-updated: 2026-06-13
-archived_at: null
+updated: 2026-06-12
+archived_at: 2026-06-12T22:54:26Z
 ---
 
 ## Notes
