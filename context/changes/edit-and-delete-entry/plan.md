@@ -319,3 +319,13 @@ None — F-01's schema and RLS policies (including update + delete) are sufficie
 - [x] 3.6 Row Delete confirm removes entry; Cancel leaves it; deleting last row on a page lands on a valid page — f83d40e
 - [x] 3.7 A second user cannot edit or delete user 1's entries (PUT/DELETE 404 under RLS) — f83d40e
 - [x] 3.8 Add flow (header + empty-state) still works unchanged — f83d40e
+
+---
+
+## Addendum (post-impl-review, 2026-06-12)
+
+Two changes shipped beyond the frozen phase contracts. Both kept; recorded here so the plan stays the ground truth for future reviews.
+
+- **Add→edit reopen (F1).** After a successful ADD, the dialog stays open and flips into edit mode pre-filled with the freshly-enriched entry (`savedEntry`/`activeEntry` in `GameDialog.tsx`). The plan's phase-3 contract froze add-mode to behave as S-01; this realizes the change.md design note ("S-01's post-save seam swap to reopen the just-saved entry in edit mode for review/correction") and is the seam S-03's photo auto-save will lean on. A true `entry` prop still takes precedence over `savedEntry`. Open question for S-03 planning: whether always-reopen is desired for every add or should be opt-in.
+
+- **Global dark theme (F2).** `f83d40e` added `class="dark"` on `<html>` (`Layout.astro:14`) and retinted the shadcn CSS vars toward the cosmic-navy palette (`global.css`), plus `color-scheme: dark` for native date/number controls. Effectively required to make the new AlertDialog/Select/date inputs legible on the already-dark library page. Sanity-checked: auth/signin, auth/signup, auth/confirm-email, dashboard, and index use explicit white-on-glass styling (`bg-white/10`, `text-white`) independent of the theme tokens, so the global dark class does not degrade them.

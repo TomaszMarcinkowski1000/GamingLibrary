@@ -1,7 +1,7 @@
 ---
 change_id: edit-and-delete-entry
 title: Edit any field of a library entry, and delete it behind a confirmation step
-status: implemented
+status: impl_reviewed
 created: 2026-06-11
 updated: 2026-06-12
 archived_at: null
