@@ -284,13 +284,13 @@ The binding deliverable: run the harness over ~30–50 of the collector's own la
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run lint`
-- [ ] 1.2 Production build passes without the secret present: `npm run build`
+- [x] 1.1 Type checking passes: `npm run lint`
+- [x] 1.2 Production build passes without the secret present: `npm run build`
 
 #### Manual
 
-- [ ] 1.3 Live call returns plausible `{title, platform, confidence}`; garbage image collapses to `unsure`
-- [ ] 1.4 Calling without the secret throws a clear, named error
+- [x] 1.3 Live call returns plausible `{title, platform, confidence}`; garbage image collapses to `unsure`
+- [x] 1.4 Calling without the secret throws a clear, named error
 
 ### Phase 2: Upload route + IGDB grounding
 
