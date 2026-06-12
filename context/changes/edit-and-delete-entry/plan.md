@@ -275,31 +275,31 @@ None — F-01's schema and RLS policies (including update + delete) are sufficie
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run lint`
-- [x] 1.3 Unit tests pass for `updateLibraryEntry` (writes patch, returns row, no-row→throws not-found)
-- [x] 1.4 Unit tests pass for `deleteLibraryEntry` (deletes by id, no-row→throws not-found)
-- [x] 1.5 Unit test: update schema accepts valid payload, rejects empty title + out-of-enum play_status
-- [x] 1.6 Production build succeeds: `npm run build`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 924524b
+- [x] 1.2 Linting passes: `npm run lint` — 924524b
+- [x] 1.3 Unit tests pass for `updateLibraryEntry` (writes patch, returns row, no-row→throws not-found) — 924524b
+- [x] 1.4 Unit tests pass for `deleteLibraryEntry` (deletes by id, no-row→throws not-found) — 924524b
+- [x] 1.5 Unit test: update schema accepts valid payload, rejects empty title + out-of-enum play_status — 924524b
+- [x] 1.6 Production build succeeds: `npm run build` — 924524b
 
 #### Manual
 
-- [x] 1.7 `PUT /api/library/[id]` valid body returns 200 with updated entry; persists on reload
-- [x] 1.8 `PUT` empty title returns 400; `PUT` to non-existent/foreign id returns 404
-- [x] 1.9 `DELETE /api/library/[id]` returns 204 and removes the row; repeat DELETE returns 404
-- [x] 1.10 `POST /api/library/lookup` returns matched for known, no_match for junk, 401 signed out
+- [x] 1.7 `PUT /api/library/[id]` valid body returns 200 with updated entry; persists on reload — 924524b
+- [x] 1.8 `PUT` empty title returns 400; `PUT` to non-existent/foreign id returns 404 — 924524b
+- [x] 1.9 `DELETE /api/library/[id]` returns 204 and removes the row; repeat DELETE returns 404 — 924524b
+- [x] 1.10 `POST /api/library/lookup` returns matched for known, no_match for junk, 401 signed out — 924524b
 
 ### Phase 2: Form expansion + unified add/edit dialog
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run lint`
-- [ ] 2.3 Production build succeeds: `npm run build`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run lint`
+- [x] 2.3 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 2.4 Add mode unchanged: only Title + Platform; Save / Save-&-add-another work
+- [x] 2.4 Add mode unchanged: only Title + Platform; Save / Save-&-add-another work
 - [ ] 2.5 Edit mode renders all fields pre-filled; play-status select + chip inputs work
 - [ ] 2.6 Re-fetch fills metadata on match; shows "No match found" and keeps typed values on junk
 - [ ] 2.7 In-dialog Delete opens the AlertDialog and removes the entry on confirm

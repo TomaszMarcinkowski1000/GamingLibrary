@@ -4,7 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 import { createClient } from "@/lib/supabase";
 import { listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
-import AddGameDialog from "@/components/library/AddGameDialog";
+import GameDialog from "@/components/library/GameDialog";
 
 const PAGE_SIZE = 20;
 
@@ -68,7 +68,7 @@ function metadataLabel(entry: LibraryEntry): string | null {
             {total === 1 ? "game" : "games"}
           </p>
         </div>
-        {!isEmpty && <AddGameDialog platformOptions={platformOptions} client:load />}
+        {!isEmpty && <GameDialog platformOptions={platformOptions} client:load />}
       </header>
 
       {
@@ -86,7 +86,7 @@ function metadataLabel(entry: LibraryEntry): string | null {
             <p class="max-w-sm text-sm text-blue-100/60">
               Add your first game to start cataloguing your collection — we’ll fetch its metadata for you.
             </p>
-            <AddGameDialog
+            <GameDialog
               platformOptions={platformOptions}
               triggerLabel="Add your first game"
               triggerSize="lg"
