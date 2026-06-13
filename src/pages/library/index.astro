@@ -6,6 +6,7 @@ import { listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
 import GameDialog from "@/components/library/GameDialog";
 import { EntryRowActions } from "@/components/library/EntryRowActions";
+import PlayStatusControl from "@/components/library/PlayStatusControl";
 
 const PAGE_SIZE = 20;
 
@@ -122,6 +123,7 @@ function metadataLabel(entry: LibraryEntry): string | null {
                   <tr>
                     <th class="px-4 py-3 font-medium">Title</th>
                     <th class="px-4 py-3 font-medium">Platform</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
                     <th class="px-4 py-3 font-medium">Genre</th>
                     <th class="px-4 py-3 font-medium">Year</th>
                     <th class="px-4 py-3 text-right font-medium">Actions</th>
@@ -141,6 +143,9 @@ function metadataLabel(entry: LibraryEntry): string | null {
                           )}
                         </td>
                         <td class="px-4 py-3 text-blue-100/80">{entry.platform}</td>
+                        <td class="px-4 py-3">
+                          <PlayStatusControl entry={entry} client:visible />
+                        </td>
                         <td class="px-4 py-3 text-blue-100/60">{entry.genre?.length ? entry.genre.join(", ") : "—"}</td>
                         <td class="px-4 py-3 text-blue-100/60">{entry.release_year ?? "—"}</td>
                         <td class="px-4 py-3">

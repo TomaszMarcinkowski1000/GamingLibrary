@@ -51,6 +51,30 @@ export type UpdateEntryInput = z.infer<typeof updateEntrySchema>;
 const _assignable: (input: UpdateEntryInput) => LibraryEntryUpdate = (input) => input;
 void _assignable;
 
+/**
+ * Partial-update contract for `PATCH /api/library/[id]` (S-04 inline status change).
+ *
+ * Carries only the fields the inline control mutates, so a status-only change never has to
+ * resend (and risk clobbering) the full editable set the way `PUT` does. Both keys are optional:
+ * an omitted key means "leave unchanged", while `play_time_hours: null` explicitly clears hours —
+ * the two are deliberately distinguished (do not coerce a missing key to null). At least one key
+ * must be present, so an empty body is rejected rather than silently no-op'ing.
+ */
+export const patchEntrySchema = z
+  .object({
+    play_status: z.enum(PLAY_STATUSES).optional(),
+    play_time_hours: z.number().int().min(0).nullable().optional(),
+  })
+  .refine((data) => data.play_status !== undefined || data.play_time_hours !== undefined, {
+    message: "at least one field is required",
+  });
+
+export type PatchEntryInput = z.infer<typeof patchEntrySchema>;
+
+// Compile-time guarantee that the validated partial payload is a valid update patch.
+const _patchAssignable: (input: PatchEntryInput) => LibraryEntryUpdate = (input) => input;
+void _patchAssignable;
+
 /** Lookup-only request contract for `POST /api/library/lookup`: title + platform, both required. */
 export const lookupRequestSchema = z.object({
   title: z.string().trim().min(1, "title is required"),
