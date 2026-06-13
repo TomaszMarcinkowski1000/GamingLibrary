@@ -140,24 +140,71 @@ export async function deleteLibraryEntry(supabase: TypedSupabaseClient, id: stri
 }
 
 /**
+ * Escape characters significant to SQL LIKE/ILIKE so a user's search term matches
+ * literally inside a `%…%` pattern: the backslash escape char itself, plus the `%`
+ * and `_` wildcards. Without this, a query of `%` or `_` would over-match every row.
+ * Backslash is escaped first so the escapes we add aren't themselves re-escaped.
+ * (Only `.ilike(column, pattern)` is used — never raw PostgREST filter strings — so
+ * the `,`/`(`/`)`/`*` list delimiters are handled by supabase-js, not us.)
+ */
+function escapeLikeTerm(term: string): string {
+  return term.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/**
  * List the current user's library entries, newest first, one page at a time.
  *
  * Returns the page of entries plus the exact total (for pagination bounds). `page` is
  * clamped to >= 1. `from = (page - 1) * pageSize`, `to = from + pageSize - 1`.
+ *
+ * When `search` is a non-blank string, the list is filtered to entries whose `title`
+ * contains it case-insensitively (`ilike "%term%"`); the term's LIKE wildcards are
+ * escaped so it matches literally. A blank/whitespace `search` is treated as no filter.
+ * The filter is applied before `count: "exact"`, so `total` reflects the match count.
+ *
+ * Out-of-bounds pages self-heal: a `page` past the last page (e.g. a deep-linked
+ * `?page=99`, or `?page=2` after the last row was deleted) makes PostgREST answer the
+ * ranged request with 416 / `PGRST103`. Rather than surface that as a load error, we
+ * fetch the count, clamp to the last valid page, and re-fetch — so the caller always
+ * gets a real page plus the (filtered) total. The common in-range path stays one query.
  */
 export async function listLibraryEntries(
   supabase: TypedSupabaseClient,
-  { page, pageSize }: { page: number; pageSize: number },
+  { page, pageSize, search }: { page: number; pageSize: number; search?: string },
 ): Promise<{ entries: LibraryEntry[]; total: number }> {
-  const safePage = Math.max(1, Math.floor(page));
-  const from = (safePage - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const term = search?.trim();
 
-  const { data, count, error } = await supabase
-    .from("library_entries")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  // Each fetch needs a fresh builder (PostgREST builders are single-use), so the filter
+  // set lives in one factory both the initial and the clamp re-fetch reuse.
+  const buildQuery = (head: boolean) => {
+    let query = supabase.from("library_entries").select("*", { count: "exact", head });
+    if (term) {
+      query = query.ilike("title", `%${escapeLikeTerm(term)}%`);
+    }
+    return query;
+  };
+
+  const fetchPage = (targetPage: number) => {
+    const from = (targetPage - 1) * pageSize;
+    const to = from + pageSize - 1;
+    return buildQuery(false).order("created_at", { ascending: false }).range(from, to);
+  };
+
+  const safePage = Math.max(1, Math.floor(page));
+  let { data, count, error } = await fetchPage(safePage);
+
+  // PGRST103 = "Requested range not satisfiable": the offset is past the last row. Learn the
+  // total via a head-only count, clamp to the last page, and re-fetch that valid page.
+  if (error?.code === "PGRST103") {
+    const { count: total, error: countError } = await buildQuery(true);
+    if (countError) {
+      throw countError;
+    }
+    const lastPage = Math.max(1, Math.ceil((total ?? 0) / pageSize));
+    if (lastPage < safePage) {
+      ({ data, count, error } = await fetchPage(lastPage));
+    }
+  }
 
   if (error) {
     throw error;
