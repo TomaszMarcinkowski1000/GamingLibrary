@@ -169,6 +169,123 @@ function names(entities: { name?: string }[] | undefined): string[] {
   return (entities ?? []).map((e) => e.name).filter((name): name is string => Boolean(name));
 }
 
+// --- Edition-variant collapse ---
+
+// IGDB's games search returns hits by relevance, so index 0 is the best textual match. We
+// over-fetch top-N (rather than the old `.limit(1)`) so a base-game sibling of an edition
+// entry is in range for the title-match fallback when IGDB relations aren't populated.
+const CANDIDATE_LIMIT = 10;
+
+// Known possessive *publisher* prefixes that front a title without being part of it
+// ("Marvel's Spider-Man", "Tom Clancy's Ghost Recon"). Apostrophes are stripped before
+// these are compared, so they're listed apostrophe-free. Deliberately a closed list:
+// stripping every "<word>'s " would wrongly cut "Assassin's Creed" → "Creed".
+const PUBLISHER_PREFIXES = ["marvels", "tom clancys", "disneys", "sid meiers", "american mcgees"];
+
+// Single-word edition markers appended to a base title. Stripped as whole tokens so they
+// never bite into a real title word. The multi-word "Game of the Year" phrase is handled
+// separately before tokenization.
+const EDITION_TOKENS = new Set([
+  "deluxe",
+  "complete",
+  "collectors",
+  "ultimate",
+  "special",
+  "launch",
+  "undead",
+  "vengeance",
+  "archaeologist",
+  "goty",
+  "definitive",
+  "edition",
+]);
+
+/**
+ * Normalize a title to its base form for edition-variant matching: lowercase, drop
+ * apostrophes, strip a known possessive publisher prefix, remove the "Game of the Year"
+ * phrase and single-word edition markers (Deluxe / Complete / GOTY / … / Edition), and fold
+ * punctuation to spaces.
+ *
+ * `"Alan Wake II Deluxe Edition"` → `"alan wake ii"`; `"Marvel's Spider-Man"` →
+ * `"spider man"`. Numeric suffixes are preserved so `"Portal 2"` stays distinct from
+ * `"Portal"` (over-collapse guard).
+ */
+export function normalizeBaseTitle(raw: string): string {
+  let s = raw
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  for (const prefix of PUBLISHER_PREFIXES) {
+    if (s.startsWith(prefix + " ")) {
+      s = s.slice(prefix.length + 1);
+      break;
+    }
+  }
+
+  s = s.replace(/\bgame of the year\b/g, " ");
+
+  return s
+    .split(/\s+/)
+    .filter((token) => token && !EDITION_TOKENS.has(token))
+    .join(" ");
+}
+
+/** Whether a candidate is shaped like an edition/child entry rather than a base game. */
+function isEditionEntry(game: Game): boolean {
+  return Boolean(game.version_title) || game.version_parent != null || game.parent_game != null;
+}
+
+/**
+ * From candidates that share a base title, pick the one most likely to be the base game:
+ * prefer entries without edition/child markers, then the shortest raw name (editions append
+ * words like "Deluxe Edition").
+ */
+function pickBaseCandidate(matches: Game[]): Game {
+  const nonEditions = matches.filter((game) => !isEditionEntry(game));
+  const pool = nonEditions.length > 0 ? nonEditions : matches;
+  return pool.reduce((best, game) => (game.name.length < best.name.length ? game : best));
+}
+
+export interface CollapseResult {
+  /** The resolved base game (id + the fields the lookup query selected). */
+  base: Game;
+  /**
+   * The candidate id we collapsed *from* (the edition entry), or `null` when no collapse
+   * happened (the top candidate was already the base). Surfaced for harness debug legibility.
+   */
+  collapsedFrom: number | null;
+}
+
+/**
+ * Collapse an edition-variant candidate to its base game.
+ *
+ * Relations first (most trustworthy, avoids over-collapse): if the top candidate carries a
+ * `version_parent` (edition→base) or `parent_game` relation, resolve to it. Otherwise fall
+ * back to a base-title match — among candidates whose {@link normalizeBaseTitle} equals the
+ * query's, pick the one shaped like the base game. When nothing collapses, return the top
+ * candidate unchanged: the recall floor — collapse only ever *improves* precision.
+ */
+export function collapseToBaseGame(candidates: Game[], query: { title: string }): CollapseResult {
+  const top = candidates[0];
+
+  const related = top.version_parent ?? top.parent_game;
+  if (related) {
+    return { base: related, collapsedFrom: top.id };
+  }
+
+  const queryTitle = normalizeBaseTitle(query.title);
+  const titleMatches = candidates.filter((game) => normalizeBaseTitle(game.name) === queryTitle);
+  if (titleMatches.length > 0) {
+    const base = pickBaseCandidate(titleMatches);
+    return { base, collapsedFrom: base.id === top.id ? null : top.id };
+  }
+
+  return { base: top, collapsedFrom: null };
+}
+
 // --- Lookup service ---
 
 /**
@@ -187,18 +304,42 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
 
   // Query A — games: title search, optionally filtered by platform. `.fields()` (rather
   // than `.select()`) keeps the result typed as `Game`, so nested relations map cleanly.
-  let gamesQuery = client.games
-    .search(input.title)
-    .fields(
-      "id",
-      "first_release_date",
-      "genres.name",
-      "involved_companies.developer",
-      "involved_companies.company.name",
-      "collections.name",
-      "release_dates.date",
-      "release_dates.platform",
-    );
+  let gamesQuery = client.games.search(input.title).fields(
+    "id",
+    "name",
+    "category",
+    "version_title",
+    "total_rating_count",
+    "follows",
+    "first_release_date",
+    "genres.name",
+    "involved_companies.developer",
+    "involved_companies.company.name",
+    "collections.name",
+    "release_dates.date",
+    "release_dates.platform",
+    // Inline-expand the base-game relations so an edition entry's parent is collapsible —
+    // and its enrichment fields readable — without an extra round-trip. `version_parent`
+    // is the edition→base link; `parent_game` covers the broader child→base link.
+    "version_parent.id",
+    "version_parent.name",
+    "version_parent.first_release_date",
+    "version_parent.genres.name",
+    "version_parent.involved_companies.developer",
+    "version_parent.involved_companies.company.name",
+    "version_parent.collections.name",
+    "version_parent.release_dates.date",
+    "version_parent.release_dates.platform",
+    "parent_game.id",
+    "parent_game.name",
+    "parent_game.first_release_date",
+    "parent_game.genres.name",
+    "parent_game.involved_companies.developer",
+    "parent_game.involved_companies.company.name",
+    "parent_game.collections.name",
+    "parent_game.release_dates.date",
+    "parent_game.release_dates.platform",
+  );
 
   if (platformIds.length > 0) {
     // `platforms` is an array of platform ids on the games endpoint, so filter the field
@@ -207,10 +348,15 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     gamesQuery = gamesQuery.where((g) => g.platforms.in(platformIds));
   }
 
-  const game = await gamesQuery.limit(1).first();
-  if (!game) {
+  const candidates = await gamesQuery.limit(CANDIDATE_LIMIT).execute();
+  if (candidates.length === 0) {
     return { status: "no_match" };
   }
+
+  // Collapse edition variants (Deluxe / GOTY / Complete …) to the base-game entry so
+  // grounding returns the base id the truth set uses — and the enrichment fields below read
+  // off the base, not the edition. Non-collapsing terms return the top candidate unchanged.
+  const { base: game } = collapseToBaseGame(candidates, { title: input.title });
 
   // Query B — length: separate endpoint, sparse coverage → nullable.
   const timeToBeat = await client.gameTimeToBeats
