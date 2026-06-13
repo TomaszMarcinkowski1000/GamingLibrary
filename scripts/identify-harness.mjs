@@ -43,6 +43,11 @@ const PLATFORM_IDS_BY_NAME = new Map([
   ["pc", [6]],
   ["windows", [6]],
   ["microsoft windows", [6]],
+  // Media-format suffixes the vision model reads off older PC boxes ("PC DVD-ROM", "PC DVD").
+  ["pc dvd-rom", [6]],
+  ["pc dvd", [6]],
+  ["pc cd-rom", [6]],
+  ["pc cd", [6]],
   ["ps5", [167]],
   ["playstation 5", [167]],
   ["ps4", [48]],
@@ -52,6 +57,7 @@ const PLATFORM_IDS_BY_NAME = new Map([
   ["ps2", [8]],
   ["playstation 2", [8]],
   ["ps vita", [46]],
+  ["psvita", [46]],
   ["playstation vita", [46]],
   ["psp", [38]],
   ["playstation portable", [38]],
@@ -77,16 +83,35 @@ function normalizePlatform(platform) {
   return platform.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Mirrors resolvePlatformIds in igdb.ts: parentheticals + separators split a multi-platform
+// string into parts whose recognized ids are unioned.
+const PLATFORM_PART_SEPARATORS = /[•/,|()]/;
+
+function resolvePlatformIds(platform) {
+  const normalized = normalizePlatform(platform);
+  const direct = PLATFORM_IDS_BY_NAME.get(normalized);
+  if (direct) return direct;
+
+  const ids = new Set();
+  for (const part of normalized.split(PLATFORM_PART_SEPARATORS)) {
+    const partIds = PLATFORM_IDS_BY_NAME.get(normalizePlatform(part));
+    if (partIds) for (const id of partIds) ids.add(id);
+  }
+  return [...ids];
+}
+
 /**
- * True when two free-text platforms refer to the same console. Prefers IGDB id-set equality
- * (so "PS5" === "PlayStation 5"), falling back to normalized-string equality for platforms not
- * in the map.
+ * True when two free-text platforms refer to the same console. Prefers IGDB id-set *overlap*
+ * (so "PS5" === "PlayStation 5", "Xbox Series X • Xbox One" overlaps "Xbox Series X", and
+ * "PSVita" === "PlayStation Vita"), falling back to normalized-string equality for platforms
+ * not in the map. Mirrors platformsOverlap in igdb.ts.
  */
 function platformsMatch(a, b) {
-  const idsA = PLATFORM_IDS_BY_NAME.get(normalizePlatform(a));
-  const idsB = PLATFORM_IDS_BY_NAME.get(normalizePlatform(b));
-  if (idsA && idsB) {
-    return idsA.length === idsB.length && idsA.every((id) => idsB.includes(id));
+  const idsA = resolvePlatformIds(a);
+  const idsB = resolvePlatformIds(b);
+  if (idsA.length > 0 && idsB.length > 0) {
+    const setB = new Set(idsB);
+    return idsA.some((id) => setB.has(id));
   }
   return normalizePlatform(a) === normalizePlatform(b);
 }
@@ -270,15 +295,20 @@ async function main() {
       const answered = identified && proposedId != null;
       const correct =
         answered && truthId != null && proposedId === truthId && platformsMatch(result.platform, label.truePlatform);
+      // Diagnostic-only collapse origin (route's `debug.collapsedFrom`): the edition id grounding
+      // collapsed away, or null if the top candidate was already the base. Shows *why* a case landed
+      // on its base id; never enters the correctness verdict.
+      const collapsedFrom = identified ? (result.debug?.collapsedFrom ?? null) : null;
 
-      rows.push({ ...label, truthId, result, latencyMs, answered, correct, proposedId });
+      rows.push({ ...label, truthId, result, latencyMs, answered, correct, proposedId, collapsedFrom });
 
       const verdict = answered ? (correct ? "✓ correct" : "✗ wrong") : "– abstain";
       const proposed = identified ? `${result.title} / ${result.platform} (id ${proposedId ?? "—"})` : result.status;
+      const collapseNote = collapsedFrom != null ? `\n   collapse: edition ${collapsedFrom} → base ${proposedId}` : "";
       console.log(
         `${verdict.padEnd(10)} ${label.filename}\n` +
           `   truth:    ${label.trueTitle} / ${label.truePlatform} (id ${truthId ?? "—"})\n` +
-          `   proposed: ${proposed}\n` +
+          `   proposed: ${proposed}${collapseNote}\n` +
           `   latency:  ${latencyMs} ms${label.angled ? "  [angled]" : ""}\n`,
       );
     } catch (err) {
@@ -291,6 +321,7 @@ async function main() {
         answered: false,
         correct: false,
         proposedId: null,
+        collapsedFrom: null,
       });
     }
   }
@@ -322,6 +353,7 @@ async function main() {
       angled: r.angled,
       truthId: r.truthId,
       proposedId: r.proposedId,
+      collapsedFrom: r.collapsedFrom,
       status: r.result.status,
       answered: r.answered,
       correct: r.correct,

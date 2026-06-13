@@ -50,6 +50,11 @@ export type MetadataStatus = (typeof METADATA_STATUSES)[number];
  * developer, release date) plus the folded-in `series`. Field nullability mirrors IGDB
  * coverage — `series` and `lengthHours` are the most likely to be absent. A `no_match`
  * is a returned value, never a throw.
+ *
+ * `collapsedFrom` is a diagnostic-only field (the edition candidate id this collapsed
+ * *from*, or `null` when the top candidate was already the base). It exists solely so the
+ * F-03 accuracy harness can print a per-case collapse note; production consumers ignore it
+ * and it never participates in the `matched | no_match` discriminant.
  */
 export type IgdbLookupResult =
   | {
@@ -61,6 +66,7 @@ export type IgdbLookupResult =
       releaseYear: number | null;
       releaseDate: string | null;
       lengthHours: number | null;
+      collapsedFrom?: number | null;
     }
   | { status: "no_match" };
 

@@ -63,6 +63,13 @@ const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["pc", [6]],
   ["windows", [6]],
   ["microsoft windows", [6]],
+  // Media-format suffixes the vision model reads off older PC boxes ("PC DVD-ROM", "PC DVD").
+  // They name the same console (PC = 6); listed explicitly because they carry no separator the
+  // multi-platform split would catch.
+  ["pc dvd-rom", [6]],
+  ["pc dvd", [6]],
+  ["pc cd-rom", [6]],
+  ["pc cd", [6]],
   ["ps5", [167]],
   ["playstation 5", [167]],
   ["ps4", [48]],
@@ -72,6 +79,7 @@ const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["ps2", [8]],
   ["playstation 2", [8]],
   ["ps vita", [46]],
+  ["psvita", [46]],
   ["playstation vita", [46]],
   ["psp", [38]],
   ["playstation portable", [38]],
@@ -98,12 +106,48 @@ function normalizePlatform(platform: string): string {
   return platform.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// A box label may name more than one console in one free-text string, either with a
+// separator ("Xbox Series X • Xbox One") or a parenthetical gloss ("PSP (PlayStation
+// Portable)"). Split on these so each named console resolves independently. Parentheses
+// are treated as part separators so the gloss resolves as its own part.
+const PLATFORM_PART_SEPARATORS = /[•/,|()]/;
+
 /**
  * Resolve a free-text platform to IGDB platform id(s). Returns `[]` for an unrecognized
  * platform — the caller falls back to an unfiltered title search in that case.
+ *
+ * Resolution order: an exact map hit on the whole normalized string wins (preserving
+ * single-platform forms like `"Xbox Series X|S"`). Otherwise the string is split into
+ * parts and the ids of every recognized part are unioned, so a multi-platform string
+ * resolves to all the consoles it names.
  */
 export function resolvePlatformIds(platform: string): number[] {
-  return PLATFORM_IDS_BY_NAME.get(normalizePlatform(platform)) ?? [];
+  const normalized = normalizePlatform(platform);
+  const direct = PLATFORM_IDS_BY_NAME.get(normalized);
+  if (direct) return direct;
+
+  const ids = new Set<number>();
+  for (const part of normalized.split(PLATFORM_PART_SEPARATORS)) {
+    const partIds = PLATFORM_IDS_BY_NAME.get(normalizePlatform(part));
+    if (partIds) for (const id of partIds) ids.add(id);
+  }
+  return [...ids];
+}
+
+/**
+ * Whether two free-text platforms refer to the same console. Prefers IGDB id-set
+ * *overlap* (any shared id) so `"Xbox Series X • Xbox One"` matches `"Xbox Series X"` and
+ * `"PSVita"` matches `"PlayStation Vita"`. Falls back to normalized-string equality when
+ * either side is unmapped (e.g. `Evercade`), so unknown platforms still compare sanely.
+ */
+export function platformsOverlap(a: string, b: string): boolean {
+  const idsA = resolvePlatformIds(a);
+  const idsB = resolvePlatformIds(b);
+  if (idsA.length > 0 && idsB.length > 0) {
+    const setB = new Set(idsB);
+    return idsA.some((id) => setB.has(id));
+  }
+  return normalizePlatform(a) === normalizePlatform(b);
 }
 
 // --- Field-mapping helpers ---
@@ -132,6 +176,240 @@ function names(entities: { name?: string }[] | undefined): string[] {
   return (entities ?? []).map((e) => e.name).filter((name): name is string => Boolean(name));
 }
 
+// --- Edition-variant collapse ---
+
+// IGDB's games search returns hits by relevance, so index 0 is the best textual match. We
+// over-fetch top-N (rather than the old `.limit(1)`) so a base-game sibling of an edition
+// entry is in range for the title-match fallback when IGDB relations aren't populated.
+const CANDIDATE_LIMIT = 10;
+
+// Known possessive *publisher* prefixes that front a title without being part of it
+// ("Marvel's Spider-Man", "Tom Clancy's Ghost Recon"). Apostrophes are stripped before
+// these are compared, so they're listed apostrophe-free. Deliberately a closed list:
+// stripping every "<word>'s " would wrongly cut "Assassin's Creed" → "Creed".
+const PUBLISHER_PREFIXES = ["marvels", "tom clancys", "disneys", "sid meiers", "american mcgees"];
+
+// Single-word edition markers appended to a base title. Stripped as whole tokens so they
+// never bite into a real title word. The multi-word "Game of the Year" phrase is handled
+// separately before tokenization.
+const EDITION_TOKENS = new Set([
+  "deluxe",
+  "complete",
+  "collectors",
+  "ultimate",
+  "special",
+  "launch",
+  "undead",
+  "vengeance",
+  "archaeologist",
+  "goty",
+  "definitive",
+  "edition",
+]);
+
+/**
+ * Normalize a title to its base form for edition-variant matching: lowercase, drop
+ * apostrophes, strip a known possessive publisher prefix, remove the "Game of the Year"
+ * phrase and single-word edition markers (Deluxe / Complete / GOTY / … / Edition), and fold
+ * punctuation to spaces.
+ *
+ * `"Alan Wake II Deluxe Edition"` → `"alan wake ii"`; `"Marvel's Spider-Man"` →
+ * `"spider man"`. Numeric suffixes are preserved so `"Portal 2"` stays distinct from
+ * `"Portal"` (over-collapse guard).
+ */
+export function normalizeBaseTitle(raw: string): string {
+  let s = raw
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  for (const prefix of PUBLISHER_PREFIXES) {
+    if (s.startsWith(prefix + " ")) {
+      s = s.slice(prefix.length + 1);
+      break;
+    }
+  }
+
+  s = s.replace(/\bgame of the year\b/g, " ");
+
+  return s
+    .split(/\s+/)
+    .filter((token) => token && !EDITION_TOKENS.has(token))
+    .join(" ");
+}
+
+/** Whether a candidate is shaped like an edition/child entry rather than a base game. */
+function isEditionEntry(game: Game): boolean {
+  return Boolean(game.version_title) || game.version_parent != null || game.parent_game != null;
+}
+
+/**
+ * From candidates that share a base title, pick the one most likely to be the base game:
+ * prefer entries without edition/child markers, then the shortest raw name (editions append
+ * words like "Deluxe Edition").
+ */
+function pickBaseCandidate(matches: Game[]): Game {
+  const nonEditions = matches.filter((game) => !isEditionEntry(game));
+  const pool = nonEditions.length > 0 ? nonEditions : matches;
+  return pool.reduce((best, game) => (game.name.length < best.name.length ? game : best));
+}
+
+export interface CollapseResult {
+  /** The resolved base game (id + the fields the lookup query selected). */
+  base: Game;
+  /**
+   * The candidate id we collapsed *from* (the edition entry), or `null` when no collapse
+   * happened (the top candidate was already the base). Surfaced for harness debug legibility.
+   */
+  collapsedFrom: number | null;
+}
+
+/**
+ * Whether a candidate game lists the query platform among its own. Used to gate relation
+ * collapse: returns `true` (permissive) when either side has no resolvable platform id — the
+ * platform-agreement gate downstream only vetoes when *both* sides resolve, so an unverifiable
+ * platform must not block collapse here either. Returns `false` only on a positive
+ * disagreement (candidate has platforms, none overlap the query).
+ */
+function candidateCoversPlatform(game: Game, platform: string): boolean {
+  const queryIds = resolvePlatformIds(platform);
+  if (queryIds.length === 0) return true;
+  const candidateIds = platformNames(game).flatMap((name) => resolvePlatformIds(name));
+  if (candidateIds.length === 0) return true;
+  const queryIdSet = new Set(queryIds);
+  return candidateIds.some((id) => queryIdSet.has(id));
+}
+
+/**
+ * Collapse an edition-variant candidate to its base game.
+ *
+ * Relations first (most trustworthy, avoids over-collapse): if the top candidate carries a
+ * `version_parent` (edition→base) or `parent_game` relation, resolve to it — **but only when the
+ * related base still covers the query platform**. `parent_game` is broader than "edition of": it
+ * also links a remake/remaster/port to its *original* game (e.g. the Dead Space 2023 remake →
+ * the 2008 original on PS3/360). Collapsing onto that original lands on a game whose platforms
+ * exclude the boxed console, which the downstream platform-agreement gate would then reject as a
+ * `no_match` — a recall regression vs. plain first-match grounding. The platform guard keeps
+ * edition collapse (base shares the console) while leaving a remake grounded to its own
+ * platform-correct entry. When the relation is skipped or absent, fall back to a base-title match
+ * — among candidates whose {@link normalizeBaseTitle} equals the query's, pick the one shaped
+ * like the base game. When nothing collapses, return the top candidate unchanged: the recall
+ * floor — collapse only ever *improves* precision.
+ */
+export function collapseToBaseGame(candidates: Game[], query: { title: string; platform: string }): CollapseResult {
+  const top = candidates[0];
+
+  const related = top.version_parent ?? top.parent_game;
+  if (related && candidateCoversPlatform(related, query.platform)) {
+    return { base: related, collapsedFrom: top.id };
+  }
+
+  const queryTitle = normalizeBaseTitle(query.title);
+  const titleMatches = candidates.filter((game) => normalizeBaseTitle(game.name) === queryTitle);
+  if (titleMatches.length > 0) {
+    const base = pickBaseCandidate(titleMatches);
+    return { base, collapsedFrom: base.id === top.id ? null : top.id };
+  }
+
+  return { base: top, collapsedFrom: null };
+}
+
+// --- False-positive suppression ---
+
+// Thresholds for {@link isConfidentMatch}. Tuned against the F-03 enumerated cases: reject
+// thin terms (title `"e"` on Xbox Series X) without rejecting valid short titles
+// (Inside / Limbo / Ori). Conservative by design — only an explicit signal failure suppresses,
+// so the gate honors the recall floor (it only ever turns a would-be match into `no_match`).
+//
+// - MIN_QUERY_INFO_CHARS: a normalized query title shorter than this (i.e. a single character)
+//   carries too little information to ground on — almost certainly a box-read artifact.
+// - NAME_SIM_FLOOR: minimum query↔candidate token similarity to trust the match at all.
+// - NAME_SIM_STRONG: at/above this the name match is strong enough to skip popularity corroboration.
+// - POP_FLOOR: a borderline name match must clear this popularity signal
+//   (`total_rating_count` or `follows`) to be trusted; obscure entries with weak names are rejected.
+const MIN_QUERY_INFO_CHARS = 2;
+const NAME_SIM_FLOOR = 0.34;
+const NAME_SIM_STRONG = 0.8;
+const POP_FLOOR = 5;
+
+/** Tokenize a title to its base-form word set (reuses the edition-aware normalizer). */
+function titleTokenSet(raw: string): Set<string> {
+  return new Set(normalizeBaseTitle(raw).split(" ").filter(Boolean));
+}
+
+/** Sørensen–Dice token-overlap of two token sets, in [0, 1]. Identical sets score 1.0. */
+function diceCoefficient(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const token of a) if (b.has(token)) intersection += 1;
+  return (2 * intersection) / (a.size + b.size);
+}
+
+/**
+ * Best name similarity between the query title and a candidate, taking the max over the
+ * candidate's `name` and its `alternative_names` (so a localized/alt title still scores).
+ */
+function bestNameSimilarity(queryTitle: string, candidate: Game): number {
+  const queryTokens = titleTokenSet(queryTitle);
+  const candidateNames = [candidate.name, ...names(candidate.alternative_names)];
+  return candidateNames.reduce((best, name) => Math.max(best, diceCoefficient(queryTokens, titleTokenSet(name))), 0);
+}
+
+/** Count of information-bearing characters in the normalized query title (whitespace dropped). */
+function queryInfoChars(queryTitle: string): number {
+  return normalizeBaseTitle(queryTitle).replace(/\s/g, "").length;
+}
+
+/** Coarse "is this a known game" signal: the larger of IGDB's rating count and follows. */
+function popularitySignal(candidate: Game): number {
+  return Math.max(candidate.total_rating_count ?? 0, candidate.follows ?? 0);
+}
+
+/** Collect a candidate's platform names (when `platforms.name` was selected). */
+function platformNames(candidate: Game): string[] {
+  return names(candidate.platforms);
+}
+
+/**
+ * Whether the resolved base candidate is a confident enough match for the query to attach its
+ * metadata, rather than degrading to `no_match`. Composite gate over three signals:
+ *
+ * 1. **Thin-term reject** — a single-character query title can't ground (the `"e"` case).
+ * 2. **Name similarity** — the candidate must resemble the query (token Dice over name +
+ *    `alternative_names`); a total mismatch is rejected outright.
+ * 3. **Platform agreement** — an *explicit* disagreement (both platforms resolvable to IGDB
+ *    ids, disjoint id-sets) is rejected. Missing/unmapped platform data never vetoes.
+ * 4. **Popularity floor** — a borderline (non-strong) name match must clear the popularity
+ *    floor; this is what kills obscure entries that only weakly match the query.
+ *
+ * Pure: reads only the passed `base` candidate and `query`. Conservative — every gate only
+ * ever turns a would-be match into a reject, never the reverse (recall floor).
+ */
+export function isConfidentMatch(base: Game, query: { title: string; platform: string }): boolean {
+  if (queryInfoChars(query.title) < MIN_QUERY_INFO_CHARS) return false;
+
+  const nameSim = bestNameSimilarity(query.title, base);
+  if (nameSim < NAME_SIM_FLOOR) return false;
+
+  // Platform veto: only when both sides resolve to ids and the id-sets are disjoint. The live
+  // games query already filters by platform, so this mainly guards the unmapped/unfiltered path
+  // and collapsed base games; it never fires on missing platform data.
+  const queryPlatformIds = resolvePlatformIds(query.platform);
+  if (queryPlatformIds.length > 0) {
+    const candidatePlatformIds = platformNames(base).flatMap((name) => resolvePlatformIds(name));
+    if (candidatePlatformIds.length > 0) {
+      const queryIdSet = new Set(queryPlatformIds);
+      if (!candidatePlatformIds.some((id) => queryIdSet.has(id))) return false;
+    }
+  }
+
+  if (nameSim < NAME_SIM_STRONG && popularitySignal(base) < POP_FLOOR) return false;
+
+  return true;
+}
+
 // --- Lookup service ---
 
 /**
@@ -150,18 +428,53 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
 
   // Query A — games: title search, optionally filtered by platform. `.fields()` (rather
   // than `.select()`) keeps the result typed as `Game`, so nested relations map cleanly.
-  let gamesQuery = client.games
-    .search(input.title)
-    .fields(
-      "id",
-      "first_release_date",
-      "genres.name",
-      "involved_companies.developer",
-      "involved_companies.company.name",
-      "collections.name",
-      "release_dates.date",
-      "release_dates.platform",
-    );
+  let gamesQuery = client.games.search(input.title).fields(
+    "id",
+    "name",
+    "version_title",
+    "total_rating_count",
+    "follows",
+    "first_release_date",
+    // `alternative_names` + `platforms` feed the false-positive scorer (name similarity over
+    // alt titles, platform-agreement veto); `genres`/companies/`collections` feed enrichment.
+    "alternative_names.name",
+    "platforms.name",
+    "genres.name",
+    "involved_companies.developer",
+    "involved_companies.company.name",
+    "collections.name",
+    "release_dates.date",
+    "release_dates.platform",
+    // Inline-expand the base-game relations so an edition entry's parent is collapsible —
+    // and its enrichment fields readable — without an extra round-trip. `version_parent`
+    // is the edition→base link; `parent_game` covers the broader child→base link.
+    "version_parent.id",
+    "version_parent.name",
+    "version_parent.total_rating_count",
+    "version_parent.follows",
+    "version_parent.first_release_date",
+    "version_parent.alternative_names.name",
+    "version_parent.platforms.name",
+    "version_parent.genres.name",
+    "version_parent.involved_companies.developer",
+    "version_parent.involved_companies.company.name",
+    "version_parent.collections.name",
+    "version_parent.release_dates.date",
+    "version_parent.release_dates.platform",
+    "parent_game.id",
+    "parent_game.name",
+    "parent_game.total_rating_count",
+    "parent_game.follows",
+    "parent_game.first_release_date",
+    "parent_game.alternative_names.name",
+    "parent_game.platforms.name",
+    "parent_game.genres.name",
+    "parent_game.involved_companies.developer",
+    "parent_game.involved_companies.company.name",
+    "parent_game.collections.name",
+    "parent_game.release_dates.date",
+    "parent_game.release_dates.platform",
+  );
 
   if (platformIds.length > 0) {
     // `platforms` is an array of platform ids on the games endpoint, so filter the field
@@ -170,8 +483,25 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     gamesQuery = gamesQuery.where((g) => g.platforms.in(platformIds));
   }
 
-  const game = await gamesQuery.limit(1).first();
-  if (!game) {
+  const candidates = await gamesQuery.limit(CANDIDATE_LIMIT).execute();
+  if (candidates.length === 0) {
+    return { status: "no_match" };
+  }
+
+  // Collapse edition variants (Deluxe / GOTY / Complete …) to the base-game entry so
+  // grounding returns the base id the truth set uses — and the enrichment fields below read
+  // off the base, not the edition. Non-collapsing terms return the top candidate unchanged.
+  // `collapsedFrom` (the edition id we collapsed away) is surfaced diagnostically for the
+  // F-03 harness's per-case legibility; it has no effect on the matched id or metadata.
+  const { base: game, collapsedFrom } = collapseToBaseGame(candidates, {
+    title: input.title,
+    platform: input.platform,
+  });
+
+  // False-positive suppression: a thin/ambiguous query (e.g. title "e") can return a textual
+  // hit that is not the boxed game. Degrade to `no_match` rather than attach wrong metadata.
+  // This is the only path that turns a would-be first-match into `no_match` (recall floor).
+  if (!isConfidentMatch(game, { title: input.title, platform: input.platform })) {
     return { status: "no_match" };
   }
 
@@ -214,5 +544,6 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     releaseYear,
     releaseDate,
     lengthHours,
+    collapsedFrom,
   };
 }

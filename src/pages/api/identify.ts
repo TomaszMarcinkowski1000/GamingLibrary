@@ -32,6 +32,10 @@ type IdentifyResponse =
       confidence: number;
       igdbId: number | null;
       metadataStatus: MetadataStatus | null;
+      // Diagnostic-only: the edition id grounding collapsed away (or null) so the accuracy
+      // harness can print a per-case collapse note. Not a scored field — the harness reads
+      // `igdbId`/`status`/`platform`/`title` for correctness, never `debug`.
+      debug?: { collapsedFrom: number | null };
     }
   | { status: "unsure"; confidence: number };
 
@@ -175,5 +179,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
     confidence: vision.confidence,
     igdbId: grounding?.status === "matched" ? grounding.igdbId : null,
     metadataStatus: grounding?.status === "matched" ? "matched" : null,
+    debug: { collapsedFrom: grounding?.status === "matched" ? (grounding.collapsedFrom ?? null) : null },
   } satisfies IdentifyResponse);
 };
