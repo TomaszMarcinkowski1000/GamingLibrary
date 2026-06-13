@@ -431,7 +431,6 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
   let gamesQuery = client.games.search(input.title).fields(
     "id",
     "name",
-    "category",
     "version_title",
     "total_rating_count",
     "follows",
