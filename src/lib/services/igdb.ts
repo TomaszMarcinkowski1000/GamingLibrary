@@ -63,6 +63,13 @@ const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["pc", [6]],
   ["windows", [6]],
   ["microsoft windows", [6]],
+  // Media-format suffixes the vision model reads off older PC boxes ("PC DVD-ROM", "PC DVD").
+  // They name the same console (PC = 6); listed explicitly because they carry no separator the
+  // multi-platform split would catch.
+  ["pc dvd-rom", [6]],
+  ["pc dvd", [6]],
+  ["pc cd-rom", [6]],
+  ["pc cd", [6]],
   ["ps5", [167]],
   ["playstation 5", [167]],
   ["ps4", [48]],
@@ -260,19 +267,42 @@ export interface CollapseResult {
 }
 
 /**
+ * Whether a candidate game lists the query platform among its own. Used to gate relation
+ * collapse: returns `true` (permissive) when either side has no resolvable platform id — the
+ * platform-agreement gate downstream only vetoes when *both* sides resolve, so an unverifiable
+ * platform must not block collapse here either. Returns `false` only on a positive
+ * disagreement (candidate has platforms, none overlap the query).
+ */
+function candidateCoversPlatform(game: Game, platform: string): boolean {
+  const queryIds = resolvePlatformIds(platform);
+  if (queryIds.length === 0) return true;
+  const candidateIds = platformNames(game).flatMap((name) => resolvePlatformIds(name));
+  if (candidateIds.length === 0) return true;
+  const queryIdSet = new Set(queryIds);
+  return candidateIds.some((id) => queryIdSet.has(id));
+}
+
+/**
  * Collapse an edition-variant candidate to its base game.
  *
  * Relations first (most trustworthy, avoids over-collapse): if the top candidate carries a
- * `version_parent` (edition→base) or `parent_game` relation, resolve to it. Otherwise fall
- * back to a base-title match — among candidates whose {@link normalizeBaseTitle} equals the
- * query's, pick the one shaped like the base game. When nothing collapses, return the top
- * candidate unchanged: the recall floor — collapse only ever *improves* precision.
+ * `version_parent` (edition→base) or `parent_game` relation, resolve to it — **but only when the
+ * related base still covers the query platform**. `parent_game` is broader than "edition of": it
+ * also links a remake/remaster/port to its *original* game (e.g. the Dead Space 2023 remake →
+ * the 2008 original on PS3/360). Collapsing onto that original lands on a game whose platforms
+ * exclude the boxed console, which the downstream platform-agreement gate would then reject as a
+ * `no_match` — a recall regression vs. plain first-match grounding. The platform guard keeps
+ * edition collapse (base shares the console) while leaving a remake grounded to its own
+ * platform-correct entry. When the relation is skipped or absent, fall back to a base-title match
+ * — among candidates whose {@link normalizeBaseTitle} equals the query's, pick the one shaped
+ * like the base game. When nothing collapses, return the top candidate unchanged: the recall
+ * floor — collapse only ever *improves* precision.
  */
-export function collapseToBaseGame(candidates: Game[], query: { title: string }): CollapseResult {
+export function collapseToBaseGame(candidates: Game[], query: { title: string; platform: string }): CollapseResult {
   const top = candidates[0];
 
   const related = top.version_parent ?? top.parent_game;
-  if (related) {
+  if (related && candidateCoversPlatform(related, query.platform)) {
     return { base: related, collapsedFrom: top.id };
   }
 
@@ -462,7 +492,12 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
   // Collapse edition variants (Deluxe / GOTY / Complete …) to the base-game entry so
   // grounding returns the base id the truth set uses — and the enrichment fields below read
   // off the base, not the edition. Non-collapsing terms return the top candidate unchanged.
-  const { base: game } = collapseToBaseGame(candidates, { title: input.title });
+  // `collapsedFrom` (the edition id we collapsed away) is surfaced diagnostically for the
+  // F-03 harness's per-case legibility; it has no effect on the matched id or metadata.
+  const { base: game, collapsedFrom } = collapseToBaseGame(candidates, {
+    title: input.title,
+    platform: input.platform,
+  });
 
   // False-positive suppression: a thin/ambiguous query (e.g. title "e") can return a textual
   // hit that is not the boxed game. Degrade to `no_match` rather than attach wrong metadata.
@@ -510,5 +545,6 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     releaseYear,
     releaseDate,
     lengthHours,
+    collapsedFrom,
   };
 }

@@ -36,6 +36,11 @@ describe("resolvePlatformIds", () => {
   it("prefers an exact whole-string map hit over splitting (Xbox Series X|S)", () => {
     expect(resolvePlatformIds("Xbox Series X|S")).toEqual([169]);
   });
+
+  it("resolves PC media-format suffixes the model reads off old boxes (PC DVD-ROM / PC DVD)", () => {
+    expect(resolvePlatformIds("PC DVD-ROM")).toEqual([6]);
+    expect(resolvePlatformIds("PC DVD")).toEqual([6]);
+  });
 });
 
 describe("platformsOverlap", () => {
@@ -49,6 +54,10 @@ describe("platformsOverlap", () => {
 
   it("treats a multi-platform string as overlapping any one of its consoles", () => {
     expect(platformsOverlap("Xbox Series X • Xbox One", "Xbox Series X")).toBe(true);
+  });
+
+  it("treats a PC media-format string and plain PC as the same console", () => {
+    expect(platformsOverlap("PC DVD-ROM", "PC")).toBe(true);
   });
 
   it("rejects two distinct mapped consoles", () => {
@@ -100,7 +109,7 @@ describe("collapseToBaseGame", () => {
       version_title: "Deluxe Edition",
       version_parent: base,
     });
-    const result = collapseToBaseGame([deluxe], { title: "Alan Wake II Deluxe Edition" });
+    const result = collapseToBaseGame([deluxe], { title: "Alan Wake II Deluxe Edition", platform: "Xbox Series X" });
     expect(result.base.id).toBe(100);
     expect(result.collapsedFrom).toBe(101);
   });
@@ -108,15 +117,49 @@ describe("collapseToBaseGame", () => {
   it("collapses via the parent_game relation", () => {
     const base = game({ id: 200, name: "Horizon Forbidden West" });
     const complete = game({ id: 201, name: "Horizon Forbidden West Complete Edition", parent_game: base });
-    const result = collapseToBaseGame([complete], { title: "Horizon Forbidden West Complete Edition" });
+    const result = collapseToBaseGame([complete], {
+      title: "Horizon Forbidden West Complete Edition",
+      platform: "PlayStation 5",
+    });
     expect(result.base.id).toBe(200);
     expect(result.collapsedFrom).toBe(201);
+  });
+
+  it("collapses an edition when its base still covers the query platform", () => {
+    const base = game({
+      id: 700,
+      name: "Returnal",
+      platforms: [{ name: "PlayStation 5" }, { name: "PC (Microsoft Windows)" }] as Game["platforms"],
+    });
+    const deluxe = game({ id: 701, name: "Returnal Deluxe Edition", version_parent: base });
+    const result = collapseToBaseGame([deluxe], { title: "Returnal Deluxe Edition", platform: "PlayStation 5" });
+    expect(result.base.id).toBe(700);
+    expect(result.collapsedFrom).toBe(701);
+  });
+
+  it("does NOT collapse a remake to its original on a different platform (recall floor)", () => {
+    // The Dead Space 2023 remake links to the 2008 original via parent_game; the original is on
+    // PS3/Xbox 360, so following the relation would land off the boxed console and get vetoed.
+    const original = game({
+      id: 37,
+      name: "Dead Space",
+      platforms: [{ name: "PlayStation 3" }, { name: "Xbox 360" }] as Game["platforms"],
+    });
+    const remake = game({
+      id: 159119,
+      name: "Dead Space",
+      parent_game: original,
+      platforms: [{ name: "Xbox Series X|S" }, { name: "PlayStation 5" }] as Game["platforms"],
+    });
+    const result = collapseToBaseGame([remake], { title: "Dead Space", platform: "Xbox Series X" });
+    expect(result.base.id).toBe(159119);
+    expect(result.collapsedFrom).toBeNull();
   });
 
   it("falls back to a base-title match when relations are absent", () => {
     const goty = game({ id: 300, name: "Bloodborne: Game of the Year Edition", version_title: "GOTY" });
     const base = game({ id: 301, name: "Bloodborne" });
-    const result = collapseToBaseGame([goty, base], { title: "Bloodborne GOTY" });
+    const result = collapseToBaseGame([goty, base], { title: "Bloodborne GOTY", platform: "PlayStation 4" });
     expect(result.base.id).toBe(301);
     expect(result.collapsedFrom).toBe(300);
   });
@@ -124,7 +167,7 @@ describe("collapseToBaseGame", () => {
   it("resolves a possessive-prefixed base via the title-match fallback", () => {
     const goty = game({ id: 600, name: "Marvel's Spider-Man: Game of the Year Edition", version_title: "GOTY" });
     const base = game({ id: 601, name: "Marvel's Spider-Man" });
-    const result = collapseToBaseGame([goty, base], { title: "Marvel's Spider-Man" });
+    const result = collapseToBaseGame([goty, base], { title: "Marvel's Spider-Man", platform: "PlayStation 4" });
     expect(result.base.id).toBe(601);
     expect(result.collapsedFrom).toBe(600);
   });
@@ -132,14 +175,14 @@ describe("collapseToBaseGame", () => {
   it("does NOT merge genuinely distinct titles sharing a prefix (over-collapse guard)", () => {
     const portal2 = game({ id: 400, name: "Portal 2" });
     const portal = game({ id: 401, name: "Portal" });
-    const result = collapseToBaseGame([portal2, portal], { title: "Portal 2" });
+    const result = collapseToBaseGame([portal2, portal], { title: "Portal 2", platform: "PC" });
     expect(result.base.id).toBe(400);
     expect(result.collapsedFrom).toBeNull();
   });
 
   it("returns the top candidate unchanged when nothing collapses (recall floor)", () => {
     const base = game({ id: 500, name: "Hades" });
-    const result = collapseToBaseGame([base], { title: "Hades" });
+    const result = collapseToBaseGame([base], { title: "Hades", platform: "Nintendo Switch" });
     expect(result.base.id).toBe(500);
     expect(result.collapsedFrom).toBeNull();
   });

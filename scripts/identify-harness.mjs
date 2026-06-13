@@ -43,6 +43,11 @@ const PLATFORM_IDS_BY_NAME = new Map([
   ["pc", [6]],
   ["windows", [6]],
   ["microsoft windows", [6]],
+  // Media-format suffixes the vision model reads off older PC boxes ("PC DVD-ROM", "PC DVD").
+  ["pc dvd-rom", [6]],
+  ["pc dvd", [6]],
+  ["pc cd-rom", [6]],
+  ["pc cd", [6]],
   ["ps5", [167]],
   ["playstation 5", [167]],
   ["ps4", [48]],
@@ -290,15 +295,20 @@ async function main() {
       const answered = identified && proposedId != null;
       const correct =
         answered && truthId != null && proposedId === truthId && platformsMatch(result.platform, label.truePlatform);
+      // Diagnostic-only collapse origin (route's `debug.collapsedFrom`): the edition id grounding
+      // collapsed away, or null if the top candidate was already the base. Shows *why* a case landed
+      // on its base id; never enters the correctness verdict.
+      const collapsedFrom = identified ? (result.debug?.collapsedFrom ?? null) : null;
 
-      rows.push({ ...label, truthId, result, latencyMs, answered, correct, proposedId });
+      rows.push({ ...label, truthId, result, latencyMs, answered, correct, proposedId, collapsedFrom });
 
       const verdict = answered ? (correct ? "✓ correct" : "✗ wrong") : "– abstain";
       const proposed = identified ? `${result.title} / ${result.platform} (id ${proposedId ?? "—"})` : result.status;
+      const collapseNote = collapsedFrom != null ? `\n   collapse: edition ${collapsedFrom} → base ${proposedId}` : "";
       console.log(
         `${verdict.padEnd(10)} ${label.filename}\n` +
           `   truth:    ${label.trueTitle} / ${label.truePlatform} (id ${truthId ?? "—"})\n` +
-          `   proposed: ${proposed}\n` +
+          `   proposed: ${proposed}${collapseNote}\n` +
           `   latency:  ${latencyMs} ms${label.angled ? "  [angled]" : ""}\n`,
       );
     } catch (err) {
@@ -311,6 +321,7 @@ async function main() {
         answered: false,
         correct: false,
         proposedId: null,
+        collapsedFrom: null,
       });
     }
   }
@@ -342,6 +353,7 @@ async function main() {
       angled: r.angled,
       truthId: r.truthId,
       proposedId: r.proposedId,
+      collapsedFrom: r.collapsedFrom,
       status: r.result.status,
       answered: r.answered,
       correct: r.correct,

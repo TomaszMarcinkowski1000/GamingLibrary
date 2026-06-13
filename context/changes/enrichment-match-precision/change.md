@@ -22,4 +22,12 @@ Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.
 
 **Acceptance check:** a re-run of the F-03 harness on a cleaned truth set should clear ~90% base-game id accuracy. The F-03 shelf sample (failures already enumerated by case) bounds the work and validates both fronts: `context/changes/photo-identification-spike/results.md` (archived → `context/archive/2026-06-11-photo-identification-spike/`).
 
+**Acceptance result (2026-06-13):** re-measure reached **92.9% accuracy-when-answered (92/99), PASS** (≥90% bar) — up from F-03's 71.2% — with abstain rate down to **13.2%** (from 24.6% mid-run). Latency p95 8.8s (≤10s NFR), angled 100% / straight 92.0%. Truth set cleaned per `fixtures/shelf/README.md` (dropped 2 junk rows; pinned 5 Polish-edition ids; corrected 4 Yakuza cross-gen labels to Xbox One).
+
+Two grounding fixes landed in Phase 4, both surfaced by the per-case harness decomposition:
+1. **PC-media platform alias** (`PC DVD`/`PC DVD-ROM` → PC) — closed 3 id-correct/platform-string artifacts.
+2. **Platform-aware collapse** — `collapseToBaseGame` now only follows a `version_parent`/`parent_game` relation when the related base still covers the query platform. `parent_game` also links remakes/remasters/ports to their *original* (on older consoles); collapsing onto that and then platform-vetoing it was a recall regression (the plan forbids it). The guard recovered ~10 remakes (Dead Space, Super Mario RPG, OoT 3D, DDLC+, DKC Returns HD, Crash Tag Team Racing, …) into correct answers and fixed an RDR2 over-collapse, while editions still collapse to base.
+
+Residual misses are truth-data/IGDB-hierarchy quirks (RDR/RDR2/dead-cells edition granularity, halo-wars-2 & "Dead Space Remake" label cross-gen/naming) + 1 genuine vision miss (bayonetta-3) — not grounding-logic failures.
+
 **Risk:** over-collapsing (merging genuinely distinct titles) or mis-tuning the false-positive threshold and dropping valid matches.
