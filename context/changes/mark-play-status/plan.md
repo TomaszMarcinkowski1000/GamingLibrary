@@ -253,30 +253,30 @@ None — no schema change. `play_status` and `play_time_hours` columns and const
 
 #### Automated
 
-- [x] 2.1 Linting passes: `npm run lint`
-- [x] 2.2 Build passes: `npm run build`
-- [x] 2.3 Formatting clean: `npm run format`
+- [x] 2.1 Linting passes: `npm run lint` — b8f2b80
+- [x] 2.2 Build passes: `npm run build` — b8f2b80
+- [x] 2.3 Formatting clean: `npm run format` — b8f2b80
 
 #### Manual
 
-- [x] 2.4 Each row shows correct status badge on SSR load
-- [x] 2.5 Badge menu opens with all five statuses, current indicated
-- [x] 2.6 Selecting a status updates immediately with no reload; survives refresh
-- [x] 2.7 Selecting "Not played" clears a previously-set status
-- [x] 2.8 Failed change reverts badge and shows inline error
-- [x] 2.9 Newly added game row shows "Not played" badge
+- [x] 2.4 Each row shows correct status badge on SSR load — b8f2b80
+- [x] 2.5 Badge menu opens with all five statuses, current indicated — b8f2b80
+- [x] 2.6 Selecting a status updates immediately with no reload; survives refresh — b8f2b80
+- [x] 2.7 Selecting "Not played" clears a previously-set status — b8f2b80
+- [x] 2.8 Failed change reverts badge and shows inline error — b8f2b80
+- [x] 2.9 Newly added game row shows "Not played" badge — b8f2b80
 
 ### Phase 3: Play-time prompt on finished transitions (FR-014)
 
 #### Automated
 
-- [ ] 3.1 Linting passes: `npm run lint`
-- [ ] 3.2 Build passes: `npm run build`
+- [x] 3.1 Linting passes: `npm run lint`
+- [x] 3.2 Build passes: `npm run build`
 
 #### Manual
 
-- [ ] 3.3 Finished status opens hours popover; Save persists status + hours
-- [ ] 3.4 Skip/dismiss commits status only
-- [ ] 3.5 Non-finished statuses commit immediately, no popover
-- [ ] 3.6 Popover pre-fills existing hours
-- [ ] 3.7 Failed Save reverts badge + inline error; no partial write
+- [x] 3.3 Finished status opens hours popover; Save persists status + hours
+- [x] 3.4 Skip/dismiss commits status only
+- [x] 3.5 Non-finished statuses commit immediately, no popover
+- [x] 3.6 Popover pre-fills existing hours
+- [x] 3.7 Failed Save reverts badge + inline error; no partial write

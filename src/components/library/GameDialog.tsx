@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import type { IgdbLookupResult, LibraryEntry } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { GameFormFields, type GameFormValues } from "./GameFormFields";
 import { DeleteEntryDialog } from "./DeleteEntryDialog";
+import { subscribeEntryPatch } from "./entrySync";
 
 interface GameDialogProps {
   platformOptions: string[];
@@ -99,7 +100,10 @@ export default function GameDialog({
   // realized ("reopen the just-saved entry in edit mode"). `entry` (a true edit) takes precedence;
   // `savedEntry` is the in-place add→edit transition.
   const [savedEntry, setSavedEntry] = useState<LibraryEntry | undefined>(undefined);
-  const activeEntry = entry ?? savedEntry;
+  // A live mirror of the `entry` prop that absorbs inline status/play-time changes broadcast by
+  // PlayStatusControl (no page reload), so reopening this dialog shows the current values.
+  const [liveEntry, setLiveEntry] = useState<LibraryEntry | undefined>(entry);
+  const activeEntry = liveEntry ?? savedEntry;
   const isEdit = activeEntry !== undefined;
   // Options are session-mutable: a freshly-created platform is appended so it's immediately
   // reusable across "Save & add another" rounds without a round-trip.
@@ -117,6 +121,16 @@ export default function GameDialog({
   // the combobox — letting it portal inside the dialog's scroll-lock subtree.
   const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+
+  // Keep `liveEntry` current with inline edits made elsewhere on the row while this island is mounted.
+  useEffect(() => {
+    if (!entry) {
+      return;
+    }
+    return subscribeEntryPatch(entry.id, (patch) => {
+      setLiveEntry((prev) => (prev ? { ...prev, ...patch } : prev));
+    });
+  }, [entry]);
 
   function reset() {
     setValues(activeEntry ? mapEntryToValues(activeEntry) : EMPTY);
@@ -272,6 +286,11 @@ export default function GameDialog({
         setOpen(next);
         if (next) {
           setSavedSinceOpen(false);
+          // Re-seed from the latest (possibly inline-updated) entry so edits made on the list since
+          // mount are reflected. Add mode keeps its in-progress values.
+          if (isEdit) {
+            reset();
+          }
         } else if (savedSinceOpen) {
           // Refresh so entries added via "Save & add another" appear in the list.
           window.location.assign("/library");
