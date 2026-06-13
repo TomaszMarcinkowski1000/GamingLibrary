@@ -198,16 +198,16 @@ None — no schema change, no migration, no new dependency. Purely a query param
 
 #### Automated
 
-- [x] 2.1 Type checking / lint passes: `npm run lint`
-- [x] 2.2 Production build passes: `npm run build`
+- [x] 2.1 Type checking / lint passes: `npm run lint` — 8c01bcc
+- [x] 2.2 Production build passes: `npm run build` — 8c01bcc
 
 #### Manual
 
-- [x] 2.3 Search box appears on a populated library; submitting filters the list
-- [x] 2.4 Search input stays populated with the submitted term after navigation
-- [x] 2.5 Paginating a filtered result preserves `q` and pages correctly
-- [x] 2.6 A new search resets to page 1
-- [x] 2.7 Clear returns to the full, unfiltered library
-- [x] 2.8 No-match query shows the dedicated state (not empty-library card, not bare table) with populated box + Clear
-- [x] 2.9 Genuinely empty library (no `q`) still shows "Your library is empty"
-- [x] 2.10 Per-row controls (status/edit/delete) still work on a filtered list
+- [x] 2.3 Search box appears on a populated library; submitting filters the list — 8c01bcc
+- [x] 2.4 Search input stays populated with the submitted term after navigation — 8c01bcc
+- [x] 2.5 Paginating a filtered result preserves `q` and pages correctly — 8c01bcc
+- [x] 2.6 A new search resets to page 1 — 8c01bcc
+- [x] 2.7 Clear returns to the full, unfiltered library — 8c01bcc
+- [x] 2.8 No-match query shows the dedicated state (not empty-library card, not bare table) with populated box + Clear — 8c01bcc
+- [x] 2.9 Genuinely empty library (no `q`) still shows "Your library is empty" — 8c01bcc
+- [x] 2.10 Per-row controls (status/edit/delete) still work on a filtered list — 8c01bcc
