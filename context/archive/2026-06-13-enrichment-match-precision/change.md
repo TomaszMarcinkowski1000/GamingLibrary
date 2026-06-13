@@ -1,10 +1,10 @@
 ---
 change_id: enrichment-match-precision
 title: "Precise IGDB grounding: collapse edition variants + suppress false positives"
-status: impl_reviewed
+status: archived
 created: 2026-06-13
 updated: 2026-06-13
-archived_at: null
+archived_at: 2026-06-13T17:48:31Z
 ---
 
 ## Notes

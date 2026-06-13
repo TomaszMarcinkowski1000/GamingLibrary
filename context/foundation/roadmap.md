@@ -40,7 +40,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | proposed |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
 | S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
-| S-09  | enrichment-match-precision | precise IGDB grounding: collapse edition variants to base game + suppress false positives | F-02, S-01 | FR-005, FR-008            | proposed |
+| S-09  | enrichment-match-precision | precise IGDB grounding: collapse edition variants to base game + suppress false positives | F-02, S-01 | FR-005, FR-008            | done |
 
 ## Streams
 
@@ -226,7 +226,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - What IGDB relationship/field collapses an edition variant to its base game reliably (`parent_game`, `version_parent`, category/version_title), and how to rank top-N so the base entry wins without dropping legitimately distinct games? — Owner: team. Block: no (investigate during planning; validate against the F-03 shelf sample where the failures are already enumerated — `context/changes/photo-identification-spike/results.md`).
   - What confidence signal does IGDB expose to threshold false positives on (name exactness, platform agreement, popularity/rating count), and where is the cut set without rejecting valid matches? — Owner: team. Block: no (validate against a held-out shelf sample).
 - **Risk:** **Promoted from `optional` to load-bearing by the F-03 spike (2026-06-13):** it is now the binding prerequisite between the proven ~95% vision read and a shippable north-star S-03 — no longer a mere quality refinement. The false-positive half was surfaced during S-01 manual verification (2026-06-11); the edition-collapse half is the dominant F-03 error source. The real risk is over-collapsing (merging genuinely distinct titles) or mis-tuning the false-positive threshold and dropping valid matches; the F-03 shelf sample (failures already enumerated by case) bounds both. A re-run of the F-03 harness on a cleaned truth set is the acceptance check.
-- **Status:** proposed
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -274,3 +274,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-03: (foundation) a server-side vision call that, given a single-game box photo, returns a proposed game title + platform — plus a thin accuracy harness run against a sample of the collector's own shelf to measure the ≥90% guardrail. Not user-facing on its own.** — Archived 2026-06-12 → `context/archive/2026-06-11-photo-identification-spike/`. Lesson: —.
 - **S-04: user can set, change, or clear a play status ("Playing now", "Played", "Completed", "100% completed") on a library entry, and optionally record play time in hours; changes reflect without a full page reload.** — Archived 2026-06-13 → `context/archive/2026-06-13-mark-play-status/`. Lesson: —.
 - **S-05: user can type a title substring (case-insensitive) and see only matching entries — the fast "do I already own this?" check that covers the secondary success criterion (in-store / marketplace duplicate-purchase avoidance).** — Archived 2026-06-13 → `context/archive/2026-06-13-search-library-by-title/`. Lesson: —.
+- **S-09: IGDB grounding resolves to the right game entry, on two fronts: (1) edition-variant collapse — a box read as "Alan Wake II Deluxe Edition" / "Horizon Forbidden West Complete Edition" / "Bloodborne GOTY" / "Marvel's Spider-Man" grounds to the base-game id, not the edition-specific entry (via IGDB `parent_game`/version relationships or top-N + base-title match); and (2) false-positive suppression — thin or ambiguous search terms (e.g. title "e" on "Xbox Series X") degrade to the existing `no_match` flag instead of attaching wrong metadata. Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.** — Archived 2026-06-13 → `context/archive/2026-06-13-enrichment-match-precision/`. Lesson: —.
