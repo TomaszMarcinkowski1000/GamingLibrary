@@ -13,6 +13,10 @@ This file provides guidance to AI Agent when working with code in this repositor
 
 Pre-commit hooks: husky + lint-staged runs `eslint --fix` on `*.{ts,tsx,astro}` and `prettier --write` on `*.{json,css,md}`.
 
+## Worktrees
+
+Create worktrees with `scripts/new-worktree.ps1 -Name <slug> [-Branch <branch>] [-Base main]`, **not** bare `git worktree add`. The wrapper also copies the gitignored files a fresh checkout needs but git won't carry over: `.dev.vars`, `.env` (server secrets), and `.claude/settings.local.json` (permission allowlist). Branch defaults to `plan/<slug>`; worktree dir is `../GamingLibrary-<slug>`. If a new local-only gitignored file appears, add it to the `$PropagateFiles` array in the script.
+
 ## Architecture
 
 **Astro 6 SSR app** with React 19 islands, Tailwind 4, Supabase auth, and shadcn/ui components. Deployed to Cloudflare Workers.
