@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-12
+updated: 2026-06-13
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -35,7 +35,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
 | S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
-| S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | proposed |
+| S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | done     |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | proposed |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | proposed |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
@@ -161,7 +161,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Independent of the photo path and small in scope, but load-bearing downstream: the recommender (S-07) and the status filter (S-06) both consume play status, so it precedes them. FR-014 (play time) rides along as the slice's only nice-to-have.
-- **Status:** proposed
+- **Status:** done
 
 ### S-05: Search the library by title
 
@@ -271,3 +271,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-01: user can add a game by entering title + platform, have it auto-enriched with IGDB metadata (or saved with a "no metadata match" flag), and browse their library in a paginated view.** — Archived 2026-06-10 → `context/archive/2026-06-10-manual-add-and-browse/`. Lesson: —.
 - **S-02: user can edit any field of a library entry after creation, and delete an entry behind a confirmation step.** — Archived 2026-06-12 → `context/archive/2026-06-11-edit-and-delete-entry/`. Lesson: —.
 - **F-03: (foundation) a server-side vision call that, given a single-game box photo, returns a proposed game title + platform — plus a thin accuracy harness run against a sample of the collector's own shelf to measure the ≥90% guardrail. Not user-facing on its own.** — Archived 2026-06-12 → `context/archive/2026-06-11-photo-identification-spike/`. Lesson: —.
+- **S-04: user can set, change, or clear a play status ("Playing now", "Played", "Completed", "100% completed") on a library entry, and optionally record play time in hours; changes reflect without a full page reload.** — Archived 2026-06-13 → `context/archive/2026-06-13-mark-play-status/`. Lesson: —.

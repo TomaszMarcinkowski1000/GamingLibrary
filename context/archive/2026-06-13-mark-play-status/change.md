@@ -1,10 +1,10 @@
 ---
 change_id: mark-play-status
 title: Mark a game with a play status (+ optional play time)
-status: impl_reviewed
+status: archived
 created: 2026-06-13
 updated: 2026-06-13
-archived_at: null
+archived_at: 2026-06-13T15:33:26Z
 ---
 
 ## Notes
