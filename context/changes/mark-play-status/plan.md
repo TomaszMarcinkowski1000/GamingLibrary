@@ -221,6 +221,10 @@ Each row hydrates one additional small island (`client:visible`, so off-screen r
 
 None — no schema change. `play_status` and `play_time_hours` columns and constraints already exist (F-01).
 
+## Addenda
+
+- **Cross-island sync (discovered during Phase 2–3):** keeping the status/play-time fields in the edit dialog (see "What We're NOT Doing") while the inline control mutates them with no reload left `GameDialog` showing stale values until a refresh. Resolved with a module-level pub/sub bus `src/components/library/entrySync.ts` (`publishEntryPatch` / `subscribeEntryPatch`, keyed by entry id) that `PlayStatusControl` publishes to on a successful PATCH and `GameDialog` subscribes to (`liveEntry` state). One-directional, narrow, and not in the original phase list.
+
 ## References
 
 - Roadmap slice S-04: `context/foundation/roadmap.md:154-164`

@@ -157,7 +157,10 @@ export default function PlayStatusControl({ entry }: PlayStatusControlProps) {
         <PopoverAnchor className="inline-flex">
           <DropdownMenu>
             <DropdownMenuTrigger
-              disabled={pending}
+              // Block re-opening the menu while a request is in flight (pending) or while the hours
+              // popover is awaiting Save/Skip (popoverOpen) — re-picking in that window would rebase
+              // the rollback baseline onto the optimistic status instead of the server value.
+              disabled={pending || popoverOpen}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-opacity",
                 "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
