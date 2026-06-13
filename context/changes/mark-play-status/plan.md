@@ -239,15 +239,15 @@ None — no schema change. `play_status` and `play_time_hours` columns and const
 
 #### Automated
 
-- [ ] 1.1 Linting passes: `npm run lint`
-- [ ] 1.2 Build passes: `npm run build`
+- [x] 1.1 Linting passes: `npm run lint`
+- [x] 1.2 Build passes: `npm run build`
 
 #### Manual
 
-- [ ] 1.3 PATCH with `{ play_status }` returns 200 and persists
-- [ ] 1.4 PATCH with `{ play_time_hours }` updates only hours
-- [ ] 1.5 PATCH with empty body returns 400
-- [ ] 1.6 PATCH against missing / other-user id returns 404
+- [x] 1.3 PATCH with `{ play_status }` returns 200 and persists
+- [x] 1.4 PATCH with `{ play_time_hours }` updates only hours
+- [x] 1.5 PATCH with empty body returns 400
+- [x] 1.6 PATCH against missing / other-user id returns 404
 
 ### Phase 2: Inline status control + display (no reload)
 
