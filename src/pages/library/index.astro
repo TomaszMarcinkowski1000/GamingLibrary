@@ -13,6 +13,9 @@ const PAGE_SIZE = 20;
 const pageParam = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
 const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 
+const rawQuery = Astro.url.searchParams.get("q") ?? "";
+const query = rawQuery.trim();
+
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 let entries: LibraryEntry[] = [];
@@ -25,7 +28,7 @@ if (supabase) {
     // Platform options are a degradable nicety, so they resolve to [] on their own
     // failure — only a true entries-query failure should blank the library.
     const [list, platforms] = await Promise.all([
-      listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE }),
+      listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE, search: query || undefined }),
       listUsedPlatforms(supabase).catch(() => [] as string[]),
     ]);
     entries = list.entries;
@@ -56,7 +59,11 @@ const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 const effectivePage = Math.min(page, totalPages);
 if (supabase && !loadError && effectivePage !== page) {
   try {
-    const list = await listLibraryEntries(supabase, { page: effectivePage, pageSize: PAGE_SIZE });
+    const list = await listLibraryEntries(supabase, {
+      page: effectivePage,
+      pageSize: PAGE_SIZE,
+      search: query || undefined,
+    });
     entries = list.entries;
     total = list.total;
   } catch {

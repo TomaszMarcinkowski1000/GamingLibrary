@@ -183,16 +183,16 @@ None — no schema change, no migration, no new dependency. Purely a query param
 
 #### Automated
 
-- [ ] 1.1 Type checking / lint passes: `npm run lint`
-- [ ] 1.2 Production build passes: `npm run build`
+- [x] 1.1 Type checking / lint passes: `npm run lint`
+- [x] 1.2 Production build passes: `npm run build`
 
 #### Manual
 
-- [ ] 1.3 `/library?q=<substring>` shows only matching entries; count + pagination reflect filtered total
-- [ ] 1.4 Search is case-insensitive (`?q=ZELDA` == `?q=zelda`)
-- [ ] 1.5 `/library?q=` and `/library` render the identical full library
-- [ ] 1.6 Literal `%`/`_` in a title is not over-matched (escaping works)
-- [ ] 1.7 `/library?q=<term>&page=99` clamps to last valid filtered page
+- [x] 1.3 `/library?q=<substring>` shows only matching entries; count + pagination reflect filtered total
+- [x] 1.4 Search is case-insensitive (`?q=ZELDA` == `?q=zelda`)
+- [x] 1.5 `/library?q=` and `/library` render the identical full library
+- [x] 1.6 Literal `%`/`_` in a title is not over-matched (escaping works)
+- [x] 1.7 `/library?q=<term>&page=99` clamps to last valid filtered page
 
 ### Phase 2: Search UI, pagination threading, and no-match state
 

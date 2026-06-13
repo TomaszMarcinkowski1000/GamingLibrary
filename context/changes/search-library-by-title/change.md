@@ -1,7 +1,7 @@
 ---
 change_id: search-library-by-title
 title: Search the library by title to check ownership before buying
-status: planned
+status: implementing
 created: 2026-06-13
 updated: 2026-06-13
 archived_at: null
