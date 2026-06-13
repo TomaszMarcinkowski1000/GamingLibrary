@@ -53,7 +53,7 @@ Build bottom-up in three independently verifiable phases: a lean partial-update 
 
 ## Critical Implementation Details
 
-- **State sequencing (Phase 3):** when a finished status is picked, set the optimistic badge to the new status *immediately*, then open the hours popover. The `PATCH` fires on the popover's Save (with `play_time_hours`) or Skip / dismiss (without it) — one `PATCH` per change, never two. For non-finished statuses there is no popover and the `PATCH` fires right away. This keeps the badge instant while still bundling status + hours into a single request.
+- **State sequencing (Phase 3):** when a finished status is picked, set the optimistic badge to the new status _immediately_, then open the hours popover. The `PATCH` fires on the popover's Save (with `play_time_hours`) or Skip / dismiss (without it) — one `PATCH` per change, never two. For non-finished statuses there is no popover and the `PATCH` fires right away. This keeps the badge instant while still bundling status + hours into a single request.
 - **Partial semantics:** the `PATCH` body must distinguish "field omitted" (leave unchanged) from `play_time_hours: null` (explicitly clear). Use an optional key for omission and allow an explicit `null` value — do not coerce a missing key to null.
 
 ## Phase 1: Partial-update API (PATCH /api/library/[id])
@@ -239,32 +239,32 @@ None — no schema change. `play_status` and `play_time_hours` columns and const
 
 #### Automated
 
-- [x] 1.1 Linting passes: `npm run lint`
-- [x] 1.2 Build passes: `npm run build`
+- [x] 1.1 Linting passes: `npm run lint` — d5e2120
+- [x] 1.2 Build passes: `npm run build` — d5e2120
 
 #### Manual
 
-- [x] 1.3 PATCH with `{ play_status }` returns 200 and persists
-- [x] 1.4 PATCH with `{ play_time_hours }` updates only hours
-- [x] 1.5 PATCH with empty body returns 400
-- [x] 1.6 PATCH against missing / other-user id returns 404
+- [x] 1.3 PATCH with `{ play_status }` returns 200 and persists — d5e2120
+- [x] 1.4 PATCH with `{ play_time_hours }` updates only hours — d5e2120
+- [x] 1.5 PATCH with empty body returns 400 — d5e2120
+- [x] 1.6 PATCH against missing / other-user id returns 404 — d5e2120
 
 ### Phase 2: Inline status control + display (no reload)
 
 #### Automated
 
-- [ ] 2.1 Linting passes: `npm run lint`
-- [ ] 2.2 Build passes: `npm run build`
-- [ ] 2.3 Formatting clean: `npm run format`
+- [x] 2.1 Linting passes: `npm run lint`
+- [x] 2.2 Build passes: `npm run build`
+- [x] 2.3 Formatting clean: `npm run format`
 
 #### Manual
 
-- [ ] 2.4 Each row shows correct status badge on SSR load
-- [ ] 2.5 Badge menu opens with all five statuses, current indicated
-- [ ] 2.6 Selecting a status updates immediately with no reload; survives refresh
-- [ ] 2.7 Selecting "Not played" clears a previously-set status
-- [ ] 2.8 Failed change reverts badge and shows inline error
-- [ ] 2.9 Newly added game row shows "Not played" badge
+- [x] 2.4 Each row shows correct status badge on SSR load
+- [x] 2.5 Badge menu opens with all five statuses, current indicated
+- [x] 2.6 Selecting a status updates immediately with no reload; survives refresh
+- [x] 2.7 Selecting "Not played" clears a previously-set status
+- [x] 2.8 Failed change reverts badge and shows inline error
+- [x] 2.9 Newly added game row shows "Not played" badge
 
 ### Phase 3: Play-time prompt on finished transitions (FR-014)
 
