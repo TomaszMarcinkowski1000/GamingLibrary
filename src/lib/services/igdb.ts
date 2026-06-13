@@ -286,6 +286,100 @@ export function collapseToBaseGame(candidates: Game[], query: { title: string })
   return { base: top, collapsedFrom: null };
 }
 
+// --- False-positive suppression ---
+
+// Thresholds for {@link isConfidentMatch}. Tuned against the F-03 enumerated cases: reject
+// thin terms (title `"e"` on Xbox Series X) without rejecting valid short titles
+// (Inside / Limbo / Ori). Conservative by design — only an explicit signal failure suppresses,
+// so the gate honors the recall floor (it only ever turns a would-be match into `no_match`).
+//
+// - MIN_QUERY_INFO_CHARS: a normalized query title shorter than this (i.e. a single character)
+//   carries too little information to ground on — almost certainly a box-read artifact.
+// - NAME_SIM_FLOOR: minimum query↔candidate token similarity to trust the match at all.
+// - NAME_SIM_STRONG: at/above this the name match is strong enough to skip popularity corroboration.
+// - POP_FLOOR: a borderline name match must clear this popularity signal
+//   (`total_rating_count` or `follows`) to be trusted; obscure entries with weak names are rejected.
+const MIN_QUERY_INFO_CHARS = 2;
+const NAME_SIM_FLOOR = 0.34;
+const NAME_SIM_STRONG = 0.8;
+const POP_FLOOR = 5;
+
+/** Tokenize a title to its base-form word set (reuses the edition-aware normalizer). */
+function titleTokenSet(raw: string): Set<string> {
+  return new Set(normalizeBaseTitle(raw).split(" ").filter(Boolean));
+}
+
+/** Sørensen–Dice token-overlap of two token sets, in [0, 1]. Identical sets score 1.0. */
+function diceCoefficient(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const token of a) if (b.has(token)) intersection += 1;
+  return (2 * intersection) / (a.size + b.size);
+}
+
+/**
+ * Best name similarity between the query title and a candidate, taking the max over the
+ * candidate's `name` and its `alternative_names` (so a localized/alt title still scores).
+ */
+function bestNameSimilarity(queryTitle: string, candidate: Game): number {
+  const queryTokens = titleTokenSet(queryTitle);
+  const candidateNames = [candidate.name, ...names(candidate.alternative_names)];
+  return candidateNames.reduce((best, name) => Math.max(best, diceCoefficient(queryTokens, titleTokenSet(name))), 0);
+}
+
+/** Count of information-bearing characters in the normalized query title (whitespace dropped). */
+function queryInfoChars(queryTitle: string): number {
+  return normalizeBaseTitle(queryTitle).replace(/\s/g, "").length;
+}
+
+/** Coarse "is this a known game" signal: the larger of IGDB's rating count and follows. */
+function popularitySignal(candidate: Game): number {
+  return Math.max(candidate.total_rating_count ?? 0, candidate.follows ?? 0);
+}
+
+/** Collect a candidate's platform names (when `platforms.name` was selected). */
+function platformNames(candidate: Game): string[] {
+  return names(candidate.platforms);
+}
+
+/**
+ * Whether the resolved base candidate is a confident enough match for the query to attach its
+ * metadata, rather than degrading to `no_match`. Composite gate over three signals:
+ *
+ * 1. **Thin-term reject** — a single-character query title can't ground (the `"e"` case).
+ * 2. **Name similarity** — the candidate must resemble the query (token Dice over name +
+ *    `alternative_names`); a total mismatch is rejected outright.
+ * 3. **Platform agreement** — an *explicit* disagreement (both platforms resolvable to IGDB
+ *    ids, disjoint id-sets) is rejected. Missing/unmapped platform data never vetoes.
+ * 4. **Popularity floor** — a borderline (non-strong) name match must clear the popularity
+ *    floor; this is what kills obscure entries that only weakly match the query.
+ *
+ * Pure: reads only the passed `base` candidate and `query`. Conservative — every gate only
+ * ever turns a would-be match into a reject, never the reverse (recall floor).
+ */
+export function isConfidentMatch(base: Game, query: { title: string; platform: string }): boolean {
+  if (queryInfoChars(query.title) < MIN_QUERY_INFO_CHARS) return false;
+
+  const nameSim = bestNameSimilarity(query.title, base);
+  if (nameSim < NAME_SIM_FLOOR) return false;
+
+  // Platform veto: only when both sides resolve to ids and the id-sets are disjoint. The live
+  // games query already filters by platform, so this mainly guards the unmapped/unfiltered path
+  // and collapsed base games; it never fires on missing platform data.
+  const queryPlatformIds = resolvePlatformIds(query.platform);
+  if (queryPlatformIds.length > 0) {
+    const candidatePlatformIds = platformNames(base).flatMap((name) => resolvePlatformIds(name));
+    if (candidatePlatformIds.length > 0) {
+      const queryIdSet = new Set(queryPlatformIds);
+      if (!candidatePlatformIds.some((id) => queryIdSet.has(id))) return false;
+    }
+  }
+
+  if (nameSim < NAME_SIM_STRONG && popularitySignal(base) < POP_FLOOR) return false;
+
+  return true;
+}
+
 // --- Lookup service ---
 
 /**
@@ -312,6 +406,10 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     "total_rating_count",
     "follows",
     "first_release_date",
+    // `alternative_names` + `platforms` feed the false-positive scorer (name similarity over
+    // alt titles, platform-agreement veto); `genres`/companies/`collections` feed enrichment.
+    "alternative_names.name",
+    "platforms.name",
     "genres.name",
     "involved_companies.developer",
     "involved_companies.company.name",
@@ -323,7 +421,11 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     // is the edition→base link; `parent_game` covers the broader child→base link.
     "version_parent.id",
     "version_parent.name",
+    "version_parent.total_rating_count",
+    "version_parent.follows",
     "version_parent.first_release_date",
+    "version_parent.alternative_names.name",
+    "version_parent.platforms.name",
     "version_parent.genres.name",
     "version_parent.involved_companies.developer",
     "version_parent.involved_companies.company.name",
@@ -332,7 +434,11 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     "version_parent.release_dates.platform",
     "parent_game.id",
     "parent_game.name",
+    "parent_game.total_rating_count",
+    "parent_game.follows",
     "parent_game.first_release_date",
+    "parent_game.alternative_names.name",
+    "parent_game.platforms.name",
     "parent_game.genres.name",
     "parent_game.involved_companies.developer",
     "parent_game.involved_companies.company.name",
@@ -357,6 +463,13 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
   // grounding returns the base id the truth set uses — and the enrichment fields below read
   // off the base, not the edition. Non-collapsing terms return the top candidate unchanged.
   const { base: game } = collapseToBaseGame(candidates, { title: input.title });
+
+  // False-positive suppression: a thin/ambiguous query (e.g. title "e") can return a textual
+  // hit that is not the boxed game. Degrade to `no_match` rather than attach wrong metadata.
+  // This is the only path that turns a would-be first-match into `no_match` (recall floor).
+  if (!isConfidentMatch(game, { title: input.title, platform: input.platform })) {
+    return { status: "no_match" };
+  }
 
   // Query B — length: separate endpoint, sparse coverage → nullable.
   const timeToBeat = await client.gameTimeToBeats

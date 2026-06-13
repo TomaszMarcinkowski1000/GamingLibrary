@@ -473,10 +473,10 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Automated
 
-- [x] 2.1 Unit tests pass (collapse + title-normalization + over-collapse guard): `npm run test`
-- [x] 2.2 Type checking passes: `astro check`
-- [x] 2.3 Linting passes: `npm run lint`
-- [x] 2.4 Build passes: `npm run build`
+- [x] 2.1 Unit tests pass (collapse + title-normalization + over-collapse guard): `npm run test` — 21cebca
+- [x] 2.2 Type checking passes: `astro check` — 21cebca
+- [x] 2.3 Linting passes: `npm run lint` — 21cebca
+- [x] 2.4 Build passes: `npm run build` — 21cebca
 
 #### Manual
 
@@ -488,10 +488,10 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Automated
 
-- [ ] 3.1 Unit tests pass (scorer + threshold + valid-short-title regression): `npm run test`
-- [ ] 3.2 Type checking passes: `astro check`
-- [ ] 3.3 Linting passes: `npm run lint`
-- [ ] 3.4 Build passes: `npm run build`
+- [x] 3.1 Unit tests pass (scorer + threshold + valid-short-title regression): `npm run test`
+- [x] 3.2 Type checking passes: `astro check`
+- [x] 3.3 Linting passes: `npm run lint`
+- [x] 3.4 Build passes: `npm run build`
 
 #### Manual
 

@@ -1,6 +1,6 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
 import { describe, expect, it } from "vitest";
-import { collapseToBaseGame, normalizeBaseTitle, platformsOverlap, resolvePlatformIds } from "./igdb";
+import { collapseToBaseGame, isConfidentMatch, normalizeBaseTitle, platformsOverlap, resolvePlatformIds } from "./igdb";
 
 /** Build a `Game`-shaped fixture with only the fields the collapse logic reads. */
 function game(props: Partial<Game> & { id: number; name: string }): Game {
@@ -142,5 +142,85 @@ describe("collapseToBaseGame", () => {
     const result = collapseToBaseGame([base], { title: "Hades" });
     expect(result.base.id).toBe(500);
     expect(result.collapsedFrom).toBeNull();
+  });
+});
+
+// False-positive suppression: a thin/ambiguous query (e.g. title "e" on Xbox Series X,
+// surfaced during S-01 manual verification) returns a textual hit that is not the boxed game.
+// The composite scorer degrades those to `no_match` without rejecting valid short titles.
+
+/** A `Game`-shaped candidate with the fields the scorer reads (name, alt names, platforms, popularity). */
+function candidate(props: {
+  id: number;
+  name: string;
+  platforms?: string[];
+  alternativeNames?: string[];
+  totalRatingCount?: number;
+  follows?: number;
+}): Game {
+  return game({
+    id: props.id,
+    name: props.name,
+    platforms: props.platforms?.map((name) => ({ name })) as Game["platforms"],
+    alternative_names: props.alternativeNames?.map((name) => ({ name })) as Game["alternative_names"],
+    total_rating_count: props.totalRatingCount,
+    follows: props.follows,
+  });
+}
+
+describe("isConfidentMatch", () => {
+  it('rejects a thin single-character query (the "e" on Xbox Series X case)', () => {
+    const base = candidate({ id: 1, name: "Everwild", platforms: ["Xbox Series X"], totalRatingCount: 50 });
+    expect(isConfidentMatch(base, { title: "e", platform: "Xbox Series X" })).toBe(false);
+  });
+
+  it("accepts valid short titles (Inside / Limbo / Ori) even without popularity data", () => {
+    const inside = candidate({ id: 2, name: "Inside", platforms: ["PlayStation 4"] });
+    const limbo = candidate({ id: 3, name: "Limbo", platforms: ["Xbox One"] });
+    const ori = candidate({ id: 4, name: "Ori", platforms: ["Nintendo Switch"] });
+    expect(isConfidentMatch(inside, { title: "Inside", platform: "PlayStation 4" })).toBe(true);
+    expect(isConfidentMatch(limbo, { title: "Limbo", platform: "Xbox One" })).toBe(true);
+    expect(isConfidentMatch(ori, { title: "Ori", platform: "Nintendo Switch" })).toBe(true);
+  });
+
+  it("rejects a total name mismatch even when the candidate is popular (name signal)", () => {
+    const base = candidate({ id: 5, name: "Bayonetta", platforms: ["PlayStation 5"], totalRatingCount: 500 });
+    expect(isConfidentMatch(base, { title: "Hades", platform: "PlayStation 5" })).toBe(false);
+  });
+
+  it("rejects an explicit platform disagreement (platform signal)", () => {
+    const base = candidate({ id: 6, name: "God of War", platforms: ["Xbox One"], totalRatingCount: 500 });
+    expect(isConfidentMatch(base, { title: "God of War", platform: "PlayStation 5" })).toBe(false);
+  });
+
+  it("does NOT veto on missing/unmapped platform data", () => {
+    const noPlatforms = candidate({ id: 7, name: "Celeste", totalRatingCount: 500 });
+    expect(isConfidentMatch(noPlatforms, { title: "Celeste", platform: "Evercade" })).toBe(true);
+  });
+
+  it("rejects a borderline name match below the popularity floor (popularity signal)", () => {
+    const obscure = candidate({ id: 8, name: "Ori", platforms: ["Nintendo Switch"], totalRatingCount: 0 });
+    expect(isConfidentMatch(obscure, { title: "Ori Blind Forest", platform: "Nintendo Switch" })).toBe(false);
+  });
+
+  it("accepts the same borderline name match when it clears the popularity floor", () => {
+    const popular = candidate({ id: 9, name: "Ori", platforms: ["Nintendo Switch"], totalRatingCount: 100 });
+    expect(isConfidentMatch(popular, { title: "Ori Blind Forest", platform: "Nintendo Switch" })).toBe(true);
+  });
+
+  it("matches via an alternative (localized) name", () => {
+    const base = candidate({
+      id: 10,
+      name: "Biohazard 4",
+      alternativeNames: ["Resident Evil 4"],
+      platforms: ["PlayStation 5"],
+      totalRatingCount: 300,
+    });
+    expect(isConfidentMatch(base, { title: "Resident Evil 4", platform: "PlayStation 5" })).toBe(true);
+  });
+
+  it("accepts a clean F-03 base-game match (strong name + platform + popularity)", () => {
+    const base = candidate({ id: 11, name: "Alan Wake II", platforms: ["PlayStation 5"], totalRatingCount: 200 });
+    expect(isConfidentMatch(base, { title: "Alan Wake II", platform: "PlayStation 5" })).toBe(true);
   });
 });
