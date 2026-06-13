@@ -459,10 +459,10 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Automated
 
-- [ ] 1.1 Unit tests pass: `npm run test`
-- [ ] 1.2 Type checking passes: `astro check`
-- [ ] 1.3 Linting passes: `npm run lint`
-- [ ] 1.4 Build passes: `npm run build`
+- [x] 1.1 Unit tests pass: `npm run test`
+- [x] 1.2 Type checking passes: `astro check`
+- [x] 1.3 Linting passes: `npm run lint`
+- [x] 1.4 Build passes: `npm run build`
 
 #### Manual
 

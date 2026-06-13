@@ -52,6 +52,7 @@ const PLATFORM_IDS_BY_NAME = new Map([
   ["ps2", [8]],
   ["playstation 2", [8]],
   ["ps vita", [46]],
+  ["psvita", [46]],
   ["playstation vita", [46]],
   ["psp", [38]],
   ["playstation portable", [38]],
@@ -77,16 +78,35 @@ function normalizePlatform(platform) {
   return platform.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Mirrors resolvePlatformIds in igdb.ts: parentheticals + separators split a multi-platform
+// string into parts whose recognized ids are unioned.
+const PLATFORM_PART_SEPARATORS = /[•/,|()]/;
+
+function resolvePlatformIds(platform) {
+  const normalized = normalizePlatform(platform);
+  const direct = PLATFORM_IDS_BY_NAME.get(normalized);
+  if (direct) return direct;
+
+  const ids = new Set();
+  for (const part of normalized.split(PLATFORM_PART_SEPARATORS)) {
+    const partIds = PLATFORM_IDS_BY_NAME.get(normalizePlatform(part));
+    if (partIds) for (const id of partIds) ids.add(id);
+  }
+  return [...ids];
+}
+
 /**
- * True when two free-text platforms refer to the same console. Prefers IGDB id-set equality
- * (so "PS5" === "PlayStation 5"), falling back to normalized-string equality for platforms not
- * in the map.
+ * True when two free-text platforms refer to the same console. Prefers IGDB id-set *overlap*
+ * (so "PS5" === "PlayStation 5", "Xbox Series X • Xbox One" overlaps "Xbox Series X", and
+ * "PSVita" === "PlayStation Vita"), falling back to normalized-string equality for platforms
+ * not in the map. Mirrors platformsOverlap in igdb.ts.
  */
 function platformsMatch(a, b) {
-  const idsA = PLATFORM_IDS_BY_NAME.get(normalizePlatform(a));
-  const idsB = PLATFORM_IDS_BY_NAME.get(normalizePlatform(b));
-  if (idsA && idsB) {
-    return idsA.length === idsB.length && idsA.every((id) => idsB.includes(id));
+  const idsA = resolvePlatformIds(a);
+  const idsB = resolvePlatformIds(b);
+  if (idsA.length > 0 && idsB.length > 0) {
+    const setB = new Set(idsB);
+    return idsA.some((id) => setB.has(id));
   }
   return normalizePlatform(a) === normalizePlatform(b);
 }

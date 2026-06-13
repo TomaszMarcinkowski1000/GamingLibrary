@@ -72,6 +72,7 @@ const PLATFORM_IDS_BY_NAME = new Map<string, number[]>([
   ["ps2", [8]],
   ["playstation 2", [8]],
   ["ps vita", [46]],
+  ["psvita", [46]],
   ["playstation vita", [46]],
   ["psp", [38]],
   ["playstation portable", [38]],
@@ -98,12 +99,48 @@ function normalizePlatform(platform: string): string {
   return platform.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// A box label may name more than one console in one free-text string, either with a
+// separator ("Xbox Series X • Xbox One") or a parenthetical gloss ("PSP (PlayStation
+// Portable)"). Split on these so each named console resolves independently. Parentheses
+// are treated as part separators so the gloss resolves as its own part.
+const PLATFORM_PART_SEPARATORS = /[•/,|()]/;
+
 /**
  * Resolve a free-text platform to IGDB platform id(s). Returns `[]` for an unrecognized
  * platform — the caller falls back to an unfiltered title search in that case.
+ *
+ * Resolution order: an exact map hit on the whole normalized string wins (preserving
+ * single-platform forms like `"Xbox Series X|S"`). Otherwise the string is split into
+ * parts and the ids of every recognized part are unioned, so a multi-platform string
+ * resolves to all the consoles it names.
  */
 export function resolvePlatformIds(platform: string): number[] {
-  return PLATFORM_IDS_BY_NAME.get(normalizePlatform(platform)) ?? [];
+  const normalized = normalizePlatform(platform);
+  const direct = PLATFORM_IDS_BY_NAME.get(normalized);
+  if (direct) return direct;
+
+  const ids = new Set<number>();
+  for (const part of normalized.split(PLATFORM_PART_SEPARATORS)) {
+    const partIds = PLATFORM_IDS_BY_NAME.get(normalizePlatform(part));
+    if (partIds) for (const id of partIds) ids.add(id);
+  }
+  return [...ids];
+}
+
+/**
+ * Whether two free-text platforms refer to the same console. Prefers IGDB id-set
+ * *overlap* (any shared id) so `"Xbox Series X • Xbox One"` matches `"Xbox Series X"` and
+ * `"PSVita"` matches `"PlayStation Vita"`. Falls back to normalized-string equality when
+ * either side is unmapped (e.g. `Evercade`), so unknown platforms still compare sanely.
+ */
+export function platformsOverlap(a: string, b: string): boolean {
+  const idsA = resolvePlatformIds(a);
+  const idsB = resolvePlatformIds(b);
+  if (idsA.length > 0 && idsB.length > 0) {
+    const setB = new Set(idsB);
+    return idsA.some((id) => setB.has(id));
+  }
+  return normalizePlatform(a) === normalizePlatform(b);
 }
 
 // --- Field-mapping helpers ---
