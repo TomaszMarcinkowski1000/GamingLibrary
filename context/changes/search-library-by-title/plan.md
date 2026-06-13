@@ -183,31 +183,31 @@ None — no schema change, no migration, no new dependency. Purely a query param
 
 #### Automated
 
-- [x] 1.1 Type checking / lint passes: `npm run lint`
-- [x] 1.2 Production build passes: `npm run build`
+- [x] 1.1 Type checking / lint passes: `npm run lint` — 8caa173
+- [x] 1.2 Production build passes: `npm run build` — 8caa173
 
 #### Manual
 
-- [x] 1.3 `/library?q=<substring>` shows only matching entries; count + pagination reflect filtered total
-- [x] 1.4 Search is case-insensitive (`?q=ZELDA` == `?q=zelda`)
-- [x] 1.5 `/library?q=` and `/library` render the identical full library
-- [x] 1.6 Literal `%`/`_` in a title is not over-matched (escaping works)
-- [x] 1.7 `/library?q=<term>&page=99` clamps to last valid filtered page
+- [x] 1.3 `/library?q=<substring>` shows only matching entries; count + pagination reflect filtered total — 8caa173
+- [x] 1.4 Search is case-insensitive (`?q=ZELDA` == `?q=zelda`) — 8caa173
+- [x] 1.5 `/library?q=` and `/library` render the identical full library — 8caa173
+- [x] 1.6 Literal `%`/`_` in a title is not over-matched (escaping works) — 8caa173
+- [x] 1.7 `/library?q=<term>&page=99` clamps to last valid filtered page — 8caa173
 
 ### Phase 2: Search UI, pagination threading, and no-match state
 
 #### Automated
 
-- [ ] 2.1 Type checking / lint passes: `npm run lint`
-- [ ] 2.2 Production build passes: `npm run build`
+- [x] 2.1 Type checking / lint passes: `npm run lint`
+- [x] 2.2 Production build passes: `npm run build`
 
 #### Manual
 
-- [ ] 2.3 Search box appears on a populated library; submitting filters the list
-- [ ] 2.4 Search input stays populated with the submitted term after navigation
-- [ ] 2.5 Paginating a filtered result preserves `q` and pages correctly
-- [ ] 2.6 A new search resets to page 1
-- [ ] 2.7 Clear returns to the full, unfiltered library
-- [ ] 2.8 No-match query shows the dedicated state (not empty-library card, not bare table) with populated box + Clear
-- [ ] 2.9 Genuinely empty library (no `q`) still shows "Your library is empty"
-- [ ] 2.10 Per-row controls (status/edit/delete) still work on a filtered list
+- [x] 2.3 Search box appears on a populated library; submitting filters the list
+- [x] 2.4 Search input stays populated with the submitted term after navigation
+- [x] 2.5 Paginating a filtered result preserves `q` and pages correctly
+- [x] 2.6 A new search resets to page 1
+- [x] 2.7 Clear returns to the full, unfiltered library
+- [x] 2.8 No-match query shows the dedicated state (not empty-library card, not bare table) with populated box + Clear
+- [x] 2.9 Genuinely empty library (no `q`) still shows "Your library is empty"
+- [x] 2.10 Per-row controls (status/edit/delete) still work on a filtered list

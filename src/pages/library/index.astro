@@ -73,10 +73,19 @@ if (supabase && !loadError && effectivePage !== page) {
 
 const hasPrev = effectivePage > 1;
 const hasNext = effectivePage < totalPages;
-const isEmpty = total === 0 && !loadError;
+const isEmpty = total === 0 && !loadError && query.length === 0;
+const noMatches = total === 0 && !loadError && query.length > 0;
 
 function metadataLabel(entry: LibraryEntry): string | null {
   return entry.metadata_status === "matched" ? null : "No metadata";
+}
+
+// Build a page URL that preserves the current query params (e.g. `q`), only swapping `page`.
+// S-06 extends this same seam to thread status/platform/genre/sort.
+function pageHref(targetPage: number): string {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("page", String(targetPage));
+  return `/library?${params.toString()}`;
 }
 ---
 
@@ -95,6 +104,51 @@ function metadataLabel(entry: LibraryEntry): string | null {
         </div>
         {!isEmpty && <GameDialog platformOptions={platformOptions} client:load />}
       </header>
+
+      {
+        !isEmpty && !loadError && (
+          <form method="get" action="/library" class="mb-6 flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              name="q"
+              value={query}
+              placeholder="Search by title…"
+              aria-label="Search your library by title"
+              class="min-w-[12rem] flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm text-white backdrop-blur-xl placeholder:text-blue-100/40 focus:border-white/40 focus:outline-none"
+            />
+            <button
+              type="submit"
+              class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+            >
+              Search
+            </button>
+            {query.length > 0 && (
+              <a
+                href="/library"
+                aria-label="Clear search"
+                title="Clear search"
+                class="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-blue-100/80 transition-colors hover:bg-white/20 hover:text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </a>
+            )}
+          </form>
+        )
+      }
 
       {
         loadError && (
@@ -117,6 +171,23 @@ function metadataLabel(entry: LibraryEntry): string | null {
               triggerSize="lg"
               client:load
             />
+          </div>
+        )
+      }
+
+      {
+        noMatches && (
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+            <h2 class="text-xl font-semibold text-white">No games match “{query}”</h2>
+            <p class="max-w-sm text-sm text-blue-100/60">
+              Try a different title fragment, or clear the search to see your whole library.
+            </p>
+            <a
+              href="/library"
+              class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+            >
+              Clear search
+            </a>
           </div>
         )
       }
@@ -168,7 +239,7 @@ function metadataLabel(entry: LibraryEntry): string | null {
             <nav class="mt-6 flex items-center justify-between text-sm" aria-label="Pagination">
               {hasPrev ? (
                 <a
-                  href={`/library?page=${effectivePage - 1}`}
+                  href={pageHref(effectivePage - 1)}
                   class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
                 >
                   ← Previous
@@ -188,7 +259,7 @@ function metadataLabel(entry: LibraryEntry): string | null {
 
               {hasNext ? (
                 <a
-                  href={`/library?page=${effectivePage + 1}`}
+                  href={pageHref(effectivePage + 1)}
                   class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
                 >
                   Next →
