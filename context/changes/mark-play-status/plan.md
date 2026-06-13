@@ -270,13 +270,13 @@ None — no schema change. `play_status` and `play_time_hours` columns and const
 
 #### Automated
 
-- [x] 3.1 Linting passes: `npm run lint`
-- [x] 3.2 Build passes: `npm run build`
+- [x] 3.1 Linting passes: `npm run lint` — 057a91f
+- [x] 3.2 Build passes: `npm run build` — 057a91f
 
 #### Manual
 
-- [x] 3.3 Finished status opens hours popover; Save persists status + hours
-- [x] 3.4 Skip/dismiss commits status only
-- [x] 3.5 Non-finished statuses commit immediately, no popover
-- [x] 3.6 Popover pre-fills existing hours
-- [x] 3.7 Failed Save reverts badge + inline error; no partial write
+- [x] 3.3 Finished status opens hours popover; Save persists status + hours — 057a91f
+- [x] 3.4 Skip/dismiss commits status only — 057a91f
+- [x] 3.5 Non-finished statuses commit immediately, no popover — 057a91f
+- [x] 3.6 Popover pre-fills existing hours — 057a91f
+- [x] 3.7 Failed Save reverts badge + inline error; no partial write — 057a91f
