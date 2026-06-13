@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-12
+updated: 2026-06-13
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -260,7 +260,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Wishlists, deal tracking, series/collection grouping.** Why parked: PRD §Non-Goals — each is a sizable feature tangential to the "what should I play next?" decision.
 - **Edition-level precision (Standard vs. Legendary vs. GOTY vs. regional).** Why parked: PRD §Non-Goals — photo path identifies game + platform only; reliable edition recognition is the largest single cut in the 3-week budget. Deferred to v2. **Note (not in conflict with S-09):** S-09's edition-*collapse* is the inverse of edition *precision* — it deliberately maps "Bloodborne GOTY" / "…Complete Edition" to the single base-game id (consistent with "game + platform only"), rather than distinguishing editions. F-03 showed un-collapsed edition variants are the dominant guardrail-miss source.
 - **AI-augmented recommender.** Why parked: PRD §Non-Goals — v1 ships deterministic scoring only; LLM-assisted suggestions land in v2 once the scoring recommender's weaknesses are known.
-- **Multi-game-per-photo / shelf-scanning.** Why parked: PRD §Non-Goals — one game per photo in v1; multi-box segmentation doesn't fit the budget.
+- **Multi-game-per-photo / shelf-scanning.** Why parked: PRD §Non-Goals — one game per photo in v1; multi-box segmentation doesn't fit the budget. **Reconfirmed as v2 during S-09 (2026-06-13)**: cases where one photo/case holds several titles are out of scope for the single-box identify path.
+- **Localized / non-English box-title grounding.** Why parked: a box printed in a non-English locale makes the vision model read the *localized* title, which IGDB does not ground on (it indexes canonical/English names plus sparse `alternative_names`), so these honestly abstain. Surfaced concretely in **S-09's acceptance harness (2026-06-13)** on Polish editions — e.g. "God of War: Duch Sparty" → *Ghost of Sparta*, "God of War: Wstąpienie" → *Ascension*, "Star Wars Jedi Ocalały" → *Jedi: Survivor*, "Władca Pierścieni: Bitwa o Śródziemie" → *Battle for Middle-earth*. S-09 handled them only with a manual truth-set workaround (pinning `true_igdb_id`), not a real fix. Revisit in v2: ground via IGDB `alternative_names`/localized titles, or a translate-then-match step before the search.
 
 ## Done
 
