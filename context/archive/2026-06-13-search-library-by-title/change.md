@@ -1,10 +1,10 @@
 ---
 change_id: search-library-by-title
 title: Search the library by title to check ownership before buying
-status: impl_reviewed
+status: archived
 created: 2026-06-13
 updated: 2026-06-13
-archived_at: null
+archived_at: 2026-06-13T17:15:15Z
 ---
 
 ## Notes

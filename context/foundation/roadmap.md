@@ -36,7 +36,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
 | S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | done     |
-| S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | proposed |
+| S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | done |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | proposed |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
 | S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
@@ -173,7 +173,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Split out from filter/sort (S-06) because it has independent product value — it is the entire secondary success criterion — and needs nothing beyond a populated library, so it can ship well before the status-dependent filters. Low risk.
-- **Status:** proposed
+- **Status:** done
 
 ### S-06: Filter and sort the library
 
@@ -272,3 +272,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-02: user can edit any field of a library entry after creation, and delete an entry behind a confirmation step.** — Archived 2026-06-12 → `context/archive/2026-06-11-edit-and-delete-entry/`. Lesson: —.
 - **F-03: (foundation) a server-side vision call that, given a single-game box photo, returns a proposed game title + platform — plus a thin accuracy harness run against a sample of the collector's own shelf to measure the ≥90% guardrail. Not user-facing on its own.** — Archived 2026-06-12 → `context/archive/2026-06-11-photo-identification-spike/`. Lesson: —.
 - **S-04: user can set, change, or clear a play status ("Playing now", "Played", "Completed", "100% completed") on a library entry, and optionally record play time in hours; changes reflect without a full page reload.** — Archived 2026-06-13 → `context/archive/2026-06-13-mark-play-status/`. Lesson: —.
+- **S-05: user can type a title substring (case-insensitive) and see only matching entries — the fast "do I already own this?" check that covers the secondary success criterion (in-store / marketplace duplicate-purchase avoidance).** — Archived 2026-06-13 → `context/archive/2026-06-13-search-library-by-title/`. Lesson: —.
