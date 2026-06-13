@@ -466,8 +466,8 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Manual
 
-- [x] 1.5 The 4 enumerated platform-string artifacts score as correct on a local harness run
-- [x] 1.6 No previously-passing platform resolves differently
+- [x] 1.5 The 4 enumerated platform-string artifacts score as correct on a local harness run — 4e3d900
+- [x] 1.6 No previously-passing platform resolves differently — 4e3d900
 
 ### Phase 2: Edition-variant collapse
 
@@ -480,9 +480,9 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Manual
 
-- [x] 2.5 Enumerated edition-variant cases ground to the base-game id on a local harness run
-- [x] 2.6 No genuinely-distinct title is merged (spot-check over-collapse risk titles)
-- [x] 2.7 Enrichment fields reflect the base game, not the edition
+- [x] 2.5 Enumerated edition-variant cases ground to the base-game id on a local harness run — 4e3d900
+- [x] 2.6 No genuinely-distinct title is merged (spot-check over-collapse risk titles) — 4e3d900
+- [x] 2.7 Enrichment fields reflect the base game, not the edition — 4e3d900
 
 ### Phase 3: False-positive suppression
 
@@ -495,19 +495,19 @@ No data migration in the app/database — this slice is grounding-logic only.
 
 #### Manual
 
-- [x] 3.5 Thin/ambiguous terms degrade to `no_match` (the `"e"` on Xbox Series X case)
-- [x] 3.6 No previously-correct match is newly suppressed
+- [x] 3.5 Thin/ambiguous terms degrade to `no_match` (the `"e"` on Xbox Series X case) — 4e3d900
+- [x] 3.6 No previously-correct match is newly suppressed — 4e3d900
 
 ### Phase 4: Harness legibility, truth-set cleaning, acceptance re-measure
 
 #### Automated
 
-- [x] 4.1 Linting passes: `npm run lint`
-- [x] 4.2 Type checking passes: `astro check`
-- [x] 4.3 Build passes: `npm run build`
+- [x] 4.1 Linting passes: `npm run lint` — 4e3d900
+- [x] 4.2 Type checking passes: `astro check` — 4e3d900
+- [x] 4.3 Build passes: `npm run build` — 4e3d900
 
 #### Manual
 
-- [x] 4.4 `npm run harness` reaches ~90% base-game id+platform accuracy on the cleaned truth set
-- [x] 4.5 The collapse debug output makes each pass/fail legible
-- [x] 4.6 Latency p95 stays within the 10s NFR
+- [x] 4.4 `npm run harness` reaches ~90% base-game id+platform accuracy on the cleaned truth set — 4e3d900
+- [x] 4.5 The collapse debug output makes each pass/fail legible — 4e3d900
+- [x] 4.6 Latency p95 stays within the 10s NFR — 4e3d900
