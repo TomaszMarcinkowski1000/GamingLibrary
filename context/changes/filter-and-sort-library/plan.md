@@ -294,17 +294,17 @@ One additive, read-only migration (the `library_facets` RPC). No schema/column c
 
 #### Automated
 
-- [x] 3.1 Type checking + lint pass: `npm run lint`
-- [x] 3.2 Build passes: `npm run build`
+- [x] 3.1 Type checking + lint pass: `npm run lint` — c69ac1e
+- [x] 3.2 Build passes: `npm run build` — c69ac1e
 
 #### Manual
 
-- [x] 3.3 Status + platform filter shows only matching rows; URL reflects both params
-- [x] 3.4 Two genres → OR; adding series → further AND narrowing
-- [x] 3.5 Each sort option reorders; default is newest-added-first
-- [x] 3.6 Facet dropdowns show only owned values with correct counts; statuses show all five
-- [x] 3.7 Filters + sort + search persist across pagination and a full reload
-- [x] 3.8 Changing a filter resets to page 1
-- [x] 3.9 No-match combination shows filter-aware empty state; "Clear all filters" returns to full library
-- [x] 3.10 Series column renders joined values or "—"
-- [x] 3.11 Usable on a mobile-width viewport (no horizontal overflow)
+- [x] 3.3 Status + platform filter shows only matching rows; URL reflects both params — c69ac1e
+- [x] 3.4 Two genres → OR; adding series → further AND narrowing — c69ac1e
+- [x] 3.5 Each sort option reorders; default is newest-added-first — c69ac1e
+- [x] 3.6 Facet dropdowns show only owned values with correct counts; statuses show all five — c69ac1e
+- [x] 3.7 Filters + sort + search persist across pagination and a full reload — c69ac1e
+- [x] 3.8 Changing a filter resets to page 1 — c69ac1e
+- [x] 3.9 No-match combination shows filter-aware empty state; "Clear all filters" returns to full library — c69ac1e
+- [x] 3.10 Series column renders joined values or "—" — c69ac1e
+- [x] 3.11 Usable on a mobile-width viewport (no horizontal overflow) — c69ac1e
