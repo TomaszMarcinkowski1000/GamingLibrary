@@ -250,14 +250,14 @@ None — no schema change. All consumed columns already exist on `library_entrie
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run lint`
-- [ ] 1.3 Unit tests pass: `npm test`
-- [ ] 1.4 New tests cover the full rule matrix (buckets/distance/eligibility/completion/novelty/length-dominance/determinism/tie-break/empty-states/top-10)
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run lint`
+- [x] 1.3 Unit tests pass: `npm test`
+- [x] 1.4 New tests cover the full rule matrix (buckets/distance/eligibility/completion/novelty/length-dominance/determinism/tie-break/empty-states/top-10)
 
 #### Manual
 
-- [ ] 1.5 Spot-check ranking on a realistic library is intuitively sensible per mode
+- [x] 1.5 Spot-check ranking on a realistic library is intuitively sensible per mode
 
 ### Phase 2: `/play-next` SSR page + entry point
 

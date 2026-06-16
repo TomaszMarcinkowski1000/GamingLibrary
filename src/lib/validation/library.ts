@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { LibraryEntryUpdate } from "@/types";
-import { METADATA_STATUSES, PLAY_STATUSES } from "@/types";
+import type { LibraryEntryUpdate, NoveltyMode, RecommendationRequest } from "@/types";
+import { LENGTH_BUCKETS, METADATA_STATUSES, NOVELTY_MODES, PLAY_STATUSES } from "@/types";
 
 /**
  * Full editable field set for a library entry (FR-010), shared by `PUT /api/library/[id]`.
@@ -80,3 +80,40 @@ export const lookupRequestSchema = z.object({
   title: z.string().trim().min(1, "title is required"),
   platform: z.string().trim().min(1, "platform is required"),
 });
+
+/** The default request the `/play-next` page loads with: all four length buckets + newly bought. */
+export const DEFAULT_NOVELTY_MODE: NoveltyMode = "newly_bought";
+
+/**
+ * Parse `/play-next` query params into a normalized {@link RecommendationRequest}, so the page
+ * frontmatter stays thin and the normalization is unit-testable.
+ *
+ * - `length`: read from repeated `?length=` values *and* comma-joined values, filtered to known
+ *   {@link LENGTH_BUCKETS}, deduped, and returned in canonical bucket order. An empty or
+ *   all-invalid selection falls back to all four buckets (the default — every length matches).
+ * - `mode`: validated against {@link NOVELTY_MODES}; anything invalid or missing falls back to
+ *   `newly_bought`.
+ *
+ * Always returns a valid request — it never throws on bad input, it normalizes (the page avoids
+ * frontmatter redirects, so invalid params are clamped in place).
+ */
+export function parseRecommendationParams(searchParams: URLSearchParams): RecommendationRequest {
+  const known = new Set<string>(LENGTH_BUCKETS);
+  const requested = new Set(
+    searchParams
+      .getAll("length")
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim())
+      .filter((value) => known.has(value)),
+  );
+
+  const lengthBuckets =
+    requested.size > 0 ? LENGTH_BUCKETS.filter((bucket) => requested.has(bucket)) : [...LENGTH_BUCKETS];
+
+  const rawMode = searchParams.get("mode");
+  const mode: NoveltyMode = (NOVELTY_MODES as readonly string[]).includes(rawMode ?? "")
+    ? (rawMode as NoveltyMode)
+    : DEFAULT_NOVELTY_MODE;
+
+  return { lengthBuckets: lengthBuckets, mode };
+}
