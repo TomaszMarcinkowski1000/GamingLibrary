@@ -38,7 +38,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | done     |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | done |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | done |
-| S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | proposed |
+| S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | done |
 | S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
 | S-09  | enrichment-match-precision | precise IGDB grounding: collapse edition variants to base game + suppress false positives | F-02, S-01 | FR-005, FR-008            | done |
 
@@ -198,7 +198,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Will the recommendation meet the < 2s p95 NFR over a 50+ entry library on Workers SSR? — Owner: team. Block: no (deterministic scoring over a small dataset; measure during planning).
 - **Risk:** The PRD's stated reason-to-exist, but correctly sequenced *after* its data dependencies — it is only meaningful once the library can be populated (S-01) and statuses set (S-04). Its quality, not its existence, is the real risk, and that can only be judged once real entries exist; deterministic-only scoring (no LLM in v1) keeps it tractable.
-- **Status:** proposed
+- **Status:** done
 
 ### S-08: Reach the library directly after login  — ◇ optional
 
@@ -276,3 +276,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-05: user can type a title substring (case-insensitive) and see only matching entries — the fast "do I already own this?" check that covers the secondary success criterion (in-store / marketplace duplicate-purchase avoidance).** — Archived 2026-06-13 → `context/archive/2026-06-13-search-library-by-title/`. Lesson: —.
 - **S-09: IGDB grounding resolves to the right game entry, on two fronts: (1) edition-variant collapse — a box read as "Alan Wake II Deluxe Edition" / "Horizon Forbidden West Complete Edition" / "Bloodborne GOTY" / "Marvel's Spider-Man" grounds to the base-game id, not the edition-specific entry (via IGDB `parent_game`/version relationships or top-N + base-title match); and (2) false-positive suppression — thin or ambiguous search terms (e.g. title "e" on "Xbox Series X") degrade to the existing `no_match` flag instead of attaching wrong metadata. Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.** — Archived 2026-06-13 → `context/archive/2026-06-13-enrichment-match-precision/`. Lesson: —.
 - **S-06: user can filter and sort the library view by status, platform, and genre, combining filters with each other and with the title search; filter/sort state persists within a browsing session.** — Archived 2026-06-16 → `context/archive/2026-06-13-filter-and-sort-library/`. Lesson: —.
+- **S-07: user can request a deterministic ranked list from their own library, constrained by overall game-length bucket (short < 10h / medium 10–30h / long 30h+) and biased by one of three novelty modes ("new releases" / "newly bought" / "comfort"); 100%-completed games are de-prioritized except under "comfort", and an empty result explains which constraint excluded everything.** — Archived 2026-06-16 → `context/archive/2026-06-13-play-next-recommendation/`. Lesson: —.
