@@ -1,14 +1,17 @@
 ---
-import type { LibraryEntry } from "@/types";
+import type { LibraryEntry, LibraryFacets, LibrarySort, PlayStatus } from "@/types";
+import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS, PLAY_STATUSES } from "@/types";
 import Layout from "@/layouts/Layout.astro";
 import { createClient } from "@/lib/supabase";
-import { listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
+import { getLibraryFacets, listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
 import GameDialog from "@/components/library/GameDialog";
+import LibraryFilters from "@/components/library/LibraryFilters";
 import { EntryRowActions } from "@/components/library/EntryRowActions";
 import PlayStatusControl from "@/components/library/PlayStatusControl";
 
 const PAGE_SIZE = 20;
+const EMPTY_FACETS: LibraryFacets = { platforms: [], genres: [], series: [], statuses: [] };
 
 const pageParam = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
 const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
@@ -16,24 +19,49 @@ const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 const rawQuery = Astro.url.searchParams.get("q") ?? "";
 const query = rawQuery.trim();
 
+// Repeatable filter params. Statuses are validated against the known vocabulary; sort falls
+// back to the default when unknown. Platform/genre/series pass through verbatim (free-text
+// facet values), and empty arrays mean "no filter on that dimension".
+const statusFilter = Astro.url.searchParams
+  .getAll("status")
+  .filter((value): value is PlayStatus => (PLAY_STATUSES as readonly string[]).includes(value));
+const platformFilter = Astro.url.searchParams.getAll("platform");
+const genreFilter = Astro.url.searchParams.getAll("genre");
+const seriesFilter = Astro.url.searchParams.getAll("series");
+const rawSort = Astro.url.searchParams.get("sort") ?? "";
+const sort: LibrarySort = rawSort in LIBRARY_SORTS ? (rawSort as LibrarySort) : DEFAULT_LIBRARY_SORT;
+
+// The filter/sort set threaded identically into the initial fetch and the clamp re-fetch.
+const filterArgs = {
+  search: query || undefined,
+  statuses: statusFilter.length ? statusFilter : undefined,
+  platforms: platformFilter.length ? platformFilter : undefined,
+  genres: genreFilter.length ? genreFilter : undefined,
+  series: seriesFilter.length ? seriesFilter : undefined,
+  sort,
+};
+
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 let entries: LibraryEntry[] = [];
 let total = 0;
 let usedPlatforms: string[] = [];
+let facets: LibraryFacets = EMPTY_FACETS;
 let loadError = false;
 
 if (supabase) {
   try {
-    // Platform options are a degradable nicety, so they resolve to [] on their own
-    // failure — only a true entries-query failure should blank the library.
-    const [list, platforms] = await Promise.all([
-      listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE, search: query || undefined }),
+    // Platform options and facets are degradable niceties, so they resolve to their empty
+    // value on their own failure — only a true entries-query failure should blank the library.
+    const [list, platforms, libraryFacets] = await Promise.all([
+      listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE, ...filterArgs }),
       listUsedPlatforms(supabase).catch(() => [] as string[]),
+      getLibraryFacets(supabase).catch(() => EMPTY_FACETS),
     ]);
     entries = list.entries;
     total = list.total;
     usedPlatforms = platforms;
+    facets = libraryFacets;
   } catch {
     loadError = true;
   }
@@ -62,7 +90,7 @@ if (supabase && !loadError && effectivePage !== page) {
     const list = await listLibraryEntries(supabase, {
       page: effectivePage,
       pageSize: PAGE_SIZE,
-      search: query || undefined,
+      ...filterArgs,
     });
     entries = list.entries;
     total = list.total;
@@ -73,8 +101,22 @@ if (supabase && !loadError && effectivePage !== page) {
 
 const hasPrev = effectivePage > 1;
 const hasNext = effectivePage < totalPages;
-const isEmpty = total === 0 && !loadError && query.length === 0;
-const noMatches = total === 0 && !loadError && query.length > 0;
+// Any active narrowing: title search, any filter dimension, or a non-default sort.
+const isFiltered =
+  query.length > 0 ||
+  statusFilter.length > 0 ||
+  platformFilter.length > 0 ||
+  genreFilter.length > 0 ||
+  seriesFilter.length > 0 ||
+  sort !== DEFAULT_LIBRARY_SORT;
+const isEmpty = total === 0 && !loadError && !isFiltered;
+const noMatches = total === 0 && !loadError && isFiltered;
+const currentFilters = {
+  statuses: statusFilter,
+  platforms: platformFilter,
+  genres: genreFilter,
+  series: seriesFilter,
+};
 
 function metadataLabel(entry: LibraryEntry): string | null {
   return entry.metadata_status === "matched" ? null : "No metadata";
@@ -119,46 +161,7 @@ function pageHref(targetPage: number): string {
 
       {
         !isEmpty && !loadError && (
-          <form method="get" action="/library" class="mb-6 flex flex-wrap items-center gap-3">
-            <input
-              type="text"
-              name="q"
-              value={query}
-              placeholder="Search by title…"
-              aria-label="Search your library by title"
-              class="min-w-[12rem] flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm text-white backdrop-blur-xl placeholder:text-blue-100/40 focus:border-white/40 focus:outline-none"
-            />
-            <button
-              type="submit"
-              class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
-            >
-              Search
-            </button>
-            {query.length > 0 && (
-              <a
-                href="/library"
-                aria-label="Clear search"
-                title="Clear search"
-                class="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-blue-100/80 transition-colors hover:bg-white/20 hover:text-white"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              </a>
-            )}
-          </form>
+          <LibraryFilters search={query} filters={currentFilters} sort={sort} facets={facets} client:load />
         )
       }
 
@@ -190,24 +193,27 @@ function pageHref(targetPage: number): string {
       {
         noMatches && (
           <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
-            <h2 class="text-xl font-semibold text-white">No games match “{query}”</h2>
+            <h2 class="text-xl font-semibold text-white">No games match your filters</h2>
             <p class="max-w-sm text-sm text-blue-100/60">
-              Try a different title fragment, or clear the search to see your whole library.
+              {query.length > 0
+                ? `Nothing in your library matches “${query}” with the current filters.`
+                : "No games in your library match the current filters."}{" "}
+              Try loosening them, or clear everything to see your whole library.
             </p>
             <a
               href="/library"
               class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
             >
-              Clear search
+              Clear all filters
             </a>
           </div>
         )
       }
 
       {
-        !isEmpty && !loadError && (
+        !loadError && entries.length > 0 && (
           <>
-            <div class="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+            <div class="overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
               <table class="w-full text-left text-sm">
                 <thead class="border-b border-white/10 text-xs tracking-wide text-blue-100/50 uppercase">
                   <tr>
@@ -215,6 +221,7 @@ function pageHref(targetPage: number): string {
                     <th class="px-4 py-3 font-medium">Platform</th>
                     <th class="px-4 py-3 font-medium">Status</th>
                     <th class="px-4 py-3 font-medium">Genre</th>
+                    <th class="px-4 py-3 font-medium">Series</th>
                     <th class="px-4 py-3 font-medium">Year</th>
                     <th class="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
@@ -237,6 +244,9 @@ function pageHref(targetPage: number): string {
                           <PlayStatusControl entry={entry} client:visible />
                         </td>
                         <td class="px-4 py-3 text-blue-100/60">{entry.genre?.length ? entry.genre.join(", ") : "—"}</td>
+                        <td class="px-4 py-3 text-blue-100/60">
+                          {entry.series?.length ? entry.series.join(", ") : "—"}
+                        </td>
                         <td class="px-4 py-3 text-blue-100/60">{entry.release_year ?? "—"}</td>
                         <td class="px-4 py-3">
                           <EntryRowActions entry={entry} platformOptions={platformOptions} client:visible />

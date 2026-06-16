@@ -10,6 +10,7 @@ import {
   EntryNotFoundError,
   createLibraryEntry,
   deleteLibraryEntry,
+  getLibraryFacets,
   listLibraryEntries,
   updateLibraryEntry,
 } from "./library";
@@ -184,7 +185,11 @@ describe("listLibraryEntries", () => {
       rangeArgs = [from, to];
       return Promise.resolve({ data: rows, count, error: null });
     });
-    const order = vi.fn(() => ({ range }));
+    // order is chainable: the primary order, the optional created_at tiebreaker, and the
+    // final id tiebreaker all return the same node before .range() resolves the page.
+    const orderNode: Record<string, unknown> = { range };
+    const order = vi.fn(() => orderNode);
+    orderNode.order = order;
     const select = vi.fn(() => ({ order }));
     return {
       client: { from: vi.fn(() => ({ select })) } as never,
@@ -207,5 +212,115 @@ describe("listLibraryEntries", () => {
     await listLibraryEntries(client, { page: 0, pageSize: 20 });
 
     expect(range()).toEqual([0, 19]);
+  });
+
+  /**
+   * Chainable mock recording every filter/order call. `select` returns one builder whose
+   * `ilike`/`in`/`overlaps`/`order` all return the same builder (so the real chaining works);
+   * `range` resolves the page. Lets us assert which PostgREST operators each dimension used.
+   */
+  function filterListClient(rows: unknown[], count: number) {
+    const calls = {
+      ilike: [] as [string, string][],
+      in: [] as [string, unknown][],
+      overlaps: [] as [string, unknown][],
+      order: [] as [string, { ascending: boolean }][],
+    };
+    let rangeArgs: [number, number] | undefined;
+    const builder: Record<string, unknown> = {
+      ilike: vi.fn((col: string, pat: string) => {
+        calls.ilike.push([col, pat]);
+        return builder;
+      }),
+      in: vi.fn((col: string, vals: unknown) => {
+        calls.in.push([col, vals]);
+        return builder;
+      }),
+      overlaps: vi.fn((col: string, vals: unknown) => {
+        calls.overlaps.push([col, vals]);
+        return builder;
+      }),
+      order: vi.fn((col: string, opts: { ascending: boolean }) => {
+        calls.order.push([col, opts]);
+        return builder;
+      }),
+      range: vi.fn((from: number, to: number) => {
+        rangeArgs = [from, to];
+        return Promise.resolve({ data: rows, count, error: null });
+      }),
+    };
+    const select = vi.fn(() => builder);
+    return {
+      client: { from: vi.fn(() => ({ select })) } as never,
+      calls,
+      range: () => rangeArgs,
+    };
+  }
+
+  it("applies combined filters (AND across dimensions, OR within) plus a non-default sort", async () => {
+    const { client, calls, range } = filterListClient([{ id: "x" }], 1);
+
+    const result = await listLibraryEntries(client, {
+      page: 1,
+      pageSize: 20,
+      statuses: ["not_played"],
+      platforms: ["PlayStation 5"],
+      genres: ["RPG", "Action"],
+      series: ["Saga"],
+      sort: "year_desc",
+    });
+
+    // Scalar columns filter with .in(); a multi-value list is OR within the dimension.
+    expect(calls.in).toContainEqual(["play_status", ["not_played"]]);
+    expect(calls.in).toContainEqual(["platform", ["PlayStation 5"]]);
+    // Array (text[]) columns filter with .overlaps() so a row matching either value passes.
+    expect(calls.overlaps).toContainEqual(["genre", ["RPG", "Action"]]);
+    expect(calls.overlaps).toContainEqual(["series", ["Saga"]]);
+    // Non-default sort → release_year desc, then a created_at desc tiebreaker, then a
+    // final id tiebreaker for fully deterministic ordering across page boundaries.
+    expect(calls.order).toEqual([
+      ["release_year", { ascending: false }],
+      ["created_at", { ascending: false }],
+      ["id", undefined],
+    ]);
+    expect(range()).toEqual([0, 19]);
+    expect(result).toEqual({ entries: [{ id: "x" }], total: 1 });
+  });
+
+  it("skips dimensions with empty arrays and uses a single created_at order for the default sort", async () => {
+    const { client, calls } = filterListClient([], 0);
+
+    await listLibraryEntries(client, { page: 1, pageSize: 20, statuses: [], genres: [] });
+
+    expect(calls.in).toEqual([]);
+    expect(calls.overlaps).toEqual([]);
+    // Default sort is created_at (its own tiebreaker is skipped), then the final id tiebreaker.
+    expect(calls.order).toEqual([
+      ["created_at", { ascending: false }],
+      ["id", undefined],
+    ]);
+  });
+});
+
+describe("getLibraryFacets", () => {
+  it("returns the RPC's facet object", async () => {
+    const facets = {
+      platforms: [{ value: "PlayStation 5", count: 12 }],
+      genres: [{ value: "RPG", count: 3 }],
+      series: [],
+      statuses: [{ value: "not_played", count: 5 }],
+    };
+    const rpc = vi.fn().mockResolvedValue({ data: facets, error: null });
+    const client = { rpc } as never;
+
+    await expect(getLibraryFacets(client)).resolves.toEqual(facets);
+    expect(rpc).toHaveBeenCalledWith("library_facets");
+  });
+
+  it("throws on RPC error", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "boom" } });
+    const client = { rpc } as never;
+
+    await expect(getLibraryFacets(client)).rejects.toBeDefined();
   });
 });
