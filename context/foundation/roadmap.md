@@ -23,7 +23,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 
 **S-03: a collector captures a single-game box photo and an identified, IGDB-enriched entry lands in their library.** This is the validation milestone, tied to the `market-feedback` goal: it proves the core product bet (affordable photo entry of the differentiating kind) and carries the **binding guardrail** — a hard pass/fail threshold v1 must clear to be considered shipped: ≥ 90% correct game + platform identification on the collector's own shelf (`PRD §Success Criteria > Guardrails`).
 
-> "North star" here means the smallest end-to-end, user-visible flow whose successful delivery would prove the core product hypothesis — placed as early as its Prerequisites allow, because everything else only matters if this works. It sits behind two enabling foundations (data + vision) and is currently `blocked` until the vision-accuracy spike (F-03) confirms the guardrail can be met.
+> "North star" here means the smallest end-to-end, user-visible flow whose successful delivery would prove the core product hypothesis — placed as early as its Prerequisites allow, because everything else only matters if this works. It sits behind two enabling foundations (data + vision). It was `blocked` on the grounding gap the vision-accuracy spike (F-03) exposed; **S-09 closed that gap (2026-06-13, re-measure 92.9% ≥ 90% bar), so S-03 is now unblocked and ready to plan.**
 
 ## At a glance
 
@@ -34,7 +34,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | F-03  | photo-identification-spike | (foundation) vision reads game+platform ~95%; grounding-bound at 71% strict | —              | FR-005, Guardrails        | done     |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
-| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | blocked  |
+| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | proposed |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | done     |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | done |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | done |
@@ -146,10 +146,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-04, S-05
 - **Blockers:** —
 - **Unknowns:**
-  - Vision identification must clear ≥90% accuracy on the collector's shelf — Owner: user/team. Block: yes. **F-03 update (2026-06-13):** the vision read is ~95% (clears intent), but strict base-game id+platform grounding measured 71.2% — so this slice stays `blocked` on a **grounding follow-up**, not on the model. Unblock when edition-collapsing grounding (S-09 top-N / parent-game) + platform-alias normalization re-measure at ~90% base-game id accuracy. A **confirm-before-save** UX (model proposes → user one-tap accepts/corrects via the S-02 path) is the recommended way to ship this responsibly before strict auto-save accuracy is proven.
+  - Vision identification must clear ≥90% accuracy on the collector's shelf — Owner: user/team. Block: **resolved (2026-06-13)**. **F-03 update (2026-06-13):** the vision read is ~95% (clears intent), but strict base-game id+platform grounding measured 71.2% — so this slice was `blocked` on a **grounding follow-up**, not on the model. **S-09 update (2026-06-13):** the grounding follow-up shipped and re-measured **92.9% accuracy-when-answered (PASS, ≥90% bar)**, so this unknown is resolved and the slice is unblocked. A **confirm-before-save** UX (model proposes → user one-tap accepts/corrects via the S-02 path) remains the recommended way to ship responsibly, since the abstain path falls back to manual entry by design.
   - Does the in-browser mobile camera-capture path work end-to-end on the four mainstream browsers (NFR), with no required desktop step? — Owner: team. Block: no (a known mobile-web risk to validate during planning, not a sequencing blocker).
 - **Risk:** The validation milestone and the killer feature, placed as early as its prerequisites allow per the `market-feedback` goal. Its viability is gated by F-03 — which is why F-03 was the recommended first move. **F-03 result reframes the gate:** the differentiator is viable (model reads boxes at ~95%); the photo path is **not** cut. The residual work is grounding-side (edition-collapse + platform normalization), and the S-01-as-primary fallback only triggers if that follow-up fails to clear ~90% on re-measure. See `context/changes/photo-identification-spike/results.md`.
-- **Status:** blocked (on grounding follow-up, not on the vision model — see F-03 result)
+- **Status:** proposed (unblocked 2026-06-13 by S-09 — grounding re-measure 92.9% ≥ 90% bar; was blocked on the F-03 grounding follow-up, not the vision model)
 
 ### S-04: Mark a game with a play status
 
@@ -237,7 +237,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-03       | photo-identification-spike | Vision photo-ID spike + ≥90% accuracy validation        | done                  | **Done (2026-06-13)** — vision ~95%, strict guardrail 71% (grounding-bound); see `results.md`. Binding work moved to S-09. |
 | S-01       | manual-add-and-browse      | Manual add + enriched + paginated library browse        | no                    | Needs F-01, F-02 |
 | S-02       | edit-and-delete-entry      | Edit any field; delete with confirm                     | no                    | Needs F-01, S-01 |
-| S-03       | photo-to-library           | Photo capture → identified, auto-saved enriched entry   | no                    | F-03 done (vision ~95%); now blocked on S-09 grounding (edition-collapse) for strict auto-save, or ship via confirm-before-save; needs F-01/F-02/S-01/S-02/S-09 |
+| S-03       | photo-to-library           | Photo capture → identified, auto-saved enriched entry   | yes                   | **Unblocked (2026-06-13)** — S-09 grounding re-measured 92.9% (≥90%); all prereqs (F-01/F-02/F-03/S-01/S-02/S-09) done. Ship strict auto-save or confirm-before-save. |
 | S-04       | mark-play-status           | Mark play status (+ optional play time)                 | no                    | Needs F-01, S-01 |
 | S-05       | search-library-by-title    | Search library by title (duplicate-purchase check)      | no                    | Needs F-01, S-01 |
 | S-06       | filter-and-sort-library    | Filter & sort by status, platform, genre                | no                    | Needs F-01, S-01, S-04 |
