@@ -1,0 +1,228 @@
+---
+import type { RecommendationItem, RecommendationResult } from "@/types";
+import { LENGTH_BUCKETS, LENGTH_BUCKET_LABELS, NOVELTY_MODES, NOVELTY_MODE_LABELS, PLAY_STATUS_LABELS } from "@/types";
+import Layout from "@/layouts/Layout.astro";
+import { createClient } from "@/lib/supabase";
+import { getRecommendations } from "@/lib/services/recommendation";
+import { parseRecommendationParams } from "@/lib/validation/library";
+import { playStatusBadgeClass } from "@/components/library/playStatus";
+
+// Normalize params in place (the page never redirects — see the lint-crash note in
+// library/index.astro). parseRecommendationParams always returns a valid, defaulted request.
+const request = parseRecommendationParams(Astro.url.searchParams);
+const selectedBuckets = new Set(request.lengthBuckets);
+
+// The primary answer is the top 10 (plan contract). `?show=all` expands the already-computed
+// ranking to the whole eligible set — a collapse/expand toggle, not paginated fetching.
+const VISIBLE_LIMIT = 10;
+const showAll = Astro.url.searchParams.get("show") === "all";
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+let result: RecommendationResult | null = null;
+let loadError = false;
+
+if (supabase) {
+  try {
+    // Always rank the whole eligible set; the page slices it to the visible window below, so it
+    // knows whether a "show all" affordance is warranted without a second query.
+    result = await getRecommendations(supabase, request, Number.MAX_SAFE_INTEGER);
+  } catch {
+    loadError = true;
+  }
+}
+
+const rankedItems: RecommendationItem[] = result?.status === "ranked" ? result.items : [];
+const items: RecommendationItem[] = showAll ? rankedItems : rankedItems.slice(0, VISIBLE_LIMIT);
+const hasMore = rankedItems.length > VISIBLE_LIMIT;
+
+/** Toggle the `show` param while preserving the current dial selection. */
+function showHref(value: "all" | null): string {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  if (value === null) {
+    params.delete("show");
+  } else {
+    params.set("show", value);
+  }
+  const qs = params.toString();
+  return qs ? `/play-next?${qs}` : "/play-next";
+}
+
+/** Human sentence naming the binding constraint and a suggested relaxation (PRD US-03). */
+function emptyStateMessage(empty: Extract<RecommendationResult, { status: "empty" }>): string {
+  if (empty.reason === "empty_library") {
+    return "Your library is empty — add a game first.";
+  }
+  if (empty.mode === "comfort") {
+    return "Comfort mode needs games you’ve played — you have none yet. Try “new releases”, or mark a game as played.";
+  }
+  return "Every game matching is already 100% completed — try comfort mode.";
+}
+
+function lengthLabel(lengthHours: number | null): string {
+  return lengthHours === null ? "—" : `${lengthHours}h`;
+}
+
+/** Full release date when known, else the year, else an em dash (the `new_releases`/comfort axis). */
+function releaseLabel(releaseDate: string | null, releaseYear: number | null): string {
+  return releaseDate ?? (releaseYear === null ? "—" : String(releaseYear));
+}
+---
+
+<Layout title="What should I play next?">
+  <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+    <div class="mx-auto max-w-5xl">
+      <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+            What should I play next?
+          </h1>
+          <p class="mt-1 text-sm text-blue-100/60">A ranked pick from your own library — tune the dials below.</p>
+        </div>
+        <a
+          href="/library"
+          class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+        >
+          ← Back to library
+        </a>
+      </header>
+
+      <form
+        method="get"
+        action="/play-next"
+        class="mb-8 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:flex-row sm:flex-wrap sm:items-end"
+      >
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-1 text-xs tracking-wide text-blue-100/50 uppercase">Length</legend>
+          <div class="flex flex-wrap gap-3">
+            {
+              LENGTH_BUCKETS.map((bucket) => (
+                <label class="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="length"
+                    value={bucket}
+                    checked={selectedBuckets.has(bucket)}
+                    class="h-4 w-4 accent-purple-400"
+                  />
+                  {LENGTH_BUCKET_LABELS[bucket]}
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        <label class="flex flex-col gap-2">
+          <span class="text-xs tracking-wide text-blue-100/50 uppercase">Mode</span>
+          <select
+            name="mode"
+            class="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm text-white focus:border-white/40 focus:outline-none"
+          >
+            {
+              NOVELTY_MODES.map((mode) => (
+                <option value={mode} selected={mode === request.mode} class="bg-slate-900">
+                  {NOVELTY_MODE_LABELS[mode]}
+                </option>
+              ))
+            }
+          </select>
+        </label>
+
+        <button
+          type="submit"
+          class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+        >
+          Recommend
+        </button>
+      </form>
+
+      {
+        loadError && (
+          <div class="rounded-xl border border-red-400/40 bg-red-500/10 p-4 text-sm text-red-200">
+            Couldn’t compute a recommendation right now. Please refresh and try again.
+          </div>
+        )
+      }
+
+      {
+        !loadError && result?.status === "empty" && (
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+            <h2 class="text-xl font-semibold text-white">Nothing to recommend yet</h2>
+            <p class="max-w-md text-sm text-blue-100/70">{emptyStateMessage(result)}</p>
+            {result.reason === "empty_library" && (
+              <a
+                href="/library"
+                class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+              >
+                Go to your library
+              </a>
+            )}
+          </div>
+        )
+      }
+
+      {
+        !loadError && result?.status === "ranked" && (
+          <>
+            <div class="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b border-white/10 text-xs tracking-wide text-blue-100/50 uppercase">
+                  <tr>
+                    <th class="px-4 py-3 font-medium">#</th>
+                    <th class="px-4 py-3 font-medium">Title</th>
+                    <th class="px-4 py-3 font-medium">Platform</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium">Length</th>
+                    <th class="px-4 py-3 font-medium">Release</th>
+                    <th class="px-4 py-3 font-medium">Bought</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(({ entry }, index) => (
+                    <tr class="border-b border-white/5 last:border-0">
+                      <td class="px-4 py-3 text-blue-100/50">{index + 1}</td>
+                      <td class="px-4 py-3 font-medium text-white">{entry.title}</td>
+                      <td class="px-4 py-3 text-blue-100/80">{entry.platform}</td>
+                      <td class="px-4 py-3">
+                        <span
+                          class:list={[
+                            "inline-block rounded-full px-2 py-0.5 text-xs",
+                            playStatusBadgeClass(entry.play_status),
+                          ]}
+                        >
+                          {PLAY_STATUS_LABELS[entry.play_status]}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-blue-100/60">{lengthLabel(entry.length_hours)}</td>
+                      <td class="px-4 py-3 text-blue-100/60">{releaseLabel(entry.release_date, entry.release_year)}</td>
+                      <td class="px-4 py-3 text-blue-100/60">{entry.date_bought ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {hasMore && (
+              <div class="mt-4 text-center">
+                {showAll ? (
+                  <a
+                    href={showHref(null)}
+                    class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                  >
+                    Show top 10 only
+                  </a>
+                ) : (
+                  <a
+                    href={showHref("all")}
+                    class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                  >
+                    Show all {rankedItems.length} games
+                  </a>
+                )}
+              </div>
+            )}
+          </>
+        )
+      }
+    </div>
+  </main>
+</Layout>

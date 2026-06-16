@@ -102,7 +102,19 @@ function pageHref(targetPage: number): string {
             {total === 1 ? "game" : "games"}
           </p>
         </div>
-        {!isEmpty && <GameDialog platformOptions={platformOptions} client:load />}
+        <div class="flex flex-wrap items-center gap-3">
+          {
+            !isEmpty && (
+              <a
+                href="/play-next"
+                class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+              >
+                What should I play next?
+              </a>
+            )
+          }
+          {!isEmpty && <GameDialog platformOptions={platformOptions} client:load />}
+        </div>
       </header>
 
       {

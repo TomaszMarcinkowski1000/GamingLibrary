@@ -213,6 +213,40 @@ export async function listLibraryEntries(
 }
 
 /**
+ * Columns the recommender reads: the engine's scoring inputs (length/recency/status/tie-break
+ * keys) plus the fields the `/play-next` list renders (title/platform/release year). Kept narrow
+ * so the all-entries fetch stays cheap as the library grows.
+ */
+const RECOMMENDATION_COLUMNS =
+  "id, title, platform, play_status, length_hours, release_date, release_year, date_bought, created_at";
+
+/**
+ * Defensive ceiling on the all-entries fetch: the recommender ranks the whole library in-memory,
+ * so this caps the worst-case row count a single `/play-next` load can pull into the Worker. Set
+ * far above any realistic personal library, so it never clips real data — it only bounds a
+ * pathological case.
+ */
+const RECOMMENDATION_MAX_ROWS = 5000;
+
+/**
+ * Load every one of the current user's entries in a single RLS-scoped query (no pagination) —
+ * the deterministic recommender (S-07) scores the whole library at once and re-sorts in memory,
+ * so DB order is irrelevant. Selects only {@link RECOMMENDATION_COLUMNS}; the engine and page
+ * read no other fields, so the rows are cast to {@link LibraryEntry} for the shared types.
+ * Bounded by {@link RECOMMENDATION_MAX_ROWS} as a guardrail against a pathologically large library.
+ */
+export async function listAllEntries(supabase: TypedSupabaseClient): Promise<LibraryEntry[]> {
+  const { data, error } = await supabase
+    .from("library_entries")
+    .select(RECOMMENDATION_COLUMNS)
+    .limit(RECOMMENDATION_MAX_ROWS);
+  if (error) {
+    throw error;
+  }
+  return data as unknown as LibraryEntry[];
+}
+
+/**
  * Distinct non-null platform values already used in the current user's library.
  *
  * Computed in Postgres via the `list_used_platforms` RPC (DISTINCT ON + per-user index)
