@@ -45,7 +45,14 @@ Verification: unit tests prove every scoring rule and determinism; manual walk-t
 - **No mood/genre constraint (FR-017)** — nice-to-have, deferred to v2.
 - **No persistence of recommendation history**, no "I played this" write-back, no analytics logging.
 - **No editing entries from this page** — acting on a result links the user back to the library; correction stays in the existing edit/delete flow.
-- **No FR-009-style pagination of results** — a fixed top-10 cut.
+- **No FR-009-style pagination of results** — a fixed top-10 cut (a `?show=all` collapse/expand of the already-computed ranking is provided as an inspection aid, not paginated fetching).
+
+### V2 follow-ups (surfaced during Phase 2)
+
+These both require new persisted state + a write path, which is exactly the boundary v1 drew (read-only SSR over existing columns) — so they are deferred to v2 rather than treated as v1 gaps:
+
+- **Play-recency signal for comfort** — comfort currently proxies "an old favorite I haven't touched in a while" with `play_status` + oldest `release_date`, which misbehaves for a game you *replayed recently*. There is no existing column to swap in (we store `play_time_hours` and `date_bought`, but no play *timestamp*), so v2 should add a `last_played_at` / `finished_at` field (or a `play_sessions` table for multiple finish dates) and rank comfort on recency-of-play instead of release date.
+- **"Don't recommend this" (dismiss/exclude)** — let the user permanently exclude a game from recommendations. Needs a persisted per-user exclusion (flag or list), a mutation endpoint, and a control on the page — all of which v1 deliberately omitted (no write-back, no editing from this page).
 
 ## Implementation Approach
 
@@ -250,30 +257,30 @@ None — no schema change. All consumed columns already exist on `library_entrie
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run lint`
-- [x] 1.3 Unit tests pass: `npm test`
-- [x] 1.4 New tests cover the full rule matrix (buckets/distance/eligibility/completion/novelty/length-dominance/determinism/tie-break/empty-states/top-10)
+- [x] 1.1 Type checking passes: `npm run typecheck` — 42c0d71
+- [x] 1.2 Linting passes: `npm run lint` — 42c0d71
+- [x] 1.3 Unit tests pass: `npm test` — 42c0d71
+- [x] 1.4 New tests cover the full rule matrix (buckets/distance/eligibility/completion/novelty/length-dominance/determinism/tie-break/empty-states/top-10) — 42c0d71
 
 #### Manual
 
-- [x] 1.5 Spot-check ranking on a realistic library is intuitively sensible per mode
+- [x] 1.5 Spot-check ranking on a realistic library is intuitively sensible per mode — 42c0d71
 
 ### Phase 2: `/play-next` SSR page + entry point
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run lint`
-- [ ] 2.3 Production build succeeds: `npm run build`
-- [ ] 2.4 Unit tests still pass: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run lint`
+- [x] 2.3 Production build succeeds: `npm run build`
+- [x] 2.4 Unit tests still pass: `npm test`
 
 #### Manual
 
-- [ ] 2.5 Default load shows ranked top-10 (all buckets + newly bought)
-- [ ] 2.6 Dial changes reload with sensible ranking; URL round-trips deterministically
-- [ ] 2.7 Short-only with no short games ranks medium < long < very_long
-- [ ] 2.8 Each empty-state shows the correct binding-constraint sentence
-- [ ] 2.9 100%-completed hidden in new modes, last under comfort
-- [ ] 2.10 Header link navigates; unauthenticated `/play-next` redirects to sign-in
-- [ ] 2.11 Response under 2s p95 on a 50+ entry library
+- [x] 2.5 Default load shows ranked top-10 (all buckets + newly bought)
+- [x] 2.6 Dial changes reload with sensible ranking; URL round-trips deterministically
+- [x] 2.7 Short-only with no short games ranks medium < long < very_long
+- [x] 2.8 Each empty-state shows the correct binding-constraint sentence
+- [x] 2.9 100%-completed hidden in new modes, last under comfort
+- [x] 2.10 Header link navigates; unauthenticated `/play-next` redirects to sign-in
+- [x] 2.11 Response under 2s p95 on a 50+ entry library
