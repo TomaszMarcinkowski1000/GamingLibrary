@@ -270,17 +270,17 @@ None — no schema change. All consumed columns already exist on `library_entrie
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run lint`
-- [x] 2.3 Production build succeeds: `npm run build`
-- [x] 2.4 Unit tests still pass: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — bbe1f00
+- [x] 2.2 Linting passes: `npm run lint` — bbe1f00
+- [x] 2.3 Production build succeeds: `npm run build` — bbe1f00
+- [x] 2.4 Unit tests still pass: `npm test` — bbe1f00
 
 #### Manual
 
-- [x] 2.5 Default load shows ranked top-10 (all buckets + newly bought)
-- [x] 2.6 Dial changes reload with sensible ranking; URL round-trips deterministically
-- [x] 2.7 Short-only with no short games ranks medium < long < very_long
-- [x] 2.8 Each empty-state shows the correct binding-constraint sentence
-- [x] 2.9 100%-completed hidden in new modes, last under comfort
-- [x] 2.10 Header link navigates; unauthenticated `/play-next` redirects to sign-in
-- [x] 2.11 Response under 2s p95 on a 50+ entry library
+- [x] 2.5 Default load shows ranked top-10 (all buckets + newly bought) — bbe1f00
+- [x] 2.6 Dial changes reload with sensible ranking; URL round-trips deterministically — bbe1f00
+- [x] 2.7 Short-only with no short games ranks medium < long < very_long — bbe1f00
+- [x] 2.8 Each empty-state shows the correct binding-constraint sentence — bbe1f00
+- [x] 2.9 100%-completed hidden in new modes, last under comfort — bbe1f00
+- [x] 2.10 Header link navigates; unauthenticated `/play-next` redirects to sign-in — bbe1f00
+- [x] 2.11 Response under 2s p95 on a 50+ entry library — bbe1f00
