@@ -35,6 +35,58 @@ export const PLAY_STATUS_LABELS: Record<PlayStatus, string> = {
   completed_100: "100% completed",
 };
 
+// --- Library browse: sort, filters, facets (S-06) ---
+
+/**
+ * Sort vocabulary for the library browse view. Each key maps to the `library_entries`
+ * column and direction the service passes to `.order()`. `added_desc` (newest first) is
+ * the default and matches the pre-S-06 fixed ordering. The page validates the `?sort`
+ * param against these keys and falls back to {@link DEFAULT_LIBRARY_SORT}.
+ */
+export const LIBRARY_SORTS = {
+  added_desc: { label: "Date added (newest)", column: "created_at", ascending: false },
+  added_asc: { label: "Date added (oldest)", column: "created_at", ascending: true },
+  title_asc: { label: "Title (A–Z)", column: "title", ascending: true },
+  title_desc: { label: "Title (Z–A)", column: "title", ascending: false },
+  year_desc: { label: "Release year (newest)", column: "release_year", ascending: false },
+  year_asc: { label: "Release year (oldest)", column: "release_year", ascending: true },
+} as const satisfies Record<string, { label: string; column: string; ascending: boolean }>;
+
+export type LibrarySort = keyof typeof LIBRARY_SORTS;
+
+export const DEFAULT_LIBRARY_SORT: LibrarySort = "added_desc";
+
+/** A single facet option: an owned value plus how many of the user's entries match it. */
+export interface FacetValue {
+  value: string;
+  count: number;
+}
+
+/**
+ * Owned-only filter options with per-value counts for each filterable dimension,
+ * sourced from the `library_facets()` RPC. `statuses` carries only the statuses present
+ * in the library; the page zero-fills the five canonical {@link PLAY_STATUSES}.
+ */
+export interface LibraryFacets {
+  platforms: FacetValue[];
+  genres: FacetValue[];
+  series: FacetValue[];
+  statuses: FacetValue[];
+}
+
+/**
+ * Selected filter values per dimension. Within a dimension values combine as OR; across
+ * dimensions as AND (and AND with the title search). An absent/empty array = no filter on
+ * that dimension. Scalar columns (`statuses`, `platforms`) match with `.in()`; array
+ * columns (`genres`, `series`) match with `.overlaps()`.
+ */
+export interface LibraryFilters {
+  statuses?: PlayStatus[];
+  platforms?: string[];
+  genres?: string[];
+  series?: string[];
+}
+
 // --- Metadata enrichment status ---
 
 export const METADATA_STATUSES = ["matched", "no_match"] as const;

@@ -96,10 +96,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      list_used_platforms: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
+      library_facets: { Args: never; Returns: Json }
+      list_used_platforms: { Args: never; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

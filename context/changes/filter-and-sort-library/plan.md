@@ -265,16 +265,16 @@ One additive, read-only migration (the `library_facets` RPC). No schema/column c
 
 #### Automated
 
-- [ ] 1.1 Migration applies cleanly against a local Supabase
-- [ ] 1.2 `select public.library_facets();` returns the four-key JSON shape for an authenticated user
-- [ ] 1.3 DB types regenerated and `library_facets` present in `src/db/database.types.ts`
-- [ ] 1.4 Type checking + lint pass: `npm run lint`
-- [ ] 1.5 Build passes: `npm run build`
+- [x] 1.1 Migration applies cleanly against a local Supabase
+- [x] 1.2 `select public.library_facets();` returns the four-key JSON shape for an authenticated user
+- [x] 1.3 DB types regenerated and `library_facets` present in `src/db/database.types.ts`
+- [x] 1.4 Type checking + lint pass: `npm run lint`
+- [x] 1.5 Build passes: `npm run build`
 
 #### Manual
 
-- [ ] 1.6 Facet counts match a hand count on a seeded library (multi-genre game increments each genre)
-- [ ] 1.7 Null/empty genre/series arrays contribute no facet rows and don't error
+- [x] 1.6 Facet counts match a hand count on a seeded library (multi-genre game increments each genre)
+- [x] 1.7 Null/empty genre/series arrays contribute no facet rows and don't error
 
 ### Phase 2: Service Layer
 
