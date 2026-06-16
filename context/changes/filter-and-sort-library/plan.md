@@ -265,30 +265,30 @@ One additive, read-only migration (the `library_facets` RPC). No schema/column c
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly against a local Supabase
-- [x] 1.2 `select public.library_facets();` returns the four-key JSON shape for an authenticated user
-- [x] 1.3 DB types regenerated and `library_facets` present in `src/db/database.types.ts`
-- [x] 1.4 Type checking + lint pass: `npm run lint`
-- [x] 1.5 Build passes: `npm run build`
+- [x] 1.1 Migration applies cleanly against a local Supabase — 04b1d1c
+- [x] 1.2 `select public.library_facets();` returns the four-key JSON shape for an authenticated user — 04b1d1c
+- [x] 1.3 DB types regenerated and `library_facets` present in `src/db/database.types.ts` — 04b1d1c
+- [x] 1.4 Type checking + lint pass: `npm run lint` — 04b1d1c
+- [x] 1.5 Build passes: `npm run build` — 04b1d1c
 
 #### Manual
 
-- [x] 1.6 Facet counts match a hand count on a seeded library (multi-genre game increments each genre)
-- [x] 1.7 Null/empty genre/series arrays contribute no facet rows and don't error
+- [x] 1.6 Facet counts match a hand count on a seeded library (multi-genre game increments each genre) — 04b1d1c
+- [x] 1.7 Null/empty genre/series arrays contribute no facet rows and don't error — 04b1d1c
 
 ### Phase 2: Service Layer
 
 #### Automated
 
-- [ ] 2.1 Type checking + lint pass: `npm run lint`
-- [ ] 2.2 Build passes: `npm run build`
-- [ ] 2.3 (If a test harness is present) combined-filter + non-default-sort test returns expected rows and `total`
+- [x] 2.1 Type checking + lint pass: `npm run lint`
+- [x] 2.2 Build passes: `npm run build`
+- [x] 2.3 (If a test harness is present) combined-filter + non-default-sort test returns expected rows and `total`
 
 #### Manual
 
-- [ ] 2.4 `{ statuses: ["not_played"], platforms: ["PlayStation 5"] }` returns only unplayed PS5 entries (AND across)
-- [ ] 2.5 Two-value genre filter returns entries matching either genre (OR within, via `overlaps`)
-- [ ] 2.6 Each sort option orders correctly; pagination stable on tied keys
+- [x] 2.4 `{ statuses: ["not_played"], platforms: ["PlayStation 5"] }` returns only unplayed PS5 entries (AND across)
+- [x] 2.5 Two-value genre filter returns entries matching either genre (OR within, via `overlaps`)
+- [x] 2.6 Each sort option orders correctly; pagination stable on tied keys
 
 ### Phase 3: Page & UI
 

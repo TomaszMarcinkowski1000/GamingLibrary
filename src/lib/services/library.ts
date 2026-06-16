@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/db/database.types";
-import type { LibraryEntry, LibraryEntryInsert, LibraryEntryUpdate } from "@/types";
+import type {
+  LibraryEntry,
+  LibraryEntryInsert,
+  LibraryEntryUpdate,
+  LibraryFacets,
+  LibrarySort,
+  PlayStatus,
+} from "@/types";
+import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS } from "@/types";
 import { lookupGameMetadata } from "./igdb";
 
 /**
@@ -162,6 +170,18 @@ function escapeLikeTerm(term: string): string {
  * escaped so it matches literally. A blank/whitespace `search` is treated as no filter.
  * The filter is applied before `count: "exact"`, so `total` reflects the match count.
  *
+ * Filters (S-06) combine OR within a dimension, AND across dimensions, and AND with the
+ * title search. Scalar columns (`statuses` → `play_status`, `platforms` → `platform`) use
+ * `.in()`; array columns (`genres`, `series` are `text[]`) use `.overlaps()` so a row
+ * matches if any of its values is selected. Empty/undefined arrays = no filter on that
+ * dimension. All filters live in `buildQuery` so the count query, the page fetch, and the
+ * clamp re-fetch apply an identical filter set (otherwise `total` and the page diverge).
+ *
+ * `sort` (default {@link DEFAULT_LIBRARY_SORT} = newest added first) maps through
+ * {@link LIBRARY_SORTS} to the primary `.order()`. A `created_at desc` secondary order is
+ * always appended as a stable tiebreaker so pagination doesn't drop or duplicate rows when
+ * the primary key ties (common for `release_year`).
+ *
  * Out-of-bounds pages self-heal: a `page` past the last page (e.g. a deep-linked
  * `?page=99`, or `?page=2` after the last row was deleted) makes PostgREST answer the
  * ranged request with 416 / `PGRST103`. Rather than surface that as a load error, we
@@ -170,9 +190,28 @@ function escapeLikeTerm(term: string): string {
  */
 export async function listLibraryEntries(
   supabase: TypedSupabaseClient,
-  { page, pageSize, search }: { page: number; pageSize: number; search?: string },
+  {
+    page,
+    pageSize,
+    search,
+    statuses,
+    platforms,
+    genres,
+    series,
+    sort,
+  }: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    statuses?: PlayStatus[];
+    platforms?: string[];
+    genres?: string[];
+    series?: string[];
+    sort?: LibrarySort;
+  },
 ): Promise<{ entries: LibraryEntry[]; total: number }> {
   const term = search?.trim();
+  const { column, ascending } = LIBRARY_SORTS[sort ?? DEFAULT_LIBRARY_SORT];
 
   // Each fetch needs a fresh builder (PostgREST builders are single-use), so the filter
   // set lives in one factory both the initial and the clamp re-fetch reuse.
@@ -181,13 +220,31 @@ export async function listLibraryEntries(
     if (term) {
       query = query.ilike("title", `%${escapeLikeTerm(term)}%`);
     }
+    if (statuses?.length) {
+      query = query.in("play_status", statuses);
+    }
+    if (platforms?.length) {
+      query = query.in("platform", platforms);
+    }
+    if (genres?.length) {
+      query = query.overlaps("genre", genres);
+    }
+    if (series?.length) {
+      query = query.overlaps("series", series);
+    }
     return query;
   };
 
   const fetchPage = (targetPage: number) => {
     const from = (targetPage - 1) * pageSize;
     const to = from + pageSize - 1;
-    return buildQuery(false).order("created_at", { ascending: false }).range(from, to);
+    let query = buildQuery(false).order(column, { ascending });
+    // Stable secondary order so tied primary keys (e.g. shared release_year) don't shuffle
+    // rows across page boundaries. Skip when the primary order already is created_at.
+    if (column !== "created_at") {
+      query = query.order("created_at", { ascending: false });
+    }
+    return query.range(from, to);
   };
 
   const safePage = Math.max(1, Math.floor(page));
@@ -260,4 +317,23 @@ export async function listUsedPlatforms(supabase: TypedSupabaseClient): Promise<
     throw error;
   }
   return data;
+}
+
+/**
+ * Owned-only filter options with per-value counts for the library browse filters (S-06).
+ *
+ * Wraps the `library_facets()` RPC — one RLS-scoped round trip returning the distinct
+ * platforms/genres/series the current user owns plus the statuses present in their library,
+ * each with a match count, so the filter dropdowns only ever offer values that can match.
+ * Counts are computed against the whole library, independent of any other active filter.
+ * The RPC returns a single `jsonb` object (typed `Json` by the generated types); we assert
+ * it to the {@link LibraryFacets} shape the function/page share. Thin wrapper mirroring
+ * `listUsedPlatforms`; the add form's `list_used_platforms` stays untouched.
+ */
+export async function getLibraryFacets(supabase: TypedSupabaseClient): Promise<LibraryFacets> {
+  const { data, error } = await supabase.rpc("library_facets");
+  if (error) {
+    throw error;
+  }
+  return data as unknown as LibraryFacets;
 }
