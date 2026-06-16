@@ -280,31 +280,31 @@ One additive, read-only migration (the `library_facets` RPC). No schema/column c
 
 #### Automated
 
-- [x] 2.1 Type checking + lint pass: `npm run lint`
-- [x] 2.2 Build passes: `npm run build`
-- [x] 2.3 (If a test harness is present) combined-filter + non-default-sort test returns expected rows and `total`
+- [x] 2.1 Type checking + lint pass: `npm run lint` — b4f23e6
+- [x] 2.2 Build passes: `npm run build` — b4f23e6
+- [x] 2.3 (If a test harness is present) combined-filter + non-default-sort test returns expected rows and `total` — b4f23e6
 
 #### Manual
 
-- [x] 2.4 `{ statuses: ["not_played"], platforms: ["PlayStation 5"] }` returns only unplayed PS5 entries (AND across)
-- [x] 2.5 Two-value genre filter returns entries matching either genre (OR within, via `overlaps`)
-- [x] 2.6 Each sort option orders correctly; pagination stable on tied keys
+- [x] 2.4 `{ statuses: ["not_played"], platforms: ["PlayStation 5"] }` returns only unplayed PS5 entries (AND across) — b4f23e6
+- [x] 2.5 Two-value genre filter returns entries matching either genre (OR within, via `overlaps`) — b4f23e6
+- [x] 2.6 Each sort option orders correctly; pagination stable on tied keys — b4f23e6
 
 ### Phase 3: Page & UI
 
 #### Automated
 
-- [ ] 3.1 Type checking + lint pass: `npm run lint`
-- [ ] 3.2 Build passes: `npm run build`
+- [x] 3.1 Type checking + lint pass: `npm run lint`
+- [x] 3.2 Build passes: `npm run build`
 
 #### Manual
 
-- [ ] 3.3 Status + platform filter shows only matching rows; URL reflects both params
-- [ ] 3.4 Two genres → OR; adding series → further AND narrowing
-- [ ] 3.5 Each sort option reorders; default is newest-added-first
-- [ ] 3.6 Facet dropdowns show only owned values with correct counts; statuses show all five
-- [ ] 3.7 Filters + sort + search persist across pagination and a full reload
-- [ ] 3.8 Changing a filter resets to page 1
-- [ ] 3.9 No-match combination shows filter-aware empty state; "Clear all filters" returns to full library
-- [ ] 3.10 Series column renders joined values or "—"
-- [ ] 3.11 Usable on a mobile-width viewport (no horizontal overflow)
+- [x] 3.3 Status + platform filter shows only matching rows; URL reflects both params
+- [x] 3.4 Two genres → OR; adding series → further AND narrowing
+- [x] 3.5 Each sort option reorders; default is newest-added-first
+- [x] 3.6 Facet dropdowns show only owned values with correct counts; statuses show all five
+- [x] 3.7 Filters + sort + search persist across pagination and a full reload
+- [x] 3.8 Changing a filter resets to page 1
+- [x] 3.9 No-match combination shows filter-aware empty state; "Clear all filters" returns to full library
+- [x] 3.10 Series column renders joined values or "—"
+- [x] 3.11 Usable on a mobile-width viewport (no horizontal overflow)
