@@ -1,10 +1,10 @@
 ---
 change_id: filter-and-sort-library
 title: Filter and sort the library by status, platform, and genre
-status: impl_reviewed
+status: archived
 created: 2026-06-13
 updated: 2026-06-16
-archived_at: null
+archived_at: 2026-06-16T22:10:08Z
 ---
 
 ## Notes
