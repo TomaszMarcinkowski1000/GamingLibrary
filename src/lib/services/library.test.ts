@@ -185,7 +185,11 @@ describe("listLibraryEntries", () => {
       rangeArgs = [from, to];
       return Promise.resolve({ data: rows, count, error: null });
     });
-    const order = vi.fn(() => ({ range }));
+    // order is chainable: the primary order, the optional created_at tiebreaker, and the
+    // final id tiebreaker all return the same node before .range() resolves the page.
+    const orderNode: Record<string, unknown> = { range };
+    const order = vi.fn(() => orderNode);
+    orderNode.order = order;
     const select = vi.fn(() => ({ order }));
     return {
       client: { from: vi.fn(() => ({ select })) } as never,
@@ -272,10 +276,12 @@ describe("listLibraryEntries", () => {
     // Array (text[]) columns filter with .overlaps() so a row matching either value passes.
     expect(calls.overlaps).toContainEqual(["genre", ["RPG", "Action"]]);
     expect(calls.overlaps).toContainEqual(["series", ["Saga"]]);
-    // Non-default sort → release_year desc, then a created_at desc stable tiebreaker.
+    // Non-default sort → release_year desc, then a created_at desc tiebreaker, then a
+    // final id tiebreaker for fully deterministic ordering across page boundaries.
     expect(calls.order).toEqual([
       ["release_year", { ascending: false }],
       ["created_at", { ascending: false }],
+      ["id", undefined],
     ]);
     expect(range()).toEqual([0, 19]);
     expect(result).toEqual({ entries: [{ id: "x" }], total: 1 });
@@ -288,8 +294,11 @@ describe("listLibraryEntries", () => {
 
     expect(calls.in).toEqual([]);
     expect(calls.overlaps).toEqual([]);
-    // Default sort is created_at, which is already the tiebreaker — ordered exactly once.
-    expect(calls.order).toEqual([["created_at", { ascending: false }]]);
+    // Default sort is created_at (its own tiebreaker is skipped), then the final id tiebreaker.
+    expect(calls.order).toEqual([
+      ["created_at", { ascending: false }],
+      ["id", undefined],
+    ]);
   });
 });
 

@@ -240,10 +240,12 @@ export async function listLibraryEntries(
     const to = from + pageSize - 1;
     let query = buildQuery(false).order(column, { ascending });
     // Stable secondary order so tied primary keys (e.g. shared release_year) don't shuffle
-    // rows across page boundaries. Skip when the primary order already is created_at.
+    // rows across page boundaries. Skip created_at when it's already the primary order;
+    // id is the final deterministic tiebreaker since it's unique per row.
     if (column !== "created_at") {
       query = query.order("created_at", { ascending: false });
     }
+    query = query.order("id");
     return query.range(from, to);
   };
 
