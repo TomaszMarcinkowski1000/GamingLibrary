@@ -23,6 +23,16 @@ interface GameDialogProps {
   triggerSize?: "default" | "lg";
   /** Present → edit mode (pre-fill from this entry, PUT on save, in-dialog Delete). Absent → add mode. */
   entry?: LibraryEntry;
+  /**
+   * Controlled-open mode (S-03): when defined, the parent owns the open state (e.g. `PhotoCapture`
+   * opening the dialog programmatically after an identify). When `undefined`, the dialog falls back
+   * to its self-managed internal `open` state — the byte-for-byte trigger-driven behavior.
+   */
+  open?: boolean;
+  /** Open-state change callback for controlled mode. Fires alongside (or instead of) internal state. */
+  onOpenChange?: (open: boolean) => void;
+  /** Omit the rendered `DialogTrigger` — for controlled callers that open the dialog themselves. */
+  hideTrigger?: boolean;
 }
 
 const EMPTY: GameFormValues = {
@@ -93,8 +103,15 @@ export default function GameDialog({
   triggerLabel = "Add game",
   triggerSize = "default",
   entry,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: GameDialogProps) {
-  const [open, setOpen] = useState(false);
+  // Controlled vs. uncontrolled open: a defined `controlledOpen` prop hands ownership to the parent
+  // (S-03's PhotoCapture); otherwise the dialog manages its own `open` like every other usage.
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
   // After a successful ADD we keep this dialog open and flip it into edit mode, pre-filled with the
   // freshly-enriched entry so the user can review/correct IGDB's result — the S-01 post-save seam
   // realized ("reopen the just-saved entry in edit mode"). `entry` (a true edit) takes precedence;
@@ -283,7 +300,10 @@ export default function GameDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        if (!isControlled) {
+          setInternalOpen(next);
+        }
+        onOpenChange?.(next);
         if (next) {
           setSavedSinceOpen(false);
           // Re-seed from the latest (possibly inline-updated) entry so edits made on the list since
@@ -299,24 +319,26 @@ export default function GameDialog({
         }
       }}
     >
-      <DialogTrigger asChild>
-        {isEdit ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Edit"
-            title="Edit"
-            className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
-          >
-            <Pencil />
-          </Button>
-        ) : (
-          <Button size={triggerSize}>
-            <Plus />
-            {triggerLabel}
-          </Button>
-        )}
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          {isEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Edit"
+              title="Edit"
+              className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
+            >
+              <Pencil />
+            </Button>
+          ) : (
+            <Button size={triggerSize}>
+              <Plus />
+              {triggerLabel}
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent ref={setContentEl} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit game" : "Add a game"}</DialogTitle>
