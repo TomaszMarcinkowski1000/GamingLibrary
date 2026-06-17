@@ -1,126 +1,147 @@
 ---
-import Topbar from "@/components/Topbar.astro";
+const year = new Date().getFullYear();
+
+const features = [
+  {
+    title: "Catalogue from a photo",
+    body: "Snap the box or type the title — your physical game shelf becomes a searchable library in seconds.",
+    icon: "camera",
+  },
+  {
+    title: "Never buy a dupe again",
+    body: "Standing in the shop? Check in one tap whether that boxed copy is already sitting on your shelf at home.",
+    icon: "check",
+  },
+  {
+    title: "Know what to play next",
+    body: "A deterministic pick from your backlog — no endless scrolling, just the next game to drop into.",
+    icon: "play",
+  },
+];
 ---
 
-<div class="bg-cosmic relative min-h-screen w-full overflow-hidden">
-  <!-- Cosmic orbs -->
+<div class="relative min-h-screen w-full overflow-hidden bg-[#070b09] text-emerald-50">
+  <!-- Neon grid floor -->
   <div
-    class="pointer-events-none absolute top-1/4 -left-24 h-[350px] w-[350px] rounded-full bg-purple-500/20 blur-[120px]"
+    class="pointer-events-none absolute inset-0 opacity-[0.18]"
+    style="background-image: linear-gradient(rgba(16,185,129,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.4) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);"
+  >
+  </div>
+  <!-- Accent glows -->
+  <div
+    class="pointer-events-none absolute -top-24 left-1/3 h-[360px] w-[360px] rounded-full bg-emerald-500/20 blur-[130px]"
   >
   </div>
   <div
-    class="pointer-events-none absolute top-2/3 -right-16 h-[250px] w-[250px] rounded-full bg-blue-500/15 blur-[100px]"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute top-0 left-1/2 h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-indigo-400/10 blur-[140px]"
-  >
-  </div>
-
-  <!-- Star field -->
-  <div
-    class="pointer-events-none absolute inset-0"
-    style="background-image: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px), radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px); background-size: 200px 200px, 150px 150px, 100px 100px; background-position: 0 0, 40px 60px, 80px 30px;"
+    class="pointer-events-none absolute top-1/2 -right-20 h-[300px] w-[300px] rounded-full bg-cyan-400/15 blur-[120px]"
   >
   </div>
 
-  <div class="relative z-10 p-4 sm:p-8">
-    <Topbar />
+  <div class="relative z-10 mx-auto flex max-w-5xl flex-col px-5 sm:px-8">
+    <!-- Wordmark -->
+    <header class="flex items-center gap-2 py-6">
+      <span class="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.7)]"
+      ></span>
+      <span class="text-sm font-semibold tracking-[0.2em] text-emerald-200/80 uppercase">Gaming Library</span>
+    </header>
 
-    <!-- Hero section -->
-    <div class="mx-auto flex max-w-4xl flex-col items-center justify-center px-4 py-24 text-center sm:py-32 lg:py-40">
-      <h1
-        class="mb-6 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 bg-clip-text text-5xl leading-tight font-bold text-transparent sm:text-6xl lg:text-7xl"
+    <!-- Hero -->
+    <section class="flex flex-col items-center py-20 text-center sm:py-28 lg:py-36">
+      <span
+        class="mb-6 rounded-full border border-emerald-400/30 bg-emerald-400/5 px-4 py-1.5 text-xs font-medium tracking-wide text-emerald-200/90"
       >
-        10x Astro Starter
+        Your shelf, catalogued
+      </span>
+      <h1 class="max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+        Every game you own,<br />
+        <span class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
+          one tap away.
+        </span>
       </h1>
-      <p class="mb-10 max-w-2xl text-lg text-blue-100/70 sm:text-xl">
-        A production-ready starter with authentication, modern tooling, and a cosmic developer experience.
+      <p class="mt-6 max-w-xl text-lg text-emerald-100/60 sm:text-xl">
+        Catalogue your physical game collection, settle "do I already own this?" before you buy, and let it tell you
+        what to play next.
       </p>
-      <div class="flex flex-col gap-4 sm:flex-row">
+      <div class="mt-10 flex flex-col gap-4 sm:flex-row">
         <a
           href="/auth/signin"
-          class="inline-flex items-center justify-center rounded-lg bg-purple-600 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-purple-500"
+          class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-7 py-3 text-base font-semibold text-[#06120c] shadow-[0_0_24px_-4px_rgba(52,211,153,0.6)] transition-colors hover:bg-emerald-300"
         >
           Sign In
         </a>
         <a
           href="/auth/signup"
-          class="inline-flex items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-white/10"
+          class="inline-flex items-center justify-center rounded-lg border border-emerald-400/30 px-7 py-3 text-base font-medium text-emerald-50 transition-colors hover:bg-emerald-400/10"
         >
           Sign Up
         </a>
       </div>
-    </div>
+    </section>
 
-    <!-- Feature cards -->
-    <div class="mx-auto grid max-w-4xl grid-cols-1 gap-6 px-4 pb-24 sm:grid-cols-3">
-      <div class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="mb-4 text-purple-300"
-        >
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-        <h3 class="mb-2 text-lg font-semibold text-white">Authentication Ready</h3>
-        <p class="text-sm leading-relaxed text-blue-100/60">
-          Built-in Supabase auth with sign in, sign up, and protected routes out of the box.
-        </p>
-      </div>
+    <!-- Feature highlights -->
+    <section class="grid grid-cols-1 gap-5 pb-24 sm:grid-cols-3">
+      {
+        features.map((feature) => (
+          <div class="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-6 transition-colors hover:border-emerald-400/25">
+            <div class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+              {feature.icon === "camera" && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              )}
+              {feature.icon === "check" && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21.801 10A10 10 0 1 1 17 3.335" />
+                  <path d="m9 11 3 3L22 4" />
+                </svg>
+              )}
+              {feature.icon === "play" && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polygon points="6 3 20 12 6 21 6 3" />
+                </svg>
+              )}
+            </div>
+            <h3 class="mb-2 text-lg font-semibold text-white">{feature.title}</h3>
+            <p class="text-sm leading-relaxed text-emerald-100/55">{feature.body}</p>
+          </div>
+        ))
+      }
+    </section>
 
-      <div class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="mb-4 text-purple-300"
-        >
-          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-          <polyline points="2 17 12 22 22 17"></polyline>
-          <polyline points="2 12 12 17 22 12"></polyline>
-        </svg>
-        <h3 class="mb-2 text-lg font-semibold text-white">Modern Stack</h3>
-        <p class="text-sm leading-relaxed text-blue-100/60">
-          Astro 5, React 19, Tailwind 4, and TypeScript — the latest tools, ready to go.
-        </p>
-      </div>
-
-      <div class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="mb-4 text-purple-300"
-        >
-          <polyline points="16 18 22 12 16 6"></polyline>
-          <polyline points="8 6 2 12 8 18"></polyline>
-        </svg>
-        <h3 class="mb-2 text-lg font-semibold text-white">Developer Experience</h3>
-        <p class="text-sm leading-relaxed text-blue-100/60">
-          ESLint, Prettier, and pre-commit hooks keep your codebase clean from day one.
-        </p>
-      </div>
-    </div>
+    <!-- Footer -->
+    <footer class="border-t border-emerald-400/10 py-6 text-center text-xs text-emerald-100/40">
+      Gaming Library — a home for one collector's shelf. © {year}
+    </footer>
   </div>
 </div>

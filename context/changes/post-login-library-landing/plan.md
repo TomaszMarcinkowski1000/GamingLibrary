@@ -218,27 +218,27 @@ Visual direction is a fresh gaming theme distinct from the signed-in app's cosmi
 
 #### Automated
 
-- [x] 1.1 Linting passes: `npm run lint`
-- [x] 1.2 Production build succeeds: `npm run build`
-- [x] 1.3 No source references to `/dashboard` remain
-- [x] 1.4 `src/pages/dashboard.astro` no longer exists
+- [x] 1.1 Linting passes: `npm run lint` — 675db09
+- [x] 1.2 Production build succeeds: `npm run build` — 675db09
+- [x] 1.3 No source references to `/dashboard` remain — 675db09
+- [x] 1.4 `src/pages/dashboard.astro` no longer exists — 675db09
 
 #### Manual
 
-- [x] 1.5 Signing in lands directly on `/library`
-- [x] 1.6 `/library` and `/play-next` show a header with email, "Library" link, and working Sign out
-- [x] 1.7 Visiting `/` while logged in redirects to `/library`
-- [x] 1.8 Visiting `/dashboard` returns 404
-- [x] 1.9 Signing out lands on `/`
-- [x] 1.10 The "Library" header link returns to `/library` from `/play-next`
+- [x] 1.5 Signing in lands directly on `/library` — 675db09
+- [x] 1.6 `/library` and `/play-next` show a header with email, "Library" link, and working Sign out — 675db09
+- [x] 1.7 Visiting `/` while logged in redirects to `/library` — 675db09
+- [x] 1.8 Visiting `/dashboard` returns 404 — 675db09
+- [x] 1.9 Signing out lands on `/` — 675db09
+- [x] 1.10 The "Library" header link returns to `/library` from `/play-next` — 675db09
 
 ### Phase 2: Gaming Library landing page
 
 #### Automated
 
-- [ ] 2.1 Linting passes: `npm run lint`
-- [ ] 2.2 Production build succeeds: `npm run build`
-- [ ] 2.3 No "10x Astro Starter" string remains in the landing source
+- [x] 2.1 Linting passes: `npm run lint`
+- [x] 2.2 Production build succeeds: `npm run build`
+- [x] 2.3 No "10x Astro Starter" string remains in the landing source
 
 #### Manual
 
