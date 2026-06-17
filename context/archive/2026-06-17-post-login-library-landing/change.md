@@ -1,10 +1,10 @@
 ---
 change_id: post-login-library-landing
 title: Reach the library directly after login (no dashboard hop)
-status: impl_reviewed
+status: archived
 created: 2026-06-17
 updated: 2026-06-17
-archived_at: null
+archived_at: 2026-06-17T19:33:02Z
 ---
 
 ## Notes

@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-16
+updated: 2026-06-17
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -39,7 +39,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | done |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | done |
 | S-07  | play-next-recommendation   | get a ranked "what should I play next?" list under constraints  | F-01, F-02, S-01, S-04     | US-03, FR-015, FR-016, FR-018 | done |
-| S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | optional |
+| S-08  | post-login-library-landing | reach the library directly after login (no dashboard hop)       | S-01                       | US-04 (navigation)        | done |
 | S-09  | enrichment-match-precision | precise IGDB grounding: collapse edition variants to base game + suppress false positives | F-02, S-01 | FR-005, FR-008            | done |
 
 ## Streams
@@ -211,7 +211,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Should login redirect straight to `/library`, or should the dashboard be reframed as a library-first landing (keeping sign-out etc.)? — Owner: user. Block: no (decide during planning).
 - **Risk:** Pure UX polish surfaced during S-01 manual verification (2026-06-11) — the dashboard → library hop is an inconvenience, not a defect. **Optional:** gates no other slice; current navigation works. Low risk, mostly a redirect/nav decision.
-- **Status:** optional
+- **Status:** done
 
 ### S-09: Tighten IGDB match precision  — ★ unblocks the north star
 
@@ -277,3 +277,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-09: IGDB grounding resolves to the right game entry, on two fronts: (1) edition-variant collapse — a box read as "Alan Wake II Deluxe Edition" / "Horizon Forbidden West Complete Edition" / "Bloodborne GOTY" / "Marvel's Spider-Man" grounds to the base-game id, not the edition-specific entry (via IGDB `parent_game`/version relationships or top-N + base-title match); and (2) false-positive suppression — thin or ambiguous search terms (e.g. title "e" on "Xbox Series X") degrade to the existing `no_match` flag instead of attaching wrong metadata. Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.** — Archived 2026-06-13 → `context/archive/2026-06-13-enrichment-match-precision/`. Lesson: —.
 - **S-06: user can filter and sort the library view by status, platform, and genre, combining filters with each other and with the title search; filter/sort state persists within a browsing session.** — Archived 2026-06-16 → `context/archive/2026-06-13-filter-and-sort-library/`. Lesson: —.
 - **S-07: user can request a deterministic ranked list from their own library, constrained by overall game-length bucket (short < 10h / medium 10–30h / long 30h+) and biased by one of three novelty modes ("new releases" / "newly bought" / "comfort"); 100%-completed games are de-prioritized except under "comfort", and an empty result explains which constraint excluded everything.** — Archived 2026-06-16 → `context/archive/2026-06-13-play-next-recommendation/`. Lesson: —.
+- **S-08: after signing in the user lands on their library (or reaches it in a single, obvious step) rather than the current dashboard → library two-hop, and a persistent way back to the library exists.** — Archived 2026-06-17 → `context/archive/2026-06-17-post-login-library-landing/`. Lesson: —.
