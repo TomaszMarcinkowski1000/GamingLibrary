@@ -236,14 +236,14 @@ Visual direction is a fresh gaming theme distinct from the signed-in app's cosmi
 
 #### Automated
 
-- [x] 2.1 Linting passes: `npm run lint`
-- [x] 2.2 Production build succeeds: `npm run build`
-- [x] 2.3 No "10x Astro Starter" string remains in the landing source
+- [x] 2.1 Linting passes: `npm run lint` — b5600e5
+- [x] 2.2 Production build succeeds: `npm run build` — b5600e5
+- [x] 2.3 No "10x Astro Starter" string remains in the landing source — b5600e5
 
 #### Manual
 
-- [ ] 2.4 `/` logged out shows the Gaming Library landing (name, tagline, CTAs, 2-3 highlights, footer)
-- [ ] 2.5 Sign In / Sign Up CTAs navigate correctly
-- [ ] 2.6 The landing uses the fresh gaming theme (no starter cosmic hero/cards)
-- [ ] 2.7 The page is responsive on mobile widths
-- [ ] 2.8 Logged-in users are still redirected from `/` to `/library`
+- [x] 2.4 `/` logged out shows the Gaming Library landing (name, tagline, CTAs, 2-3 highlights, footer) — b5600e5
+- [x] 2.5 Sign In / Sign Up CTAs navigate correctly — b5600e5
+- [x] 2.6 The landing uses the fresh gaming theme (no starter cosmic hero/cards) — b5600e5
+- [x] 2.7 The page is responsive on mobile widths — b5600e5
+- [x] 2.8 Logged-in users are still redirected from `/` to `/library` — b5600e5
