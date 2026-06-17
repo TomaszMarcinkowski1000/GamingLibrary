@@ -2,6 +2,7 @@
 import type { LibraryEntry, LibraryFacets, LibrarySort, PlayStatus } from "@/types";
 import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS, PLAY_STATUSES } from "@/types";
 import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getLibraryFacets, listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
@@ -133,6 +134,7 @@ function pageHref(targetPage: number): string {
 
 <Layout title="My Library">
   <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+    <Topbar />
     <div class="mx-auto max-w-5xl">
       <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>

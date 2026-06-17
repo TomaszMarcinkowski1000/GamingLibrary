@@ -218,19 +218,19 @@ Visual direction is a fresh gaming theme distinct from the signed-in app's cosmi
 
 #### Automated
 
-- [ ] 1.1 Linting passes: `npm run lint`
-- [ ] 1.2 Production build succeeds: `npm run build`
-- [ ] 1.3 No source references to `/dashboard` remain
-- [ ] 1.4 `src/pages/dashboard.astro` no longer exists
+- [x] 1.1 Linting passes: `npm run lint`
+- [x] 1.2 Production build succeeds: `npm run build`
+- [x] 1.3 No source references to `/dashboard` remain
+- [x] 1.4 `src/pages/dashboard.astro` no longer exists
 
 #### Manual
 
-- [ ] 1.5 Signing in lands directly on `/library`
-- [ ] 1.6 `/library` and `/play-next` show a header with email, "Library" link, and working Sign out
-- [ ] 1.7 Visiting `/` while logged in redirects to `/library`
-- [ ] 1.8 Visiting `/dashboard` returns 404
-- [ ] 1.9 Signing out lands on `/`
-- [ ] 1.10 The "Library" header link returns to `/library` from `/play-next`
+- [x] 1.5 Signing in lands directly on `/library`
+- [x] 1.6 `/library` and `/play-next` show a header with email, "Library" link, and working Sign out
+- [x] 1.7 Visiting `/` while logged in redirects to `/library`
+- [x] 1.8 Visiting `/dashboard` returns 404
+- [x] 1.9 Signing out lands on `/`
+- [x] 1.10 The "Library" header link returns to `/library` from `/play-next`
 
 ### Phase 2: Gaming Library landing page
 

@@ -2,6 +2,7 @@
 import type { RecommendationItem, RecommendationResult } from "@/types";
 import { LENGTH_BUCKETS, LENGTH_BUCKET_LABELS, NOVELTY_MODES, NOVELTY_MODE_LABELS, PLAY_STATUS_LABELS } from "@/types";
 import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getRecommendations } from "@/lib/services/recommendation";
 import { parseRecommendationParams } from "@/lib/validation/library";
@@ -71,6 +72,7 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
 
 <Layout title="What should I play next?">
   <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+    <Topbar />
     <div class="mx-auto max-w-5xl">
       <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
