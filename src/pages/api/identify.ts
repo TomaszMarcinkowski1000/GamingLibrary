@@ -2,8 +2,10 @@ import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { lookupGameMetadata } from "@/lib/services/igdb";
+import { createLibraryEntryFromGrounding } from "@/lib/services/library";
+import { createClient } from "@/lib/supabase";
 import { identifyGameFromPhoto } from "@/lib/services/vision";
-import type { IgdbLookupResult, MetadataStatus } from "@/types";
+import type { IgdbLookupResult, LibraryEntry, MetadataStatus } from "@/types";
 
 export const prerender = false;
 
@@ -15,14 +17,16 @@ export const prerender = false;
  * value the accuracy harness scores on) — or an honest `unsure`. Auth-gated and runtime-correct
  * (`cloudflare:workers` env, never `locals.runtime`) so S-03 can reuse it verbatim.
  *
- * This route does NOT persist anything — the spike measures `{title, platform, igdbId}`, it does
- * not write to `library_entries` (that's S-03's `createLibraryEntry`).
+ * By default this route does NOT persist anything — the spike/harness path measures
+ * `{title, platform, igdbId}` and never writes to `library_entries`. S-03's UI opts into
+ * persistence with a `persist` form field: a confident read is auto-saved from the grounding
+ * already in hand and the created row is returned as `entry` (see POST).
  */
 
 /**
  * Response contract. `identified` carries the grounded `igdbId` (null only when IGDB transport
- * failed — a `no_match` is folded into `unsure`, see below). `unsure` is the explicit abstain.
- * Discriminant `status` matches the vision + IGDB result unions.
+ * failed or grounding missed). On the persist path it also carries the created `entry`. `unsure`
+ * is the explicit abstain. Discriminant `status` matches the vision + IGDB result unions.
  */
 type IdentifyResponse =
   | {
@@ -36,6 +40,8 @@ type IdentifyResponse =
       // harness can print a per-case collapse note. Not a scored field — the harness reads
       // `igdbId`/`status`/`platform`/`title` for correctness, never `debug`.
       debug?: { collapsedFrom: number | null };
+      // The persisted row, present only on the persist path (S-03 UI). Absent on the harness path.
+      entry?: LibraryEntry;
     }
   | { status: "unsure"; confidence: number };
 
@@ -56,6 +62,12 @@ const uploadSchema = z.object({
     .refine((file) => file.size > 0, "the uploaded `photo` is empty")
     .refine((file) => file.size <= MAX_UPLOAD_BYTES, "the uploaded `photo` exceeds the 10 MB limit")
     .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), "unsupported image type (png/jpeg/webp/gif only)"),
+  // Opt-in persistence (S-03 UI). Absent/anything-but-"true" keeps the harness path (no write).
+  // `form.get` yields `string | null`; normalize to a boolean here.
+  persist: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((value) => value === "true"),
 });
 
 /**
@@ -119,7 +131,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
   });
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
   // Auth gate (mirror api/library/index.ts) — the route is shared with S-03, so it stays gated.
   if (!locals.user) {
     return Response.json({ error: "Not authenticated" }, { status: 401 });
@@ -132,12 +144,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return Response.json({ error: "Expected multipart/form-data with a `photo` file" }, { status: 400 });
   }
 
-  const parsed = uploadSchema.safeParse({ photo: form.get("photo") });
+  const parsed = uploadSchema.safeParse({ photo: form.get("photo"), persist: form.get("persist") });
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { photo } = parsed.data;
+  const { photo, persist } = parsed.data;
   const dataUrl = toBase64DataUrl(new Uint8Array(await photo.arrayBuffer()), photo.type);
 
   // Vision call. A missing OPENROUTER_API_KEY or a non-2xx OpenRouter response throws (carrying the
@@ -165,9 +177,43 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // IGDB/Twitch transport, auth, or missing-KV failure — fall through to a null-id response.
   }
 
-  // Decision — abstain on IGDB no-match (load-bearing for the metric): a successful vision read that
-  // grounds to `no_match` has no id to score, so it's an abstain, NOT a confident answer. This keeps
-  // "wrong" (grounded to the wrong id) distinct from "couldn't ground". The harness relies on this split.
+  // Persist path (S-03 UI): a confident vision read is auto-saved straight into the library from the
+  // grounding already in hand — matched → full metadata, no_match/null → nulls + `no_match`. This
+  // INVERTS the harness's no_match→unsure fold below: the UI wants the saved entry, not an abstain.
+  // (Only a *vision* `unsure`, handled above, routes to the manual fallback.)
+  if (persist) {
+    const supabase = createClient(request.headers, cookies);
+    if (!supabase) {
+      return Response.json({ error: "Supabase is not configured" }, { status: 500 });
+    }
+
+    let entry: LibraryEntry;
+    try {
+      entry = await createLibraryEntryFromGrounding(supabase, {
+        title: vision.title,
+        platform: vision.platform,
+        grounding,
+      });
+    } catch {
+      return Response.json({ error: "Failed to save the entry" }, { status: 500 });
+    }
+
+    return Response.json({
+      status: "identified",
+      title: vision.title,
+      platform: vision.platform,
+      confidence: vision.confidence,
+      igdbId: grounding?.status === "matched" ? grounding.igdbId : null,
+      metadataStatus: entry.metadata_status,
+      debug: { collapsedFrom: grounding?.status === "matched" ? (grounding.collapsedFrom ?? null) : null },
+      entry,
+    } satisfies IdentifyResponse);
+  }
+
+  // Harness path (persist off) — abstain on IGDB no-match (load-bearing for the metric): a successful
+  // vision read that grounds to `no_match` has no id to score, so it's an abstain, NOT a confident
+  // answer. This keeps "wrong" (grounded to the wrong id) distinct from "couldn't ground". The harness
+  // relies on this split.
   if (grounding?.status === "no_match") {
     return Response.json({ status: "unsure", confidence: vision.confidence } satisfies IdentifyResponse);
   }

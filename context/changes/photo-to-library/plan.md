@@ -265,16 +265,16 @@ For each of mobile **Chrome, Firefox, Safari, Edge** (and a desktop pass each):
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run build`
-- [ ] 1.2 Linting passes: `npm run lint`
-- [ ] 1.3 Unit tests pass for `createLibraryEntryFromGrounding` (matched / no_match / null grounding)
+- [x] 1.1 Type checking passes: `npm run build`
+- [x] 1.2 Linting passes: `npm run lint`
+- [x] 1.3 Unit tests pass for `createLibraryEntryFromGrounding` (matched / no_match / null grounding)
 
 #### Manual
 
-- [ ] 1.4 `persist` off returns unchanged spike shape; `npm run harness` runs and scores as before
-- [ ] 1.5 `persist` on + confident matched read creates one row and returns it as `entry`
-- [ ] 1.6 Confident read grounding to no_match persists with `metadata_status='no_match'` when `persist` on
-- [ ] 1.7 Vision `unsure` read with `persist` on writes nothing and returns `unsure`
+- [x] 1.4 `persist` off returns unchanged spike shape; `npm run harness` runs and scores as before
+- [x] 1.5 `persist` on + confident matched read creates one row and returns it as `entry`
+- [x] 1.6 Confident read grounding to no_match persists with `metadata_status='no_match'` when `persist` on
+- [x] 1.7 Vision `unsure` read with `persist` on writes nothing and returns `unsure`
 
 ### Phase 2: Client — photo-capture island
 
