@@ -413,32 +413,32 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [x] 3.1 Type-checked lint passes: `npm run lint`
-- [x] 3.2 Production build succeeds: `npm run build`
-- [x] 3.3 No `bg-cosmic` anywhere in `src/`
-- [x] 3.4 No stray old-palette classes on migrated app pages
+- [x] 3.1 Type-checked lint passes: `npm run lint` — aa74eec
+- [x] 3.2 Production build succeeds: `npm run build` — aa74eec
+- [x] 3.3 No `bg-cosmic` anywhere in `src/` — aa74eec
+- [x] 3.4 No stray old-palette classes on migrated app pages — aa74eec
 
 #### Manual
 
-- [x] 3.5 `/library` and `/play-next` render calm emerald variant; tables/filters legible
-- [x] 3.6 Sort dropdown height matches filter popover buttons
-- [x] 3.7 Status badges read distinctly; not-played badge emerald-tinted
-- [x] 3.8 Filter popovers, sort menu, selection-count badges read emerald/green-black
-- [x] 3.9 Calm-vs-full decoration decision confirmed
+- [x] 3.5 `/library` and `/play-next` render calm emerald variant; tables/filters legible — aa74eec
+- [x] 3.6 Sort dropdown height matches filter popover buttons — aa74eec
+- [x] 3.7 Status badges read distinctly; not-played badge emerald-tinted — aa74eec
+- [x] 3.8 Filter popovers, sort menu, selection-count badges read emerald/green-black — aa74eec
+- [x] 3.9 Calm-vs-full decoration decision confirmed — aa74eec
 
 ### Phase 4: Dialog Glass & Emerald Accents
 
 #### Automated
 
-- [ ] 4.1 Type-checked lint passes: `npm run lint`
-- [ ] 4.2 Production build succeeds: `npm run build`
+- [x] 4.1 Type-checked lint passes: `npm run lint`
+- [x] 4.2 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 4.3 Add/edit/combobox dialogs render as emerald-glass panels matching page cards
-- [ ] 4.4 Delete confirmation on-theme but keeps clearly red destructive action
-- [ ] 4.5 Dialog text/inputs/selects/close button legible on new surface
-- [ ] 4.6 Animations work; no layout shift or clipping regressions
+- [x] 4.3 Add/edit/combobox dialogs render as emerald-glass panels matching page cards
+- [x] 4.4 Delete confirmation on-theme but keeps clearly red destructive action
+- [x] 4.5 Dialog text/inputs/selects/close button legible on new surface
+- [x] 4.6 Animations work; no layout shift or clipping regressions
 
 ### Phase 5: Topbar Redesign + Nav Consolidation
 
