@@ -1,10 +1,10 @@
 ---
 change_id: unify-visual-theme
 title: Unify visual theme across auth, library, and play-next to match landing
-status: impl_reviewed
+status: archived
 created: 2026-06-19
 updated: 2026-06-19
-archived_at: null
+archived_at: 2026-06-19T21:29:12Z
 ---
 
 ## Notes

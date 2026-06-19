@@ -237,7 +237,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 | H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | todo   |
 | H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | done   |
 | H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | done   |
-| H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | todo   |
+| H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | done   |
 | H-05 | Disable the Astro dev toolbar island                              | chore       | astro.config.mjs           | #26  | done   |
 
 ### H-01: Platform combobox opens upward and is clipped (regression)
@@ -267,7 +267,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 - **Outcome:** Sign in, sign up, library, and "what to play next" share the landing page's emerald/neon theme instead of the current `bg-cosmic` blue/purple.
 - **Root cause:** The emerald theme is hardcoded inline in `Welcome.astro`; `Layout.astro` is structural only and carries no theme, so the four pages diverged.
 - **Fix sketch:** Extract the welcome theme (background, neon grid, glows, color tokens) into a reusable layout/shell, then apply it to the four pages and restyle the `Topbar`.
-- **Status:** todo
+- **Status:** done (2026-06-19)
 
 ### H-05: Disable the Astro dev toolbar island
 
