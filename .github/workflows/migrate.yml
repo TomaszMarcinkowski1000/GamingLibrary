@@ -1,0 +1,32 @@
+name: Migrate database
+
+# Applies supabase/migrations/** to the remote (production) Supabase project.
+# Cloudflare Workers Builds deploys the app independently on push to main; this
+# workflow keeps the database schema in sync. It runs only when migrations change.
+#
+# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  — personal access token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD   — the project's database password
+#   SUPABASE_PROJECT_ID    — the project ref (the <ref> in <ref>.supabase.co)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - run: supabase db push
