@@ -314,13 +314,13 @@ No data migration. Existing rows keep their stored values; only new photo adds a
 
 #### Automated
 
-- [x] 2.1 Unit tests pass (including unchanged `igdb` grounding tests): `npm test`
-- [x] 2.2 Type checking passes: `npm run typecheck`
-- [x] 2.3 Linting passes: `npm run lint`
-- [x] 2.4 Production build succeeds: `npm run build`
+- [x] 2.1 Unit tests pass (including unchanged `igdb` grounding tests): `npm test` — b42743f
+- [x] 2.2 Type checking passes: `npm run typecheck` — b42743f
+- [x] 2.3 Linting passes: `npm run lint` — b42743f
+- [x] 2.4 Production build succeeds: `npm run build` — b42743f
 
 #### Manual
 
-- [x] 2.5 Photo-add an ALL-CAPS box → saved title is Title Case
-- [x] 2.6 Photo-add a `PC DVD` box → saved platform reads `PC`
-- [x] 2.7 Grounded result matches pre-change grounding (no regression)
+- [x] 2.5 Photo-add an ALL-CAPS box → saved title is Title Case — b42743f
+- [x] 2.6 Photo-add a `PC DVD` box → saved platform reads `PC` — b42743f
+- [x] 2.7 Grounded result matches pre-change grounding (no regression) — b42743f
