@@ -349,59 +349,79 @@ export default function GameDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent ref={setContentEl} className="max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit game" : "Add a game"}</DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Update any field. Re-fetch metadata to pull fresh IGDB data for review."
-              : "Enter a title and platform — we’ll fetch its metadata automatically."}
-          </DialogDescription>
-          {isEdit && values.metadata_status !== "matched" && (
-            <span className="w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">No metadata</span>
-          )}
-          {!isEdit && notice && <p className="rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-200">{notice}</p>}
-        </DialogHeader>
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSave();
-          }}
-        >
-          <GameFormFields
-            values={values}
-            onChange={patchValues}
-            errors={errors}
-            platformOptions={options}
-            titleRef={titleRef}
-            platformContainer={contentEl}
-            mode={isEdit ? "edit" : "add"}
-            onRefetch={() => void handleRefetch()}
-            refetchPending={refetchPending}
-            refetchNoMatch={refetchNoMatch}
-          />
-          {serverError && <p className="text-destructive text-sm">{serverError}</p>}
-          <DialogFooter>
-            {activeEntry ? (
-              <DeleteEntryDialog
-                entry={activeEntry}
-                trigger={
-                  <Button type="button" variant="destructive" disabled={pending}>
-                    Delete
-                  </Button>
-                }
-              />
-            ) : (
-              <Button type="button" variant="outline" disabled={pending} onClick={() => void handleSaveAndAddAnother()}>
-                Save &amp; add another
-              </Button>
+      {/*
+       * Load-bearing scroll structure — DO NOT move `overflow-y-auto` back onto DialogContent
+       * (Roadmap H-01 / GitHub #22). The platform combobox portals its popover into DialogContent
+       * (`platformContainer={contentEl}`) so the Dialog's `react-remove-scroll` lock keeps the
+       * option list wheel-scrollable. DialogContent is `position: fixed` + a centering `transform`,
+       * which makes it the containing block for that `fixed` popover. If DialogContent also owns the
+       * `overflow-y-auto`, it CLIPS the popover — and since the platform field sits near the bottom
+       * of the (short) add dialog, the dropdown gets cut off in whatever direction it opens. Keeping
+       * the scroll on this inner wrapper instead lets the popover (a sibling of the wrapper, portalled
+       * straight into the un-clipped DialogContent) overflow freely while the form still scrolls.
+       */}
+      <DialogContent ref={setContentEl}>
+        <div className="grid max-h-[calc(90dvh-3rem)] gap-4 overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isEdit ? "Edit game" : "Add a game"}</DialogTitle>
+            <DialogDescription>
+              {isEdit
+                ? "Update any field. Re-fetch metadata to pull fresh IGDB data for review."
+                : "Enter a title and platform — we’ll fetch its metadata automatically."}
+            </DialogDescription>
+            {isEdit && values.metadata_status !== "matched" && (
+              <span className="w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">No metadata</span>
             )}
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
+            {!isEdit && notice && (
+              <p className="rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-200">{notice}</p>
+            )}
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSave();
+            }}
+          >
+            <GameFormFields
+              values={values}
+              onChange={patchValues}
+              errors={errors}
+              platformOptions={options}
+              titleRef={titleRef}
+              platformContainer={contentEl}
+              mode={isEdit ? "edit" : "add"}
+              onRefetch={() => void handleRefetch()}
+              refetchPending={refetchPending}
+              refetchNoMatch={refetchNoMatch}
+            />
+            {serverError && <p className="text-destructive text-sm">{serverError}</p>}
+            <DialogFooter>
+              {activeEntry ? (
+                <DeleteEntryDialog
+                  entry={activeEntry}
+                  trigger={
+                    <Button type="button" variant="destructive" disabled={pending}>
+                      Delete
+                    </Button>
+                  }
+                />
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => void handleSaveAndAddAnother()}
+                >
+                  Save &amp; add another
+                </Button>
+              )}
+              <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
