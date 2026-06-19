@@ -1,10 +1,10 @@
 ---
 change_id: fix-decimal-game-length
 title: Allow saving decimal game length (e.g. 42.5h) in add/edit form
-status: impl_reviewed
+status: archived
 created: 2026-06-19
 updated: 2026-06-19
-archived_at: null
+archived_at: 2026-06-19T18:55:48Z
 ---
 
 ## Notes
