@@ -106,11 +106,11 @@ None. The local database has no existing decimal `length_hours` rows, so no back
 
 #### Automated
 
-- [x] 1.1 Type checking + linting passes: `npm run lint`
-- [x] 1.2 IGDB unit tests pass: `npx vitest run src/lib/services/igdb.test.ts`
-- [x] 1.3 Production build succeeds: `npm run build`
+- [x] 1.1 Type checking + linting passes: `npm run lint` — eb4ab65
+- [x] 1.2 IGDB unit tests pass: `npx vitest run src/lib/services/igdb.test.ts` — eb4ab65
+- [x] 1.3 Production build succeeds: `npm run build` — eb4ab65
 
 #### Manual
 
-- [x] 1.4 Fractional time-to-beat pre-fills a whole-number length that saves
-- [x] 1.5 Game with no time-to-beat pre-fills an empty length with no error
+- [x] 1.4 Fractional time-to-beat pre-fills a whole-number length that saves — eb4ab65
+- [x] 1.5 Game with no time-to-beat pre-fills an empty length with no error — eb4ab65
