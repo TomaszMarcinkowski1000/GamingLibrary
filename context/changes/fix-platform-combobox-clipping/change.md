@@ -1,9 +1,9 @@
 ---
 change_id: fix-platform-combobox-clipping
 title: Fix platform combobox opening upward and being clipped in add/edit dialog
-status: implementing
+status: implemented
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-20
 archived_at: null
 ---
 

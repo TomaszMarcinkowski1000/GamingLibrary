@@ -129,16 +129,16 @@ None — no data or schema impact.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run lint`
-- [x] 1.3 Existing tests pass: `npm run test`
-- [x] 1.4 Production build succeeds: `npm run build`
+- [x] 1.1 Type checking passes: `npm run typecheck` — a2bfa6b
+- [x] 1.2 Linting passes: `npm run lint` — a2bfa6b
+- [x] 1.3 Existing tests pass: `npm run test` — a2bfa6b
+- [x] 1.4 Production build succeeds: `npm run build` — a2bfa6b
 
 #### Manual
 
-- [x] 1.5 Add dialog: platform combobox fully visible, not clipped (up or down)
-- [x] 1.6 Edit dialog: platform combobox fully visible; form scrolls if it overflows the viewport
-- [x] 1.7 Wheel-scroll within the option list still works
-- [x] 1.8 Mobile / short viewport: list fully visible or scrolls internally, never cut off
-- [x] 1.9 Create-new and select-existing both work and close the popover
-- [x] 1.10 Play-status Select sanity-checked on mobile (no clipping)
+- [x] 1.5 Add dialog: platform combobox fully visible, not clipped (up or down) — a2bfa6b
+- [x] 1.6 Edit dialog: platform combobox fully visible; form scrolls if it overflows the viewport — a2bfa6b
+- [x] 1.7 Wheel-scroll within the option list still works — a2bfa6b
+- [x] 1.8 Mobile / short viewport: list fully visible or scrolls internally, never cut off — a2bfa6b
+- [x] 1.9 Create-new and select-existing both work and close the popover — a2bfa6b
+- [x] 1.10 Play-status Select sanity-checked on mobile (no clipping) — a2bfa6b
