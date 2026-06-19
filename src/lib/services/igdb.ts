@@ -154,6 +154,19 @@ export function platformsOverlap(a: string, b: string): boolean {
 
 const SECONDS_PER_HOUR = 3600;
 
+/**
+ * Convert an IGDB "time to beat" value (seconds) to whole hours, rounded **up**.
+ * Sub-hour precision carries no library value, and the Add/Edit length input is
+ * integer-only — so ceil at the source. Returns `null` for falsy/non-positive
+ * input (preserving the prior "no usable `normally`" → null behavior).
+ */
+export function lengthHoursFromSeconds(normallySeconds: number | null | undefined): number | null {
+  if (!normallySeconds || normallySeconds <= 0) {
+    return null;
+  }
+  return Math.ceil(normallySeconds / SECONDS_PER_HOUR);
+}
+
 /** IGDB stores dates as Unix epoch seconds; emit a `YYYY-MM-DD` string for the `date` column. */
 function toIsoDate(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
@@ -511,7 +524,7 @@ export async function lookupGameMetadata(title: string, platform: string, kv: KV
     .fields("normally", "game_id")
     .whereRaw(`game_id = ${game.id}`)
     .first();
-  const lengthHours = timeToBeat?.normally ? timeToBeat.normally / SECONDS_PER_HOUR : null;
+  const lengthHours = lengthHoursFromSeconds(timeToBeat?.normally);
 
   const genre = names(game.genres);
   const developer = names(

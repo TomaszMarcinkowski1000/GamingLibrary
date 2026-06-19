@@ -1,6 +1,13 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
 import { describe, expect, it } from "vitest";
-import { collapseToBaseGame, isConfidentMatch, normalizeBaseTitle, platformsOverlap, resolvePlatformIds } from "./igdb";
+import {
+  collapseToBaseGame,
+  isConfidentMatch,
+  lengthHoursFromSeconds,
+  normalizeBaseTitle,
+  platformsOverlap,
+  resolvePlatformIds,
+} from "./igdb";
 
 /** Build a `Game`-shaped fixture with only the fields the collapse logic reads. */
 function game(props: Partial<Game> & { id: number; name: string }): Game {
@@ -265,5 +272,27 @@ describe("isConfidentMatch", () => {
   it("accepts a clean F-03 base-game match (strong name + platform + popularity)", () => {
     const base = candidate({ id: 11, name: "Alan Wake II", platforms: ["PlayStation 5"], totalRatingCount: 200 });
     expect(isConfidentMatch(base, { title: "Alan Wake II", platform: "PlayStation 5" })).toBe(true);
+  });
+});
+
+describe("lengthHoursFromSeconds", () => {
+  it("rounds a fractional hour value up to the next whole hour", () => {
+    // 51120s = 14.2h → 15
+    expect(lengthHoursFromSeconds(51120)).toBe(15);
+  });
+
+  it("leaves an exact-multiple-of-an-hour value unchanged", () => {
+    expect(lengthHoursFromSeconds(3600)).toBe(1); // 1h
+    expect(lengthHoursFromSeconds(151200)).toBe(42); // 42h
+  });
+
+  it("rounds a sub-hour positive value up to 1", () => {
+    expect(lengthHoursFromSeconds(60)).toBe(1);
+  });
+
+  it("returns null for null, undefined, or 0", () => {
+    expect(lengthHoursFromSeconds(null)).toBeNull();
+    expect(lengthHoursFromSeconds(undefined)).toBeNull();
+    expect(lengthHoursFromSeconds(0)).toBeNull();
   });
 });
