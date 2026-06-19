@@ -1,5 +1,6 @@
 import { OPENROUTER_API_KEY } from "astro:env/server";
 import { z } from "zod";
+import { normalizePlatformLabel, normalizeTitleCasing } from "@/lib/platforms";
 import type { VisionIdentifyResult } from "@/types";
 
 /**
@@ -127,10 +128,14 @@ export async function identifyGameFromPhoto(imageDataUrl: string): Promise<Visio
     return { status: "unsure", confidence: parsed.confidence };
   }
 
+  // Normalize the raw model read at this single choke point: human-cased title and canonical
+  // platform label. Every consumer (route, persist save, harness) reads these fields off the
+  // result, so they all inherit the normalized values with no further edit. Grounding ids are
+  // invariant — `resolvePlatformIds`/`normalizeBaseTitle` already collapse aliases and case.
   return {
     status: "identified",
-    title: parsed.title,
-    platform: parsed.platform,
+    title: normalizeTitleCasing(parsed.title),
+    platform: normalizePlatformLabel(parsed.platform),
     confidence: parsed.confidence,
   };
 }
