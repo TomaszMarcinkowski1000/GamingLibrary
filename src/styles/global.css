@@ -42,26 +42,29 @@
   /* Render native form controls (number spinners, date-picker calendar) and scrollbars dark so
      they match the themed dialog instead of showing the browser's default light UI. */
   color-scheme: dark;
-  /* Tinted toward the cosmic navy palette (bg-cosmic = #0a0e1a→#0f1529) so shadcn surfaces
-     (dialogs, selects, inputs) read as native dark-blue glass rather than neutral gray. */
-  --background: oklch(0.17 0.02 265);
+  /* Tinted toward the emerald green-black palette (landing base = #070b09 with emerald accents)
+     so shadcn surfaces (dialogs, selects, inputs) read as native green-black glass that matches
+     the themed pages rather than neutral gray. Hue ≈ 150-165, low chroma for surfaces. */
+  --background: oklch(0.17 0.02 160);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.025 265);
+  --card: oklch(0.21 0.025 160);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.03 265);
+  --popover: oklch(0.21 0.03 160);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.55 0.18 280);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.28 0.03 265);
+  --primary: oklch(0.72 0.15 162);
+  --primary-foreground: oklch(0.2 0.04 160);
+  --secondary: oklch(0.28 0.03 160);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.28 0.03 265);
-  --muted-foreground: oklch(0.72 0.02 265);
-  --accent: oklch(0.3 0.04 270);
+  --muted: oklch(0.28 0.03 160);
+  --muted-foreground: oklch(0.72 0.02 160);
+  --accent: oklch(0.3 0.04 162);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.55 0.18 280);
+  /* Emerald-tinted translucent border/input so inputs read as green glass, not neutral gray,
+     matching the popover-based comboboxes. */
+  --border: oklch(0.85 0.06 162 / 14%);
+  --input: oklch(0.85 0.08 162 / 16%);
+  --ring: oklch(0.72 0.15 162);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -115,10 +118,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -137,4 +136,51 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+  /* Browser autofill paints its own (light/gray) background and text on inputs, overriding the
+     Tailwind bg/text utilities — most visible on the signin form where saved credentials prefill.
+     Repaint autofilled fields with the emerald glass (matches FormField's bg-emerald-950/40) using
+     the inset box-shadow trick; the long transition defeats the brief native flash. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0 1000px #0a1f17 inset;
+    caret-color: #ffffff;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+  /* Native checkboxes ignore the emerald theme (they render as plain white squares), so paint
+     the play-next length checkboxes as rounded emerald-glass boxes with an emerald check fill. */
+  input[type="checkbox"].themed-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    border-radius: 0.3rem;
+    border: 1px solid oklch(0.72 0.15 162 / 0.45);
+    background-color: rgb(255 255 255 / 0.05);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  input[type="checkbox"].themed-checkbox:checked {
+    border-color: oklch(0.72 0.15 162);
+    background-color: oklch(0.72 0.15 162);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2306120c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+    background-size: 0.7rem;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  input[type="checkbox"].themed-checkbox:focus-visible {
+    outline: 2px solid oklch(0.72 0.15 162 / 0.5);
+    outline-offset: 2px;
+  }
+}
+
+/* Shared emerald gradient heading treatment — reused across Welcome, the auth pages, and the
+   library/play-next page headers. Covers only the gradient clip; each call site keeps its own
+   size/weight/margin/alignment utilities. */
+@utility themed-heading {
+  @apply bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent;
 }

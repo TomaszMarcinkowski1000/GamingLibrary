@@ -29,7 +29,7 @@ export function EntryRowActions({ entry, platformOptions }: EntryRowActionsProps
             size="icon"
             aria-label="Delete"
             title="Delete"
-            className="size-8 text-blue-100/70 hover:bg-red-500/15 hover:text-red-300"
+            className="size-8 text-emerald-100/70 hover:bg-red-500/15 hover:text-red-300"
           >
             <Trash2 />
           </Button>

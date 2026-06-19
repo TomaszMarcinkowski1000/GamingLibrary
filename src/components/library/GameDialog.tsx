@@ -337,7 +337,7 @@ export default function GameDialog({
               size="icon"
               aria-label="Edit"
               title="Edit"
-              className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
+              className="size-8 text-emerald-100/70 hover:bg-white/10 hover:text-white"
             >
               <Pencil />
             </Button>

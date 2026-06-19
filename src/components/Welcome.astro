@@ -1,6 +1,4 @@
 ---
-const year = new Date().getFullYear();
-
 const features = [
   {
     title: "Catalogue from a photo",
@@ -20,128 +18,122 @@ const features = [
 ];
 ---
 
-<div class="relative min-h-screen w-full overflow-hidden bg-[#070b09] text-emerald-50">
-  <!-- Neon grid floor -->
-  <div
-    class="pointer-events-none absolute inset-0 opacity-[0.18]"
-    style="background-image: linear-gradient(rgba(16,185,129,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.4) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);"
-  >
-  </div>
-  <!-- Accent glows -->
-  <div
-    class="pointer-events-none absolute -top-24 left-1/3 h-[360px] w-[360px] rounded-full bg-emerald-500/20 blur-[130px]"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute top-1/2 -right-20 h-[300px] w-[300px] rounded-full bg-cyan-400/15 blur-[120px]"
-  >
-  </div>
+<div class="mx-auto flex max-w-5xl flex-col px-5 sm:px-8">
+  <!-- Wordmark -->
+  <header class="flex items-center gap-2 py-6">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+      aria-hidden="true"
+    >
+      <line x1="6" x2="10" y1="11" y2="11"></line>
+      <line x1="8" x2="8" y1="9" y2="13"></line>
+      <line x1="15" x2="15.01" y1="12" y2="12"></line>
+      <line x1="18" x2="18.01" y1="10" y2="10"></line>
+      <path
+        d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.544-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"
+      ></path>
+    </svg>
+    <span class="text-sm font-semibold tracking-[0.2em] text-emerald-200/80 uppercase">Gaming Library</span>
+  </header>
 
-  <div class="relative z-10 mx-auto flex max-w-5xl flex-col px-5 sm:px-8">
-    <!-- Wordmark -->
-    <header class="flex items-center gap-2 py-6">
-      <span class="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.7)]"
-      ></span>
-      <span class="text-sm font-semibold tracking-[0.2em] text-emerald-200/80 uppercase">Gaming Library</span>
-    </header>
-
-    <!-- Hero -->
-    <section class="flex flex-col items-center py-20 text-center sm:py-28 lg:py-36">
-      <span
-        class="mb-6 rounded-full border border-emerald-400/30 bg-emerald-400/5 px-4 py-1.5 text-xs font-medium tracking-wide text-emerald-200/90"
+  <!-- Hero -->
+  <section class="flex flex-col items-center py-20 text-center sm:py-28 lg:py-36">
+    <span
+      class="mb-6 rounded-full border border-emerald-400/30 bg-emerald-400/5 px-4 py-1.5 text-xs font-medium tracking-wide text-emerald-200/90"
+    >
+      Your shelf, catalogued
+    </span>
+    <h1 class="max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+      Every game you own,<br />
+      <span class="themed-heading"> one tap away. </span>
+    </h1>
+    <p class="mt-6 max-w-xl text-lg text-emerald-100/60 sm:text-xl">
+      Catalogue your physical game collection, settle "do I already own this?" before you buy, and let it tell you what
+      to play next.
+    </p>
+    <div class="mt-10 flex flex-col gap-4 sm:flex-row">
+      <a
+        href="/auth/signin"
+        class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-7 py-3 text-base font-semibold text-[#06120c] shadow-[0_0_24px_-4px_rgba(52,211,153,0.6)] transition-colors hover:bg-emerald-300"
       >
-        Your shelf, catalogued
-      </span>
-      <h1 class="max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
-        Every game you own,<br />
-        <span class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
-          one tap away.
-        </span>
-      </h1>
-      <p class="mt-6 max-w-xl text-lg text-emerald-100/60 sm:text-xl">
-        Catalogue your physical game collection, settle "do I already own this?" before you buy, and let it tell you
-        what to play next.
-      </p>
-      <div class="mt-10 flex flex-col gap-4 sm:flex-row">
-        <a
-          href="/auth/signin"
-          class="inline-flex items-center justify-center rounded-lg bg-emerald-400 px-7 py-3 text-base font-semibold text-[#06120c] shadow-[0_0_24px_-4px_rgba(52,211,153,0.6)] transition-colors hover:bg-emerald-300"
-        >
-          Sign In
-        </a>
-        <a
-          href="/auth/signup"
-          class="inline-flex items-center justify-center rounded-lg border border-emerald-400/30 px-7 py-3 text-base font-medium text-emerald-50 transition-colors hover:bg-emerald-400/10"
-        >
-          Sign Up
-        </a>
-      </div>
-    </section>
+        Sign In
+      </a>
+      <a
+        href="/auth/signup"
+        class="inline-flex items-center justify-center rounded-lg border border-emerald-400/30 px-7 py-3 text-base font-medium text-emerald-50 transition-colors hover:bg-emerald-400/10"
+      >
+        Sign Up
+      </a>
+    </div>
+  </section>
 
-    <!-- Feature highlights -->
-    <section class="grid grid-cols-1 gap-5 pb-24 sm:grid-cols-3">
-      {
-        features.map((feature) => (
-          <div class="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-6 transition-colors hover:border-emerald-400/25">
-            <div class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
-              {feature.icon === "camera" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                  <circle cx="12" cy="13" r="3" />
-                </svg>
-              )}
-              {feature.icon === "check" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M21.801 10A10 10 0 1 1 17 3.335" />
-                  <path d="m9 11 3 3L22 4" />
-                </svg>
-              )}
-              {feature.icon === "play" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polygon points="6 3 20 12 6 21 6 3" />
-                </svg>
-              )}
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-white">{feature.title}</h3>
-            <p class="text-sm leading-relaxed text-emerald-100/55">{feature.body}</p>
+  <!-- Feature highlights -->
+  <section class="grid grid-cols-1 gap-5 pb-24 sm:grid-cols-3">
+    {
+      features.map((feature) => (
+        <div class="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-6 transition-colors hover:border-emerald-400/25">
+          <div class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+            {feature.icon === "camera" && (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+            )}
+            {feature.icon === "check" && (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21.801 10A10 10 0 1 1 17 3.335" />
+                <path d="m9 11 3 3L22 4" />
+              </svg>
+            )}
+            {feature.icon === "play" && (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polygon points="6 3 20 12 6 21 6 3" />
+              </svg>
+            )}
           </div>
-        ))
-      }
-    </section>
-
-    <!-- Footer -->
-    <footer class="border-t border-emerald-400/10 py-6 text-center text-xs text-emerald-100/40">
-      Gaming Library — a home for one collector's shelf. © {year}
-    </footer>
-  </div>
+          <h3 class="mb-2 text-lg font-semibold text-white">{feature.title}</h3>
+          <p class="text-sm leading-relaxed text-emerald-100/55">{feature.body}</p>
+        </div>
+      ))
+    }
+  </section>
 </div>
