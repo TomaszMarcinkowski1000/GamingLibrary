@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Camera, ChevronDown, Image as ImageIcon, Loader2 } from "lucide-react";
-import type { LibraryEntry, MetadataStatus } from "@/types";
+import type { IdentifyResponse, LibraryEntry } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,22 +12,9 @@ import { downscaleImage } from "@/lib/image/downscale";
 import GameDialog from "./GameDialog";
 import CameraCapture from "./CameraCapture";
 
-/**
- * The `/api/identify` persist-path response (mirrors the route's `IdentifyResponse`, which is
- * route-local). `identified` carries the persisted `entry`; `unsure` is the abstain that routes to
- * manual add. Error responses carry `{ error }` with a non-2xx status.
- */
-type IdentifyResponse =
-  | {
-      status: "identified";
-      title: string;
-      platform: string;
-      confidence: number;
-      igdbId: number | null;
-      metadataStatus: MetadataStatus | null;
-      entry?: LibraryEntry;
-    }
-  | { status: "unsure"; confidence: number };
+// The `/api/identify` response shape is shared from `src/types.ts` ({@link IdentifyResponse}) so the
+// route and this island cannot drift. `identified` carries the persisted `entry`; `unsure` is the
+// abstain that routes to manual add. Error responses carry `{ error }` with a non-2xx status.
 
 interface PhotoCaptureProps {
   /** Platform vocabulary passed through to the review/manual-add dialog. */
@@ -59,6 +46,10 @@ const UNSURE_NOTICE = "We couldn’t identify that photo — add the game manual
  */
 export default function PhotoCapture({ platformOptions }: PhotoCaptureProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  // Synchronous in-flight latch. `pending` (state) updates async/batched, so two synchronous
+  // submitBlob calls (rapid camera captures) could both read stale `pending` and double-persist.
+  // A ref flips immediately, serializing the persist POST regardless of render timing.
+  const inFlightRef = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -123,6 +114,11 @@ export default function PhotoCapture({ platformOptions }: PhotoCaptureProps) {
    * `/api/identify` with `persist`, shows the blocking overlay, and routes the response.
    */
   async function submitBlob(blob: Blob) {
+    // Early-return if a persist is already in flight — guards against duplicate library_entries rows.
+    if (inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
     setError(null);
     setNotice(null);
     setPending(true);
@@ -161,6 +157,7 @@ export default function PhotoCapture({ platformOptions }: PhotoCaptureProps) {
     } finally {
       clearTimeout(timeout);
       setPending(false);
+      inFlightRef.current = false;
     }
   }
 

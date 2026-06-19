@@ -5,7 +5,7 @@ import { lookupGameMetadata } from "@/lib/services/igdb";
 import { createLibraryEntryFromGrounding } from "@/lib/services/library";
 import { createClient } from "@/lib/supabase";
 import { identifyGameFromPhoto } from "@/lib/services/vision";
-import type { IgdbLookupResult, LibraryEntry, MetadataStatus } from "@/types";
+import type { IdentifyResponse, IgdbLookupResult, LibraryEntry } from "@/types";
 
 export const prerender = false;
 
@@ -23,27 +23,10 @@ export const prerender = false;
  * already in hand and the created row is returned as `entry` (see POST).
  */
 
-/**
- * Response contract. `identified` carries the grounded `igdbId` (null only when IGDB transport
- * failed or grounding missed). On the persist path it also carries the created `entry`. `unsure`
- * is the explicit abstain. Discriminant `status` matches the vision + IGDB result unions.
- */
-type IdentifyResponse =
-  | {
-      status: "identified";
-      title: string;
-      platform: string;
-      confidence: number;
-      igdbId: number | null;
-      metadataStatus: MetadataStatus | null;
-      // Diagnostic-only: the edition id grounding collapsed away (or null) so the accuracy
-      // harness can print a per-case collapse note. Not a scored field — the harness reads
-      // `igdbId`/`status`/`platform`/`title` for correctness, never `debug`.
-      debug?: { collapsedFrom: number | null };
-      // The persisted row, present only on the persist path (S-03 UI). Absent on the harness path.
-      entry?: LibraryEntry;
-    }
-  | { status: "unsure"; confidence: number };
+// Response contract lives in `src/types.ts` ({@link IdentifyResponse}) so the route and the
+// PhotoCapture island share one definition. `identified` carries the grounded `igdbId` and, on the
+// persist path, the created `entry`; `unsure` is the explicit abstain. `debug` is diagnostic-only —
+// the accuracy harness reads `igdbId`/`status`/`platform`/`title` for correctness, never `debug`.
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
