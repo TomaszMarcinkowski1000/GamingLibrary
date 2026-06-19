@@ -69,6 +69,14 @@ export function PlatformCombobox({ options, value, onChange, container }: Platfo
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
+      {/*
+       * The popover is portalled (via `container`) into the dialog's content element so that the
+       * Radix Dialog's `react-remove-scroll` lock still treats the option list as "inside" and lets
+       * the mouse wheel scroll it. For that portal to NOT be clipped, the dialog must not put its
+       * `overflow-y-auto` on the same element we portal into — see the load-bearing comment in
+       * `GameDialog.tsx` (Roadmap H-01 / GitHub #22). Radix auto-flips the side based on viewport
+       * space; with the clip removed, an upward flip is no longer cut off.
+       */}
       <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start" container={container}>
         <Command shouldFilter={false}>
           <CommandInput placeholder="Search or type a platform…" value={query} onValueChange={setQuery} />
