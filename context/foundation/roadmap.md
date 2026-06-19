@@ -235,7 +235,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 | ID   | Issue                                                              | Type        | Area                       | GH   | Status |
 | ---- | ----------------------------------------------------------------- | ----------- | -------------------------- | ---- | ------ |
 | H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | todo   |
-| H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | todo   |
+| H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | done   |
 | H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | todo   |
 | H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | todo   |
 | H-05 | Disable the Astro dev toolbar island                              | chore       | astro.config.mjs           | #26  | done   |
@@ -253,7 +253,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 - **Symptom:** IGDB returns decimal lengths (e.g. `42.5`), but the "Length (hours)" input only accepts integers, so the edit can't be saved.
 - **Root cause:** DB (`length_hours numeric`) and zod (`z.number().min(0)`) both accept decimals; the form `<Input type="number">` has no `step`, so HTML5 defaults to `step="1"` and rejects decimals (`GameFormFields.tsx:196-205`).
 - **Fix sketch:** Add `step="any"` to the length input; confirm float parsing.
-- **Status:** todo
+- **Status:** done
 
 ### H-03: Normalize photo-extracted platform aliases + title casing
 
