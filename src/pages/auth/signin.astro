@@ -8,11 +8,7 @@ const error = Astro.url.searchParams.get("error");
 <ThemedLayout title="Sign in" decoration="full">
   <div class="flex flex-1 items-center justify-center p-4">
     <div class="w-full max-w-sm rounded-2xl border border-emerald-400/15 bg-white/10 p-8 text-white backdrop-blur-xl">
-      <h1
-        class="mb-6 bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-center text-2xl font-bold text-transparent"
-      >
-        Sign in
-      </h1>
+      <h1 class="themed-heading mb-6 text-center text-2xl font-bold">Sign in</h1>
       <SignInForm serverError={error} client:load />
       <p class="mt-4 text-center text-sm text-emerald-100/60">
         Don't have an account? <a href="/auth/signup" class="text-emerald-300 hover:underline">Sign up</a>

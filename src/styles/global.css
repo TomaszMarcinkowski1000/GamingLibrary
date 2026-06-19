@@ -177,3 +177,10 @@
     outline-offset: 2px;
   }
 }
+
+/* Shared emerald gradient heading treatment — reused across Welcome, the auth pages, and the
+   library/play-next page headers. Covers only the gradient clip; each call site keeps its own
+   size/weight/margin/alignment utilities. */
+@utility themed-heading {
+  @apply bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent;
+}

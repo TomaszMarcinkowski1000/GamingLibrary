@@ -454,3 +454,11 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 - [x] 5.5 Wordmark → `/library`; Play-next CTA → `/play-next` from any signed-in page — ec8807d
 - [x] 5.6 Signed-out Topbar shows wordmark + Sign in/Sign up — ec8807d
 - [x] 5.7 No inline play-next button on library; no back link on play-next; headers well-aligned — ec8807d
+
+## Addendum (Implementation Review, 2026-06-19)
+
+Files touched during implementation that were not itemized in the original "Changes Required" sections. Recorded here so the plan stays the source of truth (see `reviews/impl-review.md`, F1 & F2).
+
+- **`src/components/auth/PasswordToggle.tsx`** — one-line recolor (`text-white/40` → `text-emerald-200/40`). Squarely part of the theme migration.
+- **`src/components/library/PlayNextModeSelect.tsx`** (new) — replaces the native `<select name="mode">` with a shadcn `Select` mirrored into a hidden input, preserving the GET-form contract. A native option list keeps an un-themable OS-blue highlight, so it had to be swapped to fulfill the Phase 3 play-next `accent-purple-400` → emerald requirement. Small behavioral substitution behind a planned visual goal.
+- **`src/styles/global.css`** (autofill + `.themed-checkbox` rules, ~L139–178) — beyond the planned `.dark` token retune and `bg-cosmic` removal, added autofill theming (inputs no longer flash browser yellow/blue) and a custom emerald checkbox accent the native control couldn't provide. Supports the emerald migration.
