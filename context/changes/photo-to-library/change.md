@@ -1,9 +1,9 @@
 ---
 change_id: photo-to-library
 title: Add a game via photo — identified, auto-saved, enriched entry (north star)
-status: implementing
+status: implemented
 created: 2026-06-17
-updated: 2026-06-17
+updated: 2026-06-19
 archived_at: null
 ---
 

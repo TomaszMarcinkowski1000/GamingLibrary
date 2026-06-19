@@ -286,25 +286,25 @@ For each of mobile **Chrome, Firefox, Safari, Edge** (and a desktop pass each):
 
 #### Manual
 
-- [x] 2.4 Gallery photo and new-shot photo both reach the identify call
-- [x] 2.5 Identified read opens review dialog pre-filled with the saved entry; close returns to a refreshed library
-- [x] 2.6 Unsure read shows "couldn't identify" note and opens empty manual-add form
-- [x] 2.7 Portrait phone photo identified correctly (EXIF orientation applied)
-- [x] 2.8 Loading state visible during the read; errors render inline, never blank/broken
+- [x] 2.4 Gallery photo and new-shot photo both reach the identify call — 6724be8
+- [x] 2.5 Identified read opens review dialog pre-filled with the saved entry; close returns to a refreshed library — 6724be8
+- [x] 2.6 Unsure read shows "couldn't identify" note and opens empty manual-add form — 6724be8
+- [x] 2.7 Portrait phone photo identified correctly (EXIF orientation applied) — 6724be8
+- [x] 2.8 Loading state visible during the read; errors render inline, never blank/broken — 6724be8
 
 ### Phase 3: Library page integration + cross-browser validation
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run build`
-- [x] 3.2 Linting passes: `npm run lint`
-- [x] 3.3 Formatting passes: `npm run format` (no diffs)
+- [x] 3.1 Type checking passes: `npm run build` — 6724be8
+- [x] 3.2 Linting passes: `npm run lint` — 6724be8
+- [x] 3.3 Formatting passes: `npm run format` (no diffs) — 6724be8
 
 #### Manual
 
-- [x] 3.4 E2E capture→identify→auto-save→review works on mobile Chrome/Firefox/Safari/Edge, no desktop step (shoot + gallery)
-- [x] 3.5 E2E works on desktop Chrome/Firefox/Safari/Edge via file picker
-- [x] 3.6 "Add via photo" is primary; "Add manually" reachable in one tap; empty state leads with photo CTA
-- [x] 3.7 Newly photo-added entry appears after the review dialog closes
-- [x] 3.8 Confident-but-no-match saved with no-metadata indication; unsure routes to manual add
-- [x] 3.9 Perceived latency acceptable on mobile broadband; large photos upload without hitting the 10 MB cap
+- [x] 3.4 E2E capture→identify→auto-save→review works on mobile Chrome/Firefox/Safari/Edge, no desktop step (shoot + gallery) — 6724be8
+- [x] 3.5 E2E works on desktop Chrome/Firefox/Safari/Edge via file picker — 6724be8
+- [x] 3.6 "Add via photo" is primary; "Add manually" reachable in one tap; empty state leads with photo CTA — 6724be8
+- [x] 3.7 Newly photo-added entry appears after the review dialog closes — 6724be8
+- [x] 3.8 Confident-but-no-match saved with no-metadata indication; unsure routes to manual add — 6724be8
+- [x] 3.9 Perceived latency acceptable on mobile broadband; large photos upload without hitting the 10 MB cap — 6724be8
