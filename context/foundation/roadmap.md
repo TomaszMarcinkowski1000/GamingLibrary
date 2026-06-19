@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-19
+updated: 2026-06-20
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -234,7 +234,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 
 | ID   | Issue                                                              | Type        | Area                       | GH   | Status |
 | ---- | ----------------------------------------------------------------- | ----------- | -------------------------- | ---- | ------ |
-| H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | todo   |
+| H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | done   |
 | H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | done   |
 | H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | done   |
 | H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | done   |
@@ -246,7 +246,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 - **Root cause:** `PlatformCombobox.tsx` `<PopoverContent>` has no `side`/`avoidCollisions` control, so Radix auto-flips to `side="top"` near the top of the scroll container; `GameDialog`'s `DialogContent` (`overflow-y-auto`) then clips the upward popover.
 - **Files:** `src/components/library/PlatformCombobox.tsx`, `GameDialog.tsx`, `ui/popover.tsx`
 - **Fix sketch:** Force `side="bottom"` and/or portal the popover outside the scroll clip (it accepts a `container`); guard against re-regression.
-- **Status:** todo
+- **Status:** done (2026-06-20)
 
 ### H-02: Decimal game length can't be saved
 
