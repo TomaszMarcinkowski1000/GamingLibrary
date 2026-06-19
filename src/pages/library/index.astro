@@ -1,7 +1,7 @@
 ---
 import type { LibraryEntry, LibraryFacets, LibrarySort, PlayStatus } from "@/types";
 import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS, PLAY_STATUSES } from "@/types";
-import Layout from "@/layouts/Layout.astro";
+import ThemedLayout from "@/layouts/ThemedLayout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getLibraryFacets, listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
@@ -133,16 +133,18 @@ function pageHref(targetPage: number): string {
 }
 ---
 
-<Layout title="My Library">
-  <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+<ThemedLayout title="My Library" decoration="calm">
+  <main class="min-h-screen px-4 py-10 text-emerald-50">
     <Topbar />
     <div class="mx-auto max-w-5xl">
       <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+          <h1
+            class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-3xl font-bold text-transparent"
+          >
             My Library
           </h1>
-          <p class="mt-1 text-sm text-blue-100/60">
+          <p class="mt-1 text-sm text-emerald-100/60">
             {total}
             {total === 1 ? "game" : "games"}
           </p>
@@ -152,7 +154,7 @@ function pageHref(targetPage: number): string {
             !isEmpty && (
               <a
                 href="/play-next"
-                class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
               >
                 What should I play next?
               </a>
@@ -190,9 +192,9 @@ function pageHref(targetPage: number): string {
 
       {
         isEmpty && (
-          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-emerald-400/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
             <h2 class="text-xl font-semibold text-white">Your library is empty</h2>
-            <p class="max-w-sm text-sm text-blue-100/60">
+            <p class="max-w-sm text-sm text-emerald-100/60">
               Snap a photo of a game box and we’ll identify it and fetch its metadata for you. Prefer to type it in? Add
               it manually instead.
             </p>
@@ -211,9 +213,9 @@ function pageHref(targetPage: number): string {
 
       {
         noMatches && (
-          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-emerald-400/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
             <h2 class="text-xl font-semibold text-white">No games match your filters</h2>
-            <p class="max-w-sm text-sm text-blue-100/60">
+            <p class="max-w-sm text-sm text-emerald-100/60">
               {query.length > 0
                 ? `Nothing in your library matches “${query}” with the current filters.`
                 : "No games in your library match the current filters."}{" "}
@@ -221,7 +223,7 @@ function pageHref(targetPage: number): string {
             </p>
             <a
               href="/library"
-              class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+              class="rounded-lg border border-emerald-400/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
             >
               Clear all filters
             </a>
@@ -232,9 +234,9 @@ function pageHref(targetPage: number): string {
       {
         !loadError && entries.length > 0 && (
           <>
-            <div class="overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+            <div class="overflow-x-auto rounded-2xl border border-emerald-400/10 bg-white/5 backdrop-blur-xl">
               <table class="w-full text-left text-sm">
-                <thead class="border-b border-white/10 text-xs tracking-wide text-blue-100/50 uppercase">
+                <thead class="border-b border-white/10 text-xs tracking-wide text-emerald-100/50 uppercase">
                   <tr>
                     <th class="px-4 py-3 font-medium">Title</th>
                     <th class="px-4 py-3 font-medium">Platform</th>
@@ -258,15 +260,17 @@ function pageHref(targetPage: number): string {
                             </span>
                           )}
                         </td>
-                        <td class="px-4 py-3 text-blue-100/80">{entry.platform}</td>
+                        <td class="px-4 py-3 text-emerald-100/80">{entry.platform}</td>
                         <td class="px-4 py-3">
                           <PlayStatusControl entry={entry} client:visible />
                         </td>
-                        <td class="px-4 py-3 text-blue-100/60">{entry.genre?.length ? entry.genre.join(", ") : "—"}</td>
-                        <td class="px-4 py-3 text-blue-100/60">
+                        <td class="px-4 py-3 text-emerald-100/60">
+                          {entry.genre?.length ? entry.genre.join(", ") : "—"}
+                        </td>
+                        <td class="px-4 py-3 text-emerald-100/60">
                           {entry.series?.length ? entry.series.join(", ") : "—"}
                         </td>
-                        <td class="px-4 py-3 text-blue-100/60">{entry.release_year ?? "—"}</td>
+                        <td class="px-4 py-3 text-emerald-100/60">{entry.release_year ?? "—"}</td>
                         <td class="px-4 py-3">
                           <EntryRowActions entry={entry} platformOptions={platformOptions} client:visible />
                         </td>
@@ -281,7 +285,7 @@ function pageHref(targetPage: number): string {
               {hasPrev ? (
                 <a
                   href={pageHref(effectivePage - 1)}
-                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
+                  class="rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
                 >
                   ← Previous
                 </a>
@@ -294,14 +298,14 @@ function pageHref(targetPage: number): string {
                 </span>
               )}
 
-              <span class="text-blue-100/60">
+              <span class="text-emerald-100/60">
                 Page {effectivePage} of {totalPages}
               </span>
 
               {hasNext ? (
                 <a
                   href={pageHref(effectivePage + 1)}
-                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
+                  class="rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 transition-colors hover:bg-white/20"
                 >
                   Next →
                 </a>
@@ -319,4 +323,4 @@ function pageHref(targetPage: number): string {
       }
     </div>
   </main>
-</Layout>
+</ThemedLayout>

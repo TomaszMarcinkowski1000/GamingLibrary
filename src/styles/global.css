@@ -118,10 +118,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -152,5 +148,32 @@
     -webkit-box-shadow: 0 0 0 1000px #0a1f17 inset;
     caret-color: #ffffff;
     transition: background-color 9999s ease-in-out 0s;
+  }
+  /* Native checkboxes ignore the emerald theme (they render as plain white squares), so paint
+     the play-next length checkboxes as rounded emerald-glass boxes with an emerald check fill. */
+  input[type="checkbox"].themed-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    border-radius: 0.3rem;
+    border: 1px solid oklch(0.72 0.15 162 / 0.45);
+    background-color: rgb(255 255 255 / 0.05);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  input[type="checkbox"].themed-checkbox:checked {
+    border-color: oklch(0.72 0.15 162);
+    background-color: oklch(0.72 0.15 162);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2306120c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+    background-size: 0.7rem;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  input[type="checkbox"].themed-checkbox:focus-visible {
+    outline: 2px solid oklch(0.72 0.15 162 / 0.5);
+    outline-offset: 2px;
   }
 }

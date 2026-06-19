@@ -1,7 +1,7 @@
 import type { PlayStatus } from "@/types";
 
 /**
- * Tailwind badge class set per play status (S-04), in the existing cosmic palette.
+ * Tailwind badge class set per play status (S-04), on the emerald green-black palette.
  *
  * Centralized so the SSR initial render and the hydrated `PlayStatusControl` island agree on
  * the colour for a given status. Labels come from `PLAY_STATUS_LABELS` (`src/types.ts`) — this
@@ -10,10 +10,10 @@ import type { PlayStatus } from "@/types";
  * amber/yellow so 100% reads as an achievement, not a warning.
  */
 const PLAY_STATUS_BADGE_CLASS: Record<PlayStatus, string> = {
-  not_played: "bg-white/10 text-blue-100/70 border border-white/15",
+  not_played: "bg-white/10 text-emerald-100/70 border border-emerald-400/15",
   playing_now: "bg-sky-500/15 text-sky-200 border border-sky-400/30",
   played: "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
-  completed: "bg-green-500/20 text-green-200 border border-green-400/40",
+  completed: "bg-green-400/40 text-green-50 border border-green-300/70",
   completed_100: "bg-violet-500/20 text-violet-200 border border-violet-400/40",
 };
 

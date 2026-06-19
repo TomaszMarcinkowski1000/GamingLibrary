@@ -399,32 +399,32 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [x] 2.1 Type-checked lint passes: `npm run lint`
-- [x] 2.2 Production build succeeds: `npm run build`
-- [x] 2.3 No `bg-cosmic` remains in `src/pages/auth/`
+- [x] 2.1 Type-checked lint passes: `npm run lint` — 149c322
+- [x] 2.2 Production build succeeds: `npm run build` — 149c322
+- [x] 2.3 No `bg-cosmic` remains in `src/pages/auth/` — 149c322
 
 #### Manual
 
-- [x] 2.4 signin/signup/confirm-email render on emerald theme with full treatment
-- [x] 2.5 Inputs show emerald focus ring; labels/helper text emerald-tinted; errors still red
-- [x] 2.6 Submit button solid emerald, legible in default/hover/pending states
+- [x] 2.4 signin/signup/confirm-email render on emerald theme with full treatment — 149c322
+- [x] 2.5 Inputs show emerald focus ring; labels/helper text emerald-tinted; errors still red — 149c322
+- [x] 2.6 Submit button solid emerald, legible in default/hover/pending states — 149c322
 
 ### Phase 3: App Pages (Library & Play-Next)
 
 #### Automated
 
-- [ ] 3.1 Type-checked lint passes: `npm run lint`
-- [ ] 3.2 Production build succeeds: `npm run build`
-- [ ] 3.3 No `bg-cosmic` anywhere in `src/`
-- [ ] 3.4 No stray old-palette classes on migrated app pages
+- [x] 3.1 Type-checked lint passes: `npm run lint`
+- [x] 3.2 Production build succeeds: `npm run build`
+- [x] 3.3 No `bg-cosmic` anywhere in `src/`
+- [x] 3.4 No stray old-palette classes on migrated app pages
 
 #### Manual
 
-- [ ] 3.5 `/library` and `/play-next` render calm emerald variant; tables/filters legible
-- [ ] 3.6 Sort dropdown height matches filter popover buttons
-- [ ] 3.7 Status badges read distinctly; not-played badge emerald-tinted
-- [ ] 3.8 Filter popovers, sort menu, selection-count badges read emerald/green-black
-- [ ] 3.9 Calm-vs-full decoration decision confirmed
+- [x] 3.5 `/library` and `/play-next` render calm emerald variant; tables/filters legible
+- [x] 3.6 Sort dropdown height matches filter popover buttons
+- [x] 3.7 Status badges read distinctly; not-played badge emerald-tinted
+- [x] 3.8 Filter popovers, sort menu, selection-count badges read emerald/green-black
+- [x] 3.9 Calm-vs-full decoration decision confirmed
 
 ### Phase 4: Dialog Glass & Emerald Accents
 

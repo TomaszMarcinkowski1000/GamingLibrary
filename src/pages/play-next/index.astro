@@ -1,12 +1,13 @@
 ---
 import type { RecommendationItem, RecommendationResult } from "@/types";
 import { LENGTH_BUCKETS, LENGTH_BUCKET_LABELS, NOVELTY_MODES, NOVELTY_MODE_LABELS, PLAY_STATUS_LABELS } from "@/types";
-import Layout from "@/layouts/Layout.astro";
+import ThemedLayout from "@/layouts/ThemedLayout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getRecommendations } from "@/lib/services/recommendation";
 import { parseRecommendationParams } from "@/lib/validation/library";
 import { playStatusBadgeClass } from "@/components/library/playStatus";
+import PlayNextModeSelect from "@/components/library/PlayNextModeSelect";
 
 // Normalize params in place (the page never redirects — see the lint-crash note in
 // library/index.astro). parseRecommendationParams always returns a valid, defaulted request.
@@ -70,20 +71,22 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
 }
 ---
 
-<Layout title="What should I play next?">
-  <main class="bg-cosmic min-h-screen px-4 py-10 text-white">
+<ThemedLayout title="What should I play next?" decoration="calm">
+  <main class="min-h-screen px-4 py-10 text-emerald-50">
     <Topbar />
     <div class="mx-auto max-w-5xl">
       <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+          <h1
+            class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-3xl font-bold text-transparent"
+          >
             What should I play next?
           </h1>
-          <p class="mt-1 text-sm text-blue-100/60">A ranked pick from your own library — tune the dials below.</p>
+          <p class="mt-1 text-sm text-emerald-100/60">A ranked pick from your own library — tune the dials below.</p>
         </div>
         <a
           href="/library"
-          class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+          class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
         >
           ← Back to library
         </a>
@@ -92,20 +95,20 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
       <form
         method="get"
         action="/play-next"
-        class="mb-8 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:flex-row sm:flex-wrap sm:items-end"
+        class="mb-8 flex flex-col gap-4 rounded-2xl border border-emerald-400/10 bg-white/5 p-5 backdrop-blur-xl sm:flex-row sm:flex-wrap sm:items-end"
       >
         <fieldset class="flex flex-col gap-2">
-          <legend class="mb-1 text-xs tracking-wide text-blue-100/50 uppercase">Length</legend>
+          <legend class="mb-1 text-xs tracking-wide text-emerald-100/50 uppercase">Length</legend>
           <div class="flex flex-wrap gap-3">
             {
               LENGTH_BUCKETS.map((bucket) => (
-                <label class="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm">
+                <label class="inline-flex items-center gap-2 rounded-lg border border-emerald-400/15 bg-white/5 px-3 py-2 text-sm">
                   <input
                     type="checkbox"
                     name="length"
                     value={bucket}
                     checked={selectedBuckets.has(bucket)}
-                    class="h-4 w-4 accent-purple-400"
+                    class="themed-checkbox h-4 w-4"
                   />
                   {LENGTH_BUCKET_LABELS[bucket]}
                 </label>
@@ -114,25 +117,18 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
           </div>
         </fieldset>
 
-        <label class="flex flex-col gap-2">
-          <span class="text-xs tracking-wide text-blue-100/50 uppercase">Mode</span>
-          <select
-            name="mode"
-            class="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm text-white focus:border-white/40 focus:outline-none"
-          >
-            {
-              NOVELTY_MODES.map((mode) => (
-                <option value={mode} selected={mode === request.mode} class="bg-slate-900">
-                  {NOVELTY_MODE_LABELS[mode]}
-                </option>
-              ))
-            }
-          </select>
-        </label>
+        <div class="flex flex-col gap-2">
+          <span class="text-xs tracking-wide text-emerald-100/50 uppercase">Mode</span>
+          <PlayNextModeSelect
+            options={NOVELTY_MODES.map((mode) => ({ value: mode, label: NOVELTY_MODE_LABELS[mode] }))}
+            defaultValue={request.mode}
+            client:load
+          />
+        </div>
 
         <button
           type="submit"
-          class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+          class="rounded-lg border border-emerald-400/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
         >
           Recommend
         </button>
@@ -148,13 +144,13 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
 
       {
         !loadError && result?.status === "empty" && (
-          <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
+          <div class="flex flex-col items-center gap-4 rounded-2xl border border-emerald-400/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
             <h2 class="text-xl font-semibold text-white">Nothing to recommend yet</h2>
-            <p class="max-w-md text-sm text-blue-100/70">{emptyStateMessage(result)}</p>
+            <p class="max-w-md text-sm text-emerald-100/70">{emptyStateMessage(result)}</p>
             {result.reason === "empty_library" && (
               <a
                 href="/library"
-                class="rounded-lg border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+                class="rounded-lg border border-emerald-400/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
               >
                 Go to your library
               </a>
@@ -166,9 +162,9 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
       {
         !loadError && result?.status === "ranked" && (
           <>
-            <div class="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+            <div class="overflow-hidden rounded-2xl border border-emerald-400/10 bg-white/5 backdrop-blur-xl">
               <table class="w-full text-left text-sm">
-                <thead class="border-b border-white/10 text-xs tracking-wide text-blue-100/50 uppercase">
+                <thead class="border-b border-white/10 text-xs tracking-wide text-emerald-100/50 uppercase">
                   <tr>
                     <th class="px-4 py-3 font-medium">#</th>
                     <th class="px-4 py-3 font-medium">Title</th>
@@ -182,9 +178,9 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
                 <tbody>
                   {items.map(({ entry }, index) => (
                     <tr class="border-b border-white/5 last:border-0">
-                      <td class="px-4 py-3 text-blue-100/50">{index + 1}</td>
+                      <td class="px-4 py-3 text-emerald-100/50">{index + 1}</td>
                       <td class="px-4 py-3 font-medium text-white">{entry.title}</td>
-                      <td class="px-4 py-3 text-blue-100/80">{entry.platform}</td>
+                      <td class="px-4 py-3 text-emerald-100/80">{entry.platform}</td>
                       <td class="px-4 py-3">
                         <span
                           class:list={[
@@ -195,9 +191,11 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
                           {PLAY_STATUS_LABELS[entry.play_status]}
                         </span>
                       </td>
-                      <td class="px-4 py-3 text-blue-100/60">{lengthLabel(entry.length_hours)}</td>
-                      <td class="px-4 py-3 text-blue-100/60">{releaseLabel(entry.release_date, entry.release_year)}</td>
-                      <td class="px-4 py-3 text-blue-100/60">{entry.date_bought ?? "—"}</td>
+                      <td class="px-4 py-3 text-emerald-100/60">{lengthLabel(entry.length_hours)}</td>
+                      <td class="px-4 py-3 text-emerald-100/60">
+                        {releaseLabel(entry.release_date, entry.release_year)}
+                      </td>
+                      <td class="px-4 py-3 text-emerald-100/60">{entry.date_bought ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -208,14 +206,14 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
                 {showAll ? (
                   <a
                     href={showHref(null)}
-                    class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                    class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
                   >
                     Show top 10 only
                   </a>
                 ) : (
                   <a
                     href={showHref("all")}
-                    class="inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                    class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
                   >
                     Show all {rankedItems.length} games
                   </a>
@@ -227,4 +225,4 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
       }
     </div>
   </main>
-</Layout>
+</ThemedLayout>

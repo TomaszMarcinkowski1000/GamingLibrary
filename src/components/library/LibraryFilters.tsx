@@ -27,9 +27,9 @@ interface LibraryFiltersProps {
 const SORT_KEYS = Object.keys(LIBRARY_SORTS) as LibrarySort[];
 
 /** Trigger styling shared by the filter popovers, the sort select, and the action buttons,
- * matching the cosmic control-bar look (the page is always dark). */
+ * matching the emerald glass control-bar look (the page is always dark). */
 const CONTROL_CLASS =
-  "inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 text-sm text-white transition-colors hover:bg-white/20";
+  "inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-400/20 bg-white/10 px-4 text-sm text-white transition-colors hover:bg-white/20";
 
 /**
  * Library browse control bar (S-06).
@@ -119,7 +119,7 @@ export default function LibraryFilters({ search, filters, sort, facets }: Librar
           }}
           placeholder="Search by title…"
           aria-label="Search your library by title"
-          className="min-w-[12rem] flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm text-white backdrop-blur-xl placeholder:text-blue-100/40 focus:border-white/40 focus:outline-none"
+          className="min-w-[12rem] flex-1 rounded-lg border border-emerald-400/20 bg-white/5 px-4 py-2 text-sm text-white backdrop-blur-xl placeholder:text-emerald-100/40 focus:border-emerald-400/40 focus:outline-none"
         />
         <button type="submit" className={CONTROL_CLASS}>
           Apply
@@ -157,12 +157,17 @@ export default function LibraryFilters({ search, filters, sort, facets }: Librar
         >
           <SelectTrigger
             aria-label="Sort order"
-            className={cn(CONTROL_CLASS, "w-auto border-white/20 bg-white/10 text-white shadow-none")}
+            className={cn(
+              CONTROL_CLASS,
+              // Override the SelectTrigger primitive's emerald `dark:bg-input/*` so the closed
+              // control reads as the same grey-glass as the sibling filter buttons.
+              "w-auto border-emerald-400/20 bg-white/10 text-white shadow-none data-[size=default]:h-10 dark:bg-white/10 dark:hover:bg-white/20",
+            )}
           >
-            <span className="text-blue-100/60">Sort:</span>
+            <span className="text-emerald-100/60">Sort:</span>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" align="start">
             {SORT_KEYS.map((key) => (
               <SelectItem key={key} value={key}>
                 {LIBRARY_SORTS[key].label}
@@ -200,7 +205,9 @@ function FilterPopover({ label, options, selected, onChange, searchable }: Filte
         <button type="button" aria-expanded={open} className={CONTROL_CLASS}>
           {label}
           {selected.length > 0 && (
-            <span className="rounded-full bg-blue-500/40 px-1.5 text-xs font-medium text-white">{selected.length}</span>
+            <span className="rounded-full bg-emerald-500/40 px-1.5 text-xs font-medium text-white">
+              {selected.length}
+            </span>
           )}
           <ChevronDown className="size-4 opacity-50" />
         </button>
