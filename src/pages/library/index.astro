@@ -134,9 +134,9 @@ function pageHref(targetPage: number): string {
 ---
 
 <ThemedLayout title="My Library" decoration="calm">
-  <main class="min-h-screen px-4 py-10 text-emerald-50">
-    <Topbar />
-    <div class="mx-auto max-w-5xl">
+  <main class="flex-1 px-4 py-6 text-emerald-50">
+    <div class="mx-auto max-w-[1400px]">
+      <Topbar />
       <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1
@@ -150,16 +150,6 @@ function pageHref(targetPage: number): string {
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-          {
-            !isEmpty && (
-              <a
-                href="/play-next"
-                class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
-              >
-                What should I play next?
-              </a>
-            )
-          }
           {
             !isEmpty && (
               <>

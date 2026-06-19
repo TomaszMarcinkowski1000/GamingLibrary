@@ -12,6 +12,7 @@ interface Props {
 }
 
 const { title, decoration = "calm" } = Astro.props;
+const year = new Date().getFullYear();
 ---
 
 <Layout title={title}>
@@ -40,8 +41,13 @@ const { title, decoration = "calm" } = Astro.props;
     >
     </div>
 
-    <div class="relative z-10">
-      <slot />
+    <div class="relative z-10 flex min-h-screen flex-col">
+      <div class="flex flex-1 flex-col">
+        <slot />
+      </div>
+      <footer class="border-t border-emerald-400/10 py-6 text-center text-xs text-emerald-100/40">
+        <div class="mx-auto max-w-[1400px] px-4">Gaming Library — a home for one collector's shelf. © {year}</div>
+      </footer>
     </div>
   </div>
 </Layout>

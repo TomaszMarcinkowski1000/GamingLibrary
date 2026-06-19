@@ -392,7 +392,7 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 #### Manual
 
 - [x] 1.4 Landing page renders pixel-identical to before — d5c7e48
-- [ ] 1.5 `ThemedLayout decoration="calm"` shows green-black base with softened/absent grid
+- [x] 1.5 `ThemedLayout decoration="calm"` shows green-black base with softened/absent grid — d5c7e48
 - [x] 1.6 A shadcn island on a dark page now reads emerald/green-black, not navy/violet — d5c7e48
 
 ### Phase 2: Auth Surfaces
@@ -430,27 +430,27 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [x] 4.1 Type-checked lint passes: `npm run lint`
-- [x] 4.2 Production build succeeds: `npm run build`
+- [x] 4.1 Type-checked lint passes: `npm run lint` — 7328c6a
+- [x] 4.2 Production build succeeds: `npm run build` — 7328c6a
 
 #### Manual
 
-- [x] 4.3 Add/edit/combobox dialogs render as emerald-glass panels matching page cards
-- [x] 4.4 Delete confirmation on-theme but keeps clearly red destructive action
-- [x] 4.5 Dialog text/inputs/selects/close button legible on new surface
-- [x] 4.6 Animations work; no layout shift or clipping regressions
+- [x] 4.3 Add/edit/combobox dialogs render as emerald-glass panels matching page cards — 7328c6a
+- [x] 4.4 Delete confirmation on-theme but keeps clearly red destructive action — 7328c6a
+- [x] 4.5 Dialog text/inputs/selects/close button legible on new surface — 7328c6a
+- [x] 4.6 Animations work; no layout shift or clipping regressions — 7328c6a
 
 ### Phase 5: Topbar Redesign + Nav Consolidation
 
 #### Automated
 
-- [ ] 5.1 Type-checked lint passes: `npm run lint`
-- [ ] 5.2 Production build succeeds: `npm run build`
-- [ ] 5.3 No old-palette classes remain in the Topbar
+- [x] 5.1 Type-checked lint passes: `npm run lint`
+- [x] 5.2 Production build succeeds: `npm run build`
+- [x] 5.3 No old-palette classes remain in the Topbar
 
 #### Manual
 
-- [ ] 5.4 Topbar renders emerald wordmark, "▶ Play next" CTA, account controls; holds on narrow widths
-- [ ] 5.5 Wordmark → `/library`; Play-next CTA → `/play-next` from any signed-in page
-- [ ] 5.6 Signed-out Topbar shows wordmark + Sign in/Sign up
-- [ ] 5.7 No inline play-next button on library; no back link on play-next; headers well-aligned
+- [x] 5.4 Topbar renders emerald wordmark, "▶ Play next" CTA, account controls; holds on narrow widths
+- [x] 5.5 Wordmark → `/library`; Play-next CTA → `/play-next` from any signed-in page
+- [x] 5.6 Signed-out Topbar shows wordmark + Sign in/Sign up
+- [x] 5.7 No inline play-next button on library; no back link on play-next; headers well-aligned

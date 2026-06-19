@@ -72,24 +72,16 @@ function releaseLabel(releaseDate: string | null, releaseYear: number | null): s
 ---
 
 <ThemedLayout title="What should I play next?" decoration="calm">
-  <main class="min-h-screen px-4 py-10 text-emerald-50">
-    <Topbar />
-    <div class="mx-auto max-w-5xl">
-      <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1
-            class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-3xl font-bold text-transparent"
-          >
-            What should I play next?
-          </h1>
-          <p class="mt-1 text-sm text-emerald-100/60">A ranked pick from your own library — tune the dials below.</p>
-        </div>
-        <a
-          href="/library"
-          class="inline-flex items-center rounded-lg border border-emerald-400/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+  <main class="flex-1 px-4 py-6 text-emerald-50">
+    <div class="mx-auto max-w-[1400px]">
+      <Topbar />
+      <header class="mb-8">
+        <h1
+          class="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-3xl font-bold text-transparent"
         >
-          ← Back to library
-        </a>
+          What should I play next?
+        </h1>
+        <p class="mt-1 text-sm text-emerald-100/60">A ranked pick from your own library — tune the dials below.</p>
       </header>
 
       <form
