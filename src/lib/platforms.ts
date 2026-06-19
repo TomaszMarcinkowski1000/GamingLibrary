@@ -119,9 +119,15 @@ const MINOR_WORDS = new Set<string>([
 // A token whose letters are all roman-numeral characters (applied to the token's letters only).
 const ROMAN_NUMERAL = /^[ivxlcdm]+$/i;
 
-/** Title-case a single token: first character upper, the rest lower. */
+/**
+ * Title-case a single token: first character upper, the rest lower. Splits on `-`/`/` first so
+ * hyphenated/slashed reads re-case each part (`SPIDER-MAN` → `Spider-Man`, not `Spider-man`).
+ */
 function titleCaseToken(token: string): string {
-  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+  return token
+    .split(/([-/])/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join("");
 }
 
 /**

@@ -68,6 +68,10 @@ a manual photo add of an all-caps / `PC DVD` box showing the normalized values i
 - **Not building heuristic acronym detection for fully-shouty titles.** A fully ALL-CAPS read like
   `"FIFA 23"` becomes `"Fifa 23"` (documented tradeoff); we do not try to recover that it was an
   acronym.
+- **Not word-listing the roman-numeral guard.** Real words made only of roman-numeral letters
+  (`"MIX"`, `"DIM"`, `"CIVIC"`, `"MILD"`) stay uppercase (e.g. `"DJ MIX"` → `"Dj MIX"`). Same
+  regex-can't-infer-intent class as the FIFA tradeoff; over-preserving instead of over-folding, and
+  rare for game titles, so we accept it rather than maintain a word list.
 - **Not changing the vision prompt, model, or confidence gate.**
 
 ## Implementation Approach

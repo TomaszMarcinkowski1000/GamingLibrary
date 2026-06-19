@@ -54,6 +54,8 @@ describe("normalizeTitleCasing", () => {
     ["THE LAST OF US", "The Last of Us"],
     // Roman numeral preserved in a fully-shouty title.
     ["GRAND THEFT AUTO IV", "Grand Theft Auto IV"],
+    // Hyphenated shouty token re-cases each part, not just the first.
+    ["MARVEL'S SPIDER-MAN", "Marvel's Spider-Man"],
     // Mixed-case: longer shouty token re-cased.
     ["Call of DUTY", "Call of Duty"],
     // Mixed-case acronym guard keeps a genuine embedded acronym.
