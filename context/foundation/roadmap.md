@@ -236,7 +236,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 | ---- | ----------------------------------------------------------------- | ----------- | -------------------------- | ---- | ------ |
 | H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | todo   |
 | H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | done   |
-| H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | todo   |
+| H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | done   |
 | H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | todo   |
 | H-05 | Disable the Astro dev toolbar island                              | chore       | astro.config.mjs           | #26  | done   |
 
@@ -260,7 +260,7 @@ Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These ar
 - **Symptom:** Photo adds return raw model strings — platform `"PC DVD"` should normalize to `"PC"` (and similar aliases), and ALL-CAPS titles (`"MAFIA THE OLD COUNTRY"`) should become Title Case.
 - **Root cause:** `vision.ts:131-134` returns `title`/`platform` verbatim; `identify.ts` passes them straight to grounding + save with no normalization step.
 - **Fix sketch:** Add a normalization step pre-grounding — platform alias map (extend `lib/platforms.ts`), and a title-case helper that only normalizes all-caps reads. Bonus: better platform grounding (ties into S-09's alias work).
-- **Status:** todo
+- **Status:** done
 
 ### H-04: Unify visual theme across auth/library/play-next to match landing
 

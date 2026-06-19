@@ -1,10 +1,10 @@
 ---
 change_id: normalize-photo-platform-title
 title: Normalize photo-extracted platform aliases and title casing
-status: impl_reviewed
+status: archived
 created: 2026-06-19
 updated: 2026-06-19
-archived_at: null
+archived_at: 2026-06-19T20:07:10Z
 ---
 
 ## Notes
