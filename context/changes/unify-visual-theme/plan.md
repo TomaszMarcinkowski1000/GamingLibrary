@@ -444,13 +444,13 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [x] 5.1 Type-checked lint passes: `npm run lint`
-- [x] 5.2 Production build succeeds: `npm run build`
-- [x] 5.3 No old-palette classes remain in the Topbar
+- [x] 5.1 Type-checked lint passes: `npm run lint` — ec8807d
+- [x] 5.2 Production build succeeds: `npm run build` — ec8807d
+- [x] 5.3 No old-palette classes remain in the Topbar — ec8807d
 
 #### Manual
 
-- [x] 5.4 Topbar renders emerald wordmark, "▶ Play next" CTA, account controls; holds on narrow widths
-- [x] 5.5 Wordmark → `/library`; Play-next CTA → `/play-next` from any signed-in page
-- [x] 5.6 Signed-out Topbar shows wordmark + Sign in/Sign up
-- [x] 5.7 No inline play-next button on library; no back link on play-next; headers well-aligned
+- [x] 5.4 Topbar renders emerald wordmark, "▶ Play next" CTA, account controls; holds on narrow widths — ec8807d
+- [x] 5.5 Wordmark → `/library`; Play-next CTA → `/play-next` from any signed-in page — ec8807d
+- [x] 5.6 Signed-out Topbar shows wordmark + Sign in/Sign up — ec8807d
+- [x] 5.7 No inline play-next button on library; no back link on play-next; headers well-aligned — ec8807d
