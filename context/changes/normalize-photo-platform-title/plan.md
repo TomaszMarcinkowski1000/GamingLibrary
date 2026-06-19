@@ -301,26 +301,26 @@ No data migration. Existing rows keep their stored values; only new photo adds a
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `npm test`
-- [x] 1.2 Type checking passes: `npm run typecheck`
-- [x] 1.3 Linting passes: `npm run lint`
-- [x] 1.4 Production build succeeds: `npm run build`
+- [x] 1.1 Unit tests pass: `npm test` — 37729f8
+- [x] 1.2 Type checking passes: `npm run typecheck` — 37729f8
+- [x] 1.3 Linting passes: `npm run lint` — 37729f8
+- [x] 1.4 Production build succeeds: `npm run build` — 37729f8
 
 #### Manual
 
-- [x] 1.5 Spot-check helpers against real shelf titles/platforms not in the test table
+- [x] 1.5 Spot-check helpers against real shelf titles/platforms not in the test table — 37729f8
 
 ### Phase 2: Wire into the vision service
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass (including unchanged `igdb` grounding tests): `npm test`
-- [ ] 2.2 Type checking passes: `npm run typecheck`
-- [ ] 2.3 Linting passes: `npm run lint`
-- [ ] 2.4 Production build succeeds: `npm run build`
+- [x] 2.1 Unit tests pass (including unchanged `igdb` grounding tests): `npm test`
+- [x] 2.2 Type checking passes: `npm run typecheck`
+- [x] 2.3 Linting passes: `npm run lint`
+- [x] 2.4 Production build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 2.5 Photo-add an ALL-CAPS box → saved title is Title Case
-- [ ] 2.6 Photo-add a `PC DVD` box → saved platform reads `PC`
-- [ ] 2.7 Grounded result matches pre-change grounding (no regression)
+- [x] 2.5 Photo-add an ALL-CAPS box → saved title is Title Case
+- [x] 2.6 Photo-add a `PC DVD` box → saved platform reads `PC`
+- [x] 2.7 Grounded result matches pre-change grounding (no regression)
