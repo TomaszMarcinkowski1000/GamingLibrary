@@ -385,29 +385,29 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [x] 1.1 Type-checked lint passes: `npm run lint`
-- [x] 1.2 Production build succeeds: `npm run build`
-- [x] 1.3 `ThemedLayout.astro` exists
+- [x] 1.1 Type-checked lint passes: `npm run lint` — d5c7e48
+- [x] 1.2 Production build succeeds: `npm run build` — d5c7e48
+- [x] 1.3 `ThemedLayout.astro` exists — d5c7e48
 
 #### Manual
 
-- [x] 1.4 Landing page renders pixel-identical to before
+- [x] 1.4 Landing page renders pixel-identical to before — d5c7e48
 - [ ] 1.5 `ThemedLayout decoration="calm"` shows green-black base with softened/absent grid
-- [x] 1.6 A shadcn island on a dark page now reads emerald/green-black, not navy/violet
+- [x] 1.6 A shadcn island on a dark page now reads emerald/green-black, not navy/violet — d5c7e48
 
 ### Phase 2: Auth Surfaces
 
 #### Automated
 
-- [ ] 2.1 Type-checked lint passes: `npm run lint`
-- [ ] 2.2 Production build succeeds: `npm run build`
-- [ ] 2.3 No `bg-cosmic` remains in `src/pages/auth/`
+- [x] 2.1 Type-checked lint passes: `npm run lint`
+- [x] 2.2 Production build succeeds: `npm run build`
+- [x] 2.3 No `bg-cosmic` remains in `src/pages/auth/`
 
 #### Manual
 
-- [ ] 2.4 signin/signup/confirm-email render on emerald theme with full treatment
-- [ ] 2.5 Inputs show emerald focus ring; labels/helper text emerald-tinted; errors still red
-- [ ] 2.6 Submit button solid emerald, legible in default/hover/pending states
+- [x] 2.4 signin/signup/confirm-email render on emerald theme with full treatment
+- [x] 2.5 Inputs show emerald focus ring; labels/helper text emerald-tinted; errors still red
+- [x] 2.6 Submit button solid emerald, legible in default/hover/pending states
 
 ### Phase 3: App Pages (Library & Play-Next)
 

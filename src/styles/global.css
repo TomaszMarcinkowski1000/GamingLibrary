@@ -140,4 +140,17 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+  /* Browser autofill paints its own (light/gray) background and text on inputs, overriding the
+     Tailwind bg/text utilities — most visible on the signin form where saved credentials prefill.
+     Repaint autofilled fields with the emerald glass (matches FormField's bg-emerald-950/40) using
+     the inset box-shadow trick; the long transition defeats the brief native flash. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0 1000px #0a1f17 inset;
+    caret-color: #ffffff;
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
