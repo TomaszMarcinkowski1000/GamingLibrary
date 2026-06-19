@@ -61,7 +61,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Backend / API:** partial — only auth endpoints (`src/pages/api/auth/{signin,signup,signout}.ts`). No domain routes, no `src/lib/services/`.
 - **Data:** absent — `supabase/migrations/` empty, `schema_paths = []`; no tables, no entity/DTO types in `src/types.ts`. Supabase is configured but has zero schema.
 - **Auth:** present — full Supabase email+password (`src/lib/supabase.ts`), route protection via `src/middleware.ts` (`PROTECTED_ROUTES`), signin/signup/signout live and verified in production. **Satisfies FR-001, FR-002, FR-003 (all must-have) — no slice needed.**
-- **Deploy / infra:** present — live on Cloudflare Workers (`gaming-library.lordtomar.workers.dev`), push-to-`main` auto-deploy via Workers Builds, one-command rollback ready (`context/changes/deployment/deployment-plan.md`).
+- **Deploy / infra:** present — live on Cloudflare Workers (`gaming-library.tomekm.workers.dev`), push-to-`main` auto-deploy via Workers Builds, one-command rollback ready (`context/changes/deployment/deployment-plan.md`).
 - **Observability:** absent — `wrangler tail` / console only; no Sentry/OTel/pino. Not required by any PRD must-have; no foundation opened for it.
 
 ## Foundations
@@ -227,6 +227,53 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - What confidence signal does IGDB expose to threshold false positives on (name exactness, platform agreement, popularity/rating count), and where is the cut set without rejecting valid matches? — Owner: team. Block: no (validate against a held-out shelf sample).
 - **Risk:** **Promoted from `optional` to load-bearing by the F-03 spike (2026-06-13):** it is now the binding prerequisite between the proven ~95% vision read and a shippable north-star S-03 — no longer a mere quality refinement. The false-positive half was surfaced during S-01 manual verification (2026-06-11); the edition-collapse half is the dominant F-03 error source. The real risk is over-collapsing (merging genuinely distinct titles) or mis-tuning the false-positive threshold and dropping valid matches; the F-03 shelf sample (failures already enumerated by case) bounds both. A re-run of the F-03 harness on a cleaned truth set is the acceptance check.
 - **Status:** done
+
+## v1 Hardening
+
+Post-slice fixes and polish surfaced during v1 dogfooding (2026-06-19). These are bug-fixes and visual-consistency work on top of the now-complete slice set (S-01…S-09 all done) — **not** new vertical slices, so they carry their own `H-NN` ids and live outside the slice numbering. Tracked as GitHub issues #22–#26 so v1 ships clean.
+
+| ID   | Issue                                                              | Type        | Area                       | GH   | Status |
+| ---- | ----------------------------------------------------------------- | ----------- | -------------------------- | ---- | ------ |
+| H-01 | Platform combobox opens upward and is clipped (regression)        | bug         | Add/Edit dialog            | #22  | todo   |
+| H-02 | Decimal game length (e.g. 42.5h) can't be saved                   | bug         | Add/Edit form + validation | #23  | todo   |
+| H-03 | Normalize photo-extracted platform aliases + title casing         | bug         | vision / identify flow     | #24  | todo   |
+| H-04 | Unify visual theme across auth/library/play-next to match landing | enhancement | pages + shared theme shell | #25  | todo   |
+| H-05 | Disable the Astro dev toolbar island                              | chore       | astro.config.mjs           | #26  | done   |
+
+### H-01: Platform combobox opens upward and is clipped (regression)
+
+- **Symptom:** In the "Add manually" / edit dialog, the platform combobox dropdown opens upward and is cut off. Previously fixed; regressed after a later change.
+- **Root cause:** `PlatformCombobox.tsx` `<PopoverContent>` has no `side`/`avoidCollisions` control, so Radix auto-flips to `side="top"` near the top of the scroll container; `GameDialog`'s `DialogContent` (`overflow-y-auto`) then clips the upward popover.
+- **Files:** `src/components/library/PlatformCombobox.tsx`, `GameDialog.tsx`, `ui/popover.tsx`
+- **Fix sketch:** Force `side="bottom"` and/or portal the popover outside the scroll clip (it accepts a `container`); guard against re-regression.
+- **Status:** todo
+
+### H-02: Decimal game length can't be saved
+
+- **Symptom:** IGDB returns decimal lengths (e.g. `42.5`), but the "Length (hours)" input only accepts integers, so the edit can't be saved.
+- **Root cause:** DB (`length_hours numeric`) and zod (`z.number().min(0)`) both accept decimals; the form `<Input type="number">` has no `step`, so HTML5 defaults to `step="1"` and rejects decimals (`GameFormFields.tsx:196-205`).
+- **Fix sketch:** Add `step="any"` to the length input; confirm float parsing.
+- **Status:** todo
+
+### H-03: Normalize photo-extracted platform aliases + title casing
+
+- **Symptom:** Photo adds return raw model strings — platform `"PC DVD"` should normalize to `"PC"` (and similar aliases), and ALL-CAPS titles (`"MAFIA THE OLD COUNTRY"`) should become Title Case.
+- **Root cause:** `vision.ts:131-134` returns `title`/`platform` verbatim; `identify.ts` passes them straight to grounding + save with no normalization step.
+- **Fix sketch:** Add a normalization step pre-grounding — platform alias map (extend `lib/platforms.ts`), and a title-case helper that only normalizes all-caps reads. Bonus: better platform grounding (ties into S-09's alias work).
+- **Status:** todo
+
+### H-04: Unify visual theme across auth/library/play-next to match landing
+
+- **Outcome:** Sign in, sign up, library, and "what to play next" share the landing page's emerald/neon theme instead of the current `bg-cosmic` blue/purple.
+- **Root cause:** The emerald theme is hardcoded inline in `Welcome.astro`; `Layout.astro` is structural only and carries no theme, so the four pages diverged.
+- **Fix sketch:** Extract the welcome theme (background, neon grid, glows, color tokens) into a reusable layout/shell, then apply it to the four pages and restyle the `Topbar`.
+- **Status:** todo
+
+### H-05: Disable the Astro dev toolbar island
+
+- **Outcome:** The Astro dev toolbar no longer shows at the bottom of the screen during local dev. (Dev-only — it does not appear in production.)
+- **Fix:** Add `devToolbar: { enabled: false }` to `astro.config.mjs` (no `devToolbar` key today → defaults on). One-liner.
+- **Status:** done (2026-06-19)
 
 ## Backlog Handoff
 

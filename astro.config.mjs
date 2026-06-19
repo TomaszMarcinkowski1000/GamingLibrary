@@ -10,6 +10,8 @@ import cloudflare from "@astrojs/cloudflare";
 export default defineConfig({
   output: "server",
   integrations: [react(), sitemap()],
+  // The Astro dev toolbar (bottom-of-screen island, dev-only) is unused; disable it.
+  devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss()],
   },
