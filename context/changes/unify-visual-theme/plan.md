@@ -385,15 +385,15 @@ No data or schema involved. The only behavioral change is navigation: the play-n
 
 #### Automated
 
-- [ ] 1.1 Type-checked lint passes: `npm run lint`
-- [ ] 1.2 Production build succeeds: `npm run build`
-- [ ] 1.3 `ThemedLayout.astro` exists
+- [x] 1.1 Type-checked lint passes: `npm run lint`
+- [x] 1.2 Production build succeeds: `npm run build`
+- [x] 1.3 `ThemedLayout.astro` exists
 
 #### Manual
 
-- [ ] 1.4 Landing page renders pixel-identical to before
+- [x] 1.4 Landing page renders pixel-identical to before
 - [ ] 1.5 `ThemedLayout decoration="calm"` shows green-black base with softened/absent grid
-- [ ] 1.6 A shadcn island on a dark page now reads emerald/green-black, not navy/violet
+- [x] 1.6 A shadcn island on a dark page now reads emerald/green-black, not navy/violet
 
 ### Phase 2: Auth Surfaces
 

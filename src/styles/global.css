@@ -42,26 +42,29 @@
   /* Render native form controls (number spinners, date-picker calendar) and scrollbars dark so
      they match the themed dialog instead of showing the browser's default light UI. */
   color-scheme: dark;
-  /* Tinted toward the cosmic navy palette (bg-cosmic = #0a0e1a→#0f1529) so shadcn surfaces
-     (dialogs, selects, inputs) read as native dark-blue glass rather than neutral gray. */
-  --background: oklch(0.17 0.02 265);
+  /* Tinted toward the emerald green-black palette (landing base = #070b09 with emerald accents)
+     so shadcn surfaces (dialogs, selects, inputs) read as native green-black glass that matches
+     the themed pages rather than neutral gray. Hue ≈ 150-165, low chroma for surfaces. */
+  --background: oklch(0.17 0.02 160);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.025 265);
+  --card: oklch(0.21 0.025 160);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.03 265);
+  --popover: oklch(0.21 0.03 160);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.55 0.18 280);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.28 0.03 265);
+  --primary: oklch(0.72 0.15 162);
+  --primary-foreground: oklch(0.2 0.04 160);
+  --secondary: oklch(0.28 0.03 160);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.28 0.03 265);
-  --muted-foreground: oklch(0.72 0.02 265);
-  --accent: oklch(0.3 0.04 270);
+  --muted: oklch(0.28 0.03 160);
+  --muted-foreground: oklch(0.72 0.02 160);
+  --accent: oklch(0.3 0.04 162);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.55 0.18 280);
+  /* Emerald-tinted translucent border/input so inputs read as green glass, not neutral gray,
+     matching the popover-based comboboxes. */
+  --border: oklch(0.85 0.06 162 / 14%);
+  --input: oklch(0.85 0.08 162 / 16%);
+  --ring: oklch(0.72 0.15 162);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
