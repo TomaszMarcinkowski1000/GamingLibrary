@@ -44,7 +44,7 @@ Verifiable when: the capture→identify→auto-save→review flow works end-to-e
 - **No vision/grounding changes** — the model and S-09 grounding are unchanged; this slice does not re-tune accuracy.
 - **No harness re-run as an acceptance gate** — S-09's 92.9% stands; acceptance is manual E2E + the standard automated gates (per the chosen acceptance bar). The harness must keep working but is not a CI gate here.
 - **No client-side image rectification (opencv.js)** — F-03 showed skew is not a dominant error driver.
-- **No `getUserMedia` live-preview capture** — a native file input covers both FR-004 paths across all four browsers.
+- ~~**No `getUserMedia` live-preview capture** — a native file input covers both FR-004 paths across all four browsers.~~ **OBSOLETE (Phase 3).** Manual testing showed the `<input capture="environment">` camera path hands off to the OS camera app, which backgrounds/evicts the page and drops the in-flight `/api/identify` connection ~80% of the time on mobile → silent failure. The "Take photo" affordance was replaced with an in-page `getUserMedia` live-preview camera (`src/components/library/CameraCapture.tsx`): the `<video>` never leaves the page, a Capture button draws the frame to a canvas and exports JPEG, and the fetch is never interrupted. The gallery path (plain file input, 100% reliable) is unchanged. Ref: MDN "Taking still photos with getUserMedia". Note: `getUserMedia` needs a secure context (HTTPS or localhost) — mobile testing is via an HTTPS tunnel (`npx cloudflared tunnel --url http://localhost:4321`) or the deployed site; absence/denial falls back to the gallery path with an inline message.
 - **No confirm-*before*-save gate** — the chosen UX is auto-save-then-review (FR-006 literal), not a pre-save confirmation.
 
 ## Implementation Approach
@@ -280,31 +280,31 @@ For each of mobile **Chrome, Firefox, Safari, Edge** (and a desktop pass each):
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run build`
-- [x] 2.2 Linting passes: `npm run lint`
-- [x] 2.3 Unit test for `downscaleImage` dimension math passes
+- [x] 2.1 Type checking passes: `npm run build` — 019ff02
+- [x] 2.2 Linting passes: `npm run lint` — 019ff02
+- [x] 2.3 Unit test for `downscaleImage` dimension math passes — 019ff02
 
 #### Manual
 
-- [ ] 2.4 Gallery photo and new-shot photo both reach the identify call
-- [ ] 2.5 Identified read opens review dialog pre-filled with the saved entry; close returns to a refreshed library
-- [ ] 2.6 Unsure read shows "couldn't identify" note and opens empty manual-add form
-- [ ] 2.7 Portrait phone photo identified correctly (EXIF orientation applied)
-- [ ] 2.8 Loading state visible during the read; errors render inline, never blank/broken
+- [x] 2.4 Gallery photo and new-shot photo both reach the identify call
+- [x] 2.5 Identified read opens review dialog pre-filled with the saved entry; close returns to a refreshed library
+- [x] 2.6 Unsure read shows "couldn't identify" note and opens empty manual-add form
+- [x] 2.7 Portrait phone photo identified correctly (EXIF orientation applied)
+- [x] 2.8 Loading state visible during the read; errors render inline, never blank/broken
 
 ### Phase 3: Library page integration + cross-browser validation
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run build`
-- [ ] 3.2 Linting passes: `npm run lint`
-- [ ] 3.3 Formatting passes: `npm run format` (no diffs)
+- [x] 3.1 Type checking passes: `npm run build`
+- [x] 3.2 Linting passes: `npm run lint`
+- [x] 3.3 Formatting passes: `npm run format` (no diffs)
 
 #### Manual
 
-- [ ] 3.4 E2E capture→identify→auto-save→review works on mobile Chrome/Firefox/Safari/Edge, no desktop step (shoot + gallery)
-- [ ] 3.5 E2E works on desktop Chrome/Firefox/Safari/Edge via file picker
-- [ ] 3.6 "Add via photo" is primary; "Add manually" reachable in one tap; empty state leads with photo CTA
-- [ ] 3.7 Newly photo-added entry appears after the review dialog closes
-- [ ] 3.8 Confident-but-no-match saved with no-metadata indication; unsure routes to manual add
-- [ ] 3.9 Perceived latency acceptable on mobile broadband; large photos upload without hitting the 10 MB cap
+- [x] 3.4 E2E capture→identify→auto-save→review works on mobile Chrome/Firefox/Safari/Edge, no desktop step (shoot + gallery)
+- [x] 3.5 E2E works on desktop Chrome/Firefox/Safari/Edge via file picker
+- [x] 3.6 "Add via photo" is primary; "Add manually" reachable in one tap; empty state leads with photo CTA
+- [x] 3.7 Newly photo-added entry appears after the review dialog closes
+- [x] 3.8 Confident-but-no-match saved with no-metadata indication; unsure routes to manual add
+- [x] 3.9 Perceived latency acceptable on mobile broadband; large photos upload without hitting the 10 MB cap

@@ -24,6 +24,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+dev-server.log
+
+# local scratch / manual-verification helpers (not committed tooling)
+scripts/verify-persist.mjs
 
 # environment variables
 .env

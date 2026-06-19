@@ -21,6 +21,8 @@ interface GameDialogProps {
   triggerLabel?: string;
   /** Trigger size — the empty-state uses "lg" for a more prominent CTA. */
   triggerSize?: "default" | "lg";
+  /** Trigger variant — defaults to "default"; S-03 demotes the manual add to "outline" (secondary). */
+  triggerVariant?: "default" | "outline" | "secondary" | "ghost";
   /** Present → edit mode (pre-fill from this entry, PUT on save, in-dialog Delete). Absent → add mode. */
   entry?: LibraryEntry;
   /**
@@ -33,6 +35,12 @@ interface GameDialogProps {
   onOpenChange?: (open: boolean) => void;
   /** Omit the rendered `DialogTrigger` — for controlled callers that open the dialog themselves. */
   hideTrigger?: boolean;
+  /**
+   * Optional heads-up rendered inside the dialog header in add mode — e.g. PhotoCapture's
+   * "couldn't identify, add it manually" note. Surfaced here (not just as PhotoCapture's inline
+   * note below the button) so it stays visible on mobile, where the dialog covers that note.
+   */
+  notice?: string | null;
 }
 
 const EMPTY: GameFormValues = {
@@ -102,10 +110,12 @@ export default function GameDialog({
   platformOptions,
   triggerLabel = "Add game",
   triggerSize = "default",
+  triggerVariant = "default",
   entry,
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
+  notice = null,
 }: GameDialogProps) {
   // Controlled vs. uncontrolled open: a defined `controlledOpen` prop hands ownership to the parent
   // (S-03's PhotoCapture); otherwise the dialog manages its own `open` like every other usage.
@@ -332,7 +342,7 @@ export default function GameDialog({
               <Pencil />
             </Button>
           ) : (
-            <Button size={triggerSize}>
+            <Button size={triggerSize} variant={triggerVariant}>
               <Plus />
               {triggerLabel}
             </Button>
@@ -350,6 +360,7 @@ export default function GameDialog({
           {isEdit && values.metadata_status !== "matched" && (
             <span className="w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">No metadata</span>
           )}
+          {!isEdit && notice && <p className="rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-200">{notice}</p>}
         </DialogHeader>
         <form
           className="space-y-4"
