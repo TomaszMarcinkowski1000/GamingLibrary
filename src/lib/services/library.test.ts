@@ -9,6 +9,7 @@ import { lookupGameMetadata } from "./igdb";
 import {
   EntryNotFoundError,
   createLibraryEntry,
+  createLibraryEntryFromGrounding,
   deleteLibraryEntry,
   getLibraryFacets,
   listLibraryEntries,
@@ -104,6 +105,72 @@ describe("createLibraryEntry", () => {
       metadata_status: "no_match",
       date_bought: today,
     });
+  });
+});
+
+describe("createLibraryEntryFromGrounding", () => {
+  it("maps a matched grounding onto the metadata columns with metadata_status='matched'", async () => {
+    const { client, payload } = insertClient();
+
+    await createLibraryEntryFromGrounding(client, { title: "Some Game", platform: "PC", grounding: MATCHED });
+
+    expect(payload()).toMatchObject({
+      title: "Some Game",
+      platform: "PC",
+      igdb_id: 42,
+      genre: ["RPG"],
+      developer: ["Acme"],
+      series: ["Saga"],
+      release_year: 2021,
+      release_date: "2021-03-04",
+      length_hours: 12.5,
+      metadata_status: "matched",
+      date_bought: today,
+    });
+  });
+
+  it("maps a no_match grounding to null metadata columns + metadata_status='no_match'", async () => {
+    const { client, payload } = insertClient();
+
+    await createLibraryEntryFromGrounding(client, {
+      title: "Obscure",
+      platform: "Evercade",
+      grounding: { status: "no_match" },
+    });
+
+    expect(payload()).toMatchObject({
+      title: "Obscure",
+      platform: "Evercade",
+      igdb_id: null,
+      genre: null,
+      developer: null,
+      series: null,
+      release_year: null,
+      release_date: null,
+      length_hours: null,
+      metadata_status: "no_match",
+      date_bought: today,
+    });
+  });
+
+  it("treats a null grounding (transport failure) as no_match", async () => {
+    const { client, payload } = insertClient();
+
+    await createLibraryEntryFromGrounding(client, { title: "Flaky", platform: "PC", grounding: null });
+
+    expect(payload()).toMatchObject({
+      igdb_id: null,
+      metadata_status: "no_match",
+      date_bought: today,
+    });
+  });
+
+  it("does not perform an IGDB lookup (grounding is pre-resolved)", async () => {
+    const { client } = insertClient();
+
+    await createLibraryEntryFromGrounding(client, { title: "Some Game", platform: "PC", grounding: MATCHED });
+
+    expect(mockLookup).not.toHaveBeenCalled();
   });
 });
 

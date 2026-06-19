@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import { getLibraryFacets, listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
 import GameDialog from "@/components/library/GameDialog";
+import PhotoCapture from "@/components/library/PhotoCapture";
 import LibraryFilters from "@/components/library/LibraryFilters";
 import { EntryRowActions } from "@/components/library/EntryRowActions";
 import PlayStatusControl from "@/components/library/PlayStatusControl";
@@ -157,7 +158,19 @@ function pageHref(targetPage: number): string {
               </a>
             )
           }
-          {!isEmpty && <GameDialog platformOptions={platformOptions} client:load />}
+          {
+            !isEmpty && (
+              <>
+                <PhotoCapture platformOptions={platformOptions} client:load />
+                <GameDialog
+                  platformOptions={platformOptions}
+                  triggerLabel="Add manually"
+                  triggerVariant="outline"
+                  client:load
+                />
+              </>
+            )
+          }
         </div>
       </header>
 
@@ -180,14 +193,18 @@ function pageHref(targetPage: number): string {
           <div class="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-20 text-center backdrop-blur-xl">
             <h2 class="text-xl font-semibold text-white">Your library is empty</h2>
             <p class="max-w-sm text-sm text-blue-100/60">
-              Add your first game to start cataloguing your collection — we’ll fetch its metadata for you.
+              Snap a photo of a game box and we’ll identify it and fetch its metadata for you. Prefer to type it in? Add
+              it manually instead.
             </p>
-            <GameDialog
-              platformOptions={platformOptions}
-              triggerLabel="Add your first game"
-              triggerSize="lg"
-              client:load
-            />
+            <div class="flex flex-col items-center gap-3">
+              <PhotoCapture platformOptions={platformOptions} client:load />
+              <GameDialog
+                platformOptions={platformOptions}
+                triggerLabel="Add manually"
+                triggerVariant="ghost"
+                client:load
+              />
+            </div>
           </div>
         )
       }

@@ -211,3 +211,25 @@ export type IgdbLookupResult =
 export type VisionIdentifyResult =
   | { status: "identified"; title: string; platform: string; confidence: number }
   | { status: "unsure"; confidence: number };
+
+// --- /api/identify response contract (S-03) ---
+
+/**
+ * The `POST /api/identify` response, shared by the route and the PhotoCapture island so the two
+ * cannot drift. `identified` carries the grounded `igdbId` (null only when IGDB transport failed or
+ * grounding missed); on the persist path it also carries the created `entry`. `unsure` is the explicit
+ * abstain that routes to manual add. `debug` is diagnostic-only (the accuracy harness prints a
+ * per-case collapse note); it is never a scored field and the island ignores it.
+ */
+export type IdentifyResponse =
+  | {
+      status: "identified";
+      title: string;
+      platform: string;
+      confidence: number;
+      igdbId: number | null;
+      metadataStatus: MetadataStatus | null;
+      debug?: { collapsedFrom: number | null };
+      entry?: LibraryEntry;
+    }
+  | { status: "unsure"; confidence: number };

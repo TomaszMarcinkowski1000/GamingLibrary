@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/db/database.types";
 import type {
+  IgdbLookupResult,
   LibraryEntry,
   LibraryEntryInsert,
   LibraryEntryUpdate,
@@ -57,11 +58,56 @@ export async function createLibraryEntry(
 ): Promise<LibraryEntry> {
   const { title, platform } = input;
 
-  // Enrichment columns default to "no metadata" and are overwritten only on a match.
-  let metadata: Pick<
-    LibraryEntryInsert,
-    "igdb_id" | "genre" | "developer" | "series" | "release_year" | "release_date" | "length_hours" | "metadata_status"
-  > = {
+  // Enrichment is best-effort: a flaky external API (or absent KV/secrets in local dev) must
+  // not lose the entry. A thrown lookup folds to a `null` grounding → `no_match` save with the
+  // user-supplied fields intact. The matched/no_match column mapping lives in `metadataFromGrounding`.
+  let grounding: IgdbLookupResult | null = null;
+  try {
+    grounding = await lookupGameMetadata(title, platform, kv);
+  } catch {
+    // Swallow — degrade to a `no_match` save below.
+  }
+
+  const payload: LibraryEntryInsert = {
+    title,
+    platform,
+    date_bought: today(),
+    ...metadataFromGrounding(grounding),
+  };
+
+  const { data, error } = await supabase.from("library_entries").insert(payload).select().single();
+  if (error) {
+    throw error;
+  }
+  return data as LibraryEntry;
+}
+
+/**
+ * Map an already-resolved {@link IgdbLookupResult} onto the entry's metadata columns.
+ *
+ * Shared by both create paths so the column mapping lives once. A `matched` grounding fills
+ * the metadata columns + `metadata_status='matched'`; a `no_match` grounding *or* `null`
+ * (a transport failure the caller already swallowed) folds to nulls + `metadata_status='no_match'`.
+ */
+function metadataFromGrounding(
+  grounding: IgdbLookupResult | null,
+): Pick<
+  LibraryEntryInsert,
+  "igdb_id" | "genre" | "developer" | "series" | "release_year" | "release_date" | "length_hours" | "metadata_status"
+> {
+  if (grounding?.status === "matched") {
+    return {
+      igdb_id: grounding.igdbId,
+      genre: grounding.genre,
+      developer: grounding.developer,
+      series: grounding.series,
+      release_year: grounding.releaseYear,
+      release_date: grounding.releaseDate,
+      length_hours: grounding.lengthHours,
+      metadata_status: "matched",
+    };
+  }
+  return {
     igdb_id: null,
     genre: null,
     developer: null,
@@ -71,31 +117,27 @@ export async function createLibraryEntry(
     length_hours: null,
     metadata_status: "no_match",
   };
+}
 
-  try {
-    const result = await lookupGameMetadata(title, platform, kv);
-    if (result.status === "matched") {
-      metadata = {
-        igdb_id: result.igdbId,
-        genre: result.genre,
-        developer: result.developer,
-        series: result.series,
-        release_year: result.releaseYear,
-        release_date: result.releaseDate,
-        length_hours: result.lengthHours,
-        metadata_status: "matched",
-      };
-    }
-  } catch {
-    // A flaky external API (or absent KV/secrets in local dev) must not lose the entry —
-    // it saves as `no_match` with the user-supplied fields intact.
-  }
-
+/**
+ * Create a library entry from a *pre-grounded* {@link IgdbLookupResult} (S-03 photo path).
+ *
+ * Sibling of {@link createLibraryEntry}: identical column mapping and `date_bought=today`
+ * default, but it takes the grounding the caller already computed instead of performing the
+ * IGDB round-trip itself. The `/api/identify` persist path holds the grounding in hand after
+ * the vision read, so this keeps that flow to a single IGDB lookup. A `matched` grounding
+ * populates the metadata columns + `metadata_status='matched'`; a `no_match` grounding or
+ * `null` (transport failure) folds to nulls + `metadata_status='no_match'`. The insert always happens.
+ */
+export async function createLibraryEntryFromGrounding(
+  supabase: TypedSupabaseClient,
+  input: { title: string; platform: string; grounding: IgdbLookupResult | null },
+): Promise<LibraryEntry> {
   const payload: LibraryEntryInsert = {
-    title,
-    platform,
+    title: input.title,
+    platform: input.platform,
     date_bought: today(),
-    ...metadata,
+    ...metadataFromGrounding(input.grounding),
   };
 
   const { data, error } = await supabase.from("library_entries").insert(payload).select().single();

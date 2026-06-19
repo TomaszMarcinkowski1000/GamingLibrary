@@ -21,8 +21,26 @@ interface GameDialogProps {
   triggerLabel?: string;
   /** Trigger size — the empty-state uses "lg" for a more prominent CTA. */
   triggerSize?: "default" | "lg";
+  /** Trigger variant — defaults to "default"; S-03 demotes the manual add to "outline" (secondary). */
+  triggerVariant?: "default" | "outline" | "secondary" | "ghost";
   /** Present → edit mode (pre-fill from this entry, PUT on save, in-dialog Delete). Absent → add mode. */
   entry?: LibraryEntry;
+  /**
+   * Controlled-open mode (S-03): when defined, the parent owns the open state (e.g. `PhotoCapture`
+   * opening the dialog programmatically after an identify). When `undefined`, the dialog falls back
+   * to its self-managed internal `open` state — the byte-for-byte trigger-driven behavior.
+   */
+  open?: boolean;
+  /** Open-state change callback for controlled mode. Fires alongside (or instead of) internal state. */
+  onOpenChange?: (open: boolean) => void;
+  /** Omit the rendered `DialogTrigger` — for controlled callers that open the dialog themselves. */
+  hideTrigger?: boolean;
+  /**
+   * Optional heads-up rendered inside the dialog header in add mode — e.g. PhotoCapture's
+   * "couldn't identify, add it manually" note. Surfaced here (not just as PhotoCapture's inline
+   * note below the button) so it stays visible on mobile, where the dialog covers that note.
+   */
+  notice?: string | null;
 }
 
 const EMPTY: GameFormValues = {
@@ -92,9 +110,18 @@ export default function GameDialog({
   platformOptions,
   triggerLabel = "Add game",
   triggerSize = "default",
+  triggerVariant = "default",
   entry,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+  notice = null,
 }: GameDialogProps) {
-  const [open, setOpen] = useState(false);
+  // Controlled vs. uncontrolled open: a defined `controlledOpen` prop hands ownership to the parent
+  // (S-03's PhotoCapture); otherwise the dialog manages its own `open` like every other usage.
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
   // After a successful ADD we keep this dialog open and flip it into edit mode, pre-filled with the
   // freshly-enriched entry so the user can review/correct IGDB's result — the S-01 post-save seam
   // realized ("reopen the just-saved entry in edit mode"). `entry` (a true edit) takes precedence;
@@ -283,7 +310,10 @@ export default function GameDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        if (!isControlled) {
+          setInternalOpen(next);
+        }
+        onOpenChange?.(next);
         if (next) {
           setSavedSinceOpen(false);
           // Re-seed from the latest (possibly inline-updated) entry so edits made on the list since
@@ -299,24 +329,26 @@ export default function GameDialog({
         }
       }}
     >
-      <DialogTrigger asChild>
-        {isEdit ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Edit"
-            title="Edit"
-            className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
-          >
-            <Pencil />
-          </Button>
-        ) : (
-          <Button size={triggerSize}>
-            <Plus />
-            {triggerLabel}
-          </Button>
-        )}
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          {isEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Edit"
+              title="Edit"
+              className="size-8 text-blue-100/70 hover:bg-white/10 hover:text-white"
+            >
+              <Pencil />
+            </Button>
+          ) : (
+            <Button size={triggerSize} variant={triggerVariant}>
+              <Plus />
+              {triggerLabel}
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent ref={setContentEl} className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit game" : "Add a game"}</DialogTitle>
@@ -328,6 +360,7 @@ export default function GameDialog({
           {isEdit && values.metadata_status !== "matched" && (
             <span className="w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">No metadata</span>
           )}
+          {!isEdit && notice && <p className="rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-200">{notice}</p>}
         </DialogHeader>
         <form
           className="space-y-4"
