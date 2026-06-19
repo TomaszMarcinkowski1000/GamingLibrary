@@ -3,7 +3,7 @@ project: "Gaming Library"
 version: 1
 status: draft
 created: 2026-06-02
-updated: 2026-06-17
+updated: 2026-06-19
 prd_version: 1
 main_goal: market-feedback
 top_blocker: external
@@ -34,7 +34,7 @@ Gaming Library helps a physical-game collector (50+ titles, 3+ consoles) answer 
 | F-03  | photo-identification-spike | (foundation) vision reads game+platform ~95%; grounding-bound at 71% strict | —              | FR-005, Guardrails        | done     |
 | S-01  | manual-add-and-browse      | add a game by title+platform, enriched, and browse the library  | F-01, F-02                 | US-04, FR-007, FR-008, FR-009 | done     |
 | S-02  | edit-and-delete-entry      | edit any field of an entry, and delete with confirmation        | F-01, S-01                 | FR-010, FR-011, FR-020    | done     |
-| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | proposed |
+| S-03  | photo-to-library           | capture a box photo → identified, enriched entry auto-saved     | F-01, F-02, F-03, S-01, S-02, S-09 | US-01, FR-004, FR-005, FR-006, FR-008 | done |
 | S-04  | mark-play-status           | mark a game's play status (+ optional play time)                | F-01, S-01                 | US-02, FR-013, FR-014     | done     |
 | S-05  | search-library-by-title    | search the library by title to check ownership before buying    | F-01, S-01                 | US-05, FR-012             | done |
 | S-06  | filter-and-sort-library    | filter and sort the library by status, platform, and genre      | F-01, S-01, S-04           | US-05, FR-019             | done |
@@ -149,7 +149,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Vision identification must clear ≥90% accuracy on the collector's shelf — Owner: user/team. Block: **resolved (2026-06-13)**. **F-03 update (2026-06-13):** the vision read is ~95% (clears intent), but strict base-game id+platform grounding measured 71.2% — so this slice was `blocked` on a **grounding follow-up**, not on the model. **S-09 update (2026-06-13):** the grounding follow-up shipped and re-measured **92.9% accuracy-when-answered (PASS, ≥90% bar)**, so this unknown is resolved and the slice is unblocked. A **confirm-before-save** UX (model proposes → user one-tap accepts/corrects via the S-02 path) remains the recommended way to ship responsibly, since the abstain path falls back to manual entry by design.
   - Does the in-browser mobile camera-capture path work end-to-end on the four mainstream browsers (NFR), with no required desktop step? — Owner: team. Block: no (a known mobile-web risk to validate during planning, not a sequencing blocker).
 - **Risk:** The validation milestone and the killer feature, placed as early as its prerequisites allow per the `market-feedback` goal. Its viability is gated by F-03 — which is why F-03 was the recommended first move. **F-03 result reframes the gate:** the differentiator is viable (model reads boxes at ~95%); the photo path is **not** cut. The residual work is grounding-side (edition-collapse + platform normalization), and the S-01-as-primary fallback only triggers if that follow-up fails to clear ~90% on re-measure. See `context/changes/photo-identification-spike/results.md`.
-- **Status:** proposed (unblocked 2026-06-13 by S-09 — grounding re-measure 92.9% ≥ 90% bar; was blocked on the F-03 grounding follow-up, not the vision model)
+- **Status:** done
 
 ### S-04: Mark a game with a play status
 
@@ -275,6 +275,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-04: user can set, change, or clear a play status ("Playing now", "Played", "Completed", "100% completed") on a library entry, and optionally record play time in hours; changes reflect without a full page reload.** — Archived 2026-06-13 → `context/archive/2026-06-13-mark-play-status/`. Lesson: —.
 - **S-05: user can type a title substring (case-insensitive) and see only matching entries — the fast "do I already own this?" check that covers the secondary success criterion (in-store / marketplace duplicate-purchase avoidance).** — Archived 2026-06-13 → `context/archive/2026-06-13-search-library-by-title/`. Lesson: —.
 - **S-09: IGDB grounding resolves to the right game entry, on two fronts: (1) edition-variant collapse — a box read as "Alan Wake II Deluxe Edition" / "Horizon Forbidden West Complete Edition" / "Bloodborne GOTY" / "Marvel's Spider-Man" grounds to the base-game id, not the edition-specific entry (via IGDB `parent_game`/version relationships or top-N + base-title match); and (2) false-positive suppression — thin or ambiguous search terms (e.g. title "e" on "Xbox Series X") degrade to the existing `no_match` flag instead of attaching wrong metadata. Platform-alias normalization (PSVita/PSP/multi-platform strings) rides along.** — Archived 2026-06-13 → `context/archive/2026-06-13-enrichment-match-precision/`. Lesson: —.
+- **S-03: user can capture or upload a single-game photo from a browser (including mobile camera), the system proposes a game + platform, and the identified entry is auto-saved into the library with IGDB metadata attached; if identification fails, the user is offered the manual-entry path instead of an auto-saved guess.** — Archived 2026-06-19 → `context/archive/2026-06-17-photo-to-library/`. Lesson: —.
 - **S-06: user can filter and sort the library view by status, platform, and genre, combining filters with each other and with the title search; filter/sort state persists within a browsing session.** — Archived 2026-06-16 → `context/archive/2026-06-13-filter-and-sort-library/`. Lesson: —.
 - **S-07: user can request a deterministic ranked list from their own library, constrained by overall game-length bucket (short < 10h / medium 10–30h / long 30h+) and biased by one of three novelty modes ("new releases" / "newly bought" / "comfort"); 100%-completed games are de-prioritized except under "comfort", and an empty result explains which constraint excluded everything.** — Archived 2026-06-16 → `context/archive/2026-06-13-play-next-recommendation/`. Lesson: —.
 - **S-08: after signing in the user lands on their library (or reaches it in a single, obvious step) rather than the current dashboard → library two-hop, and a persistent way back to the library exists.** — Archived 2026-06-17 → `context/archive/2026-06-17-post-login-library-landing/`. Lesson: —.
