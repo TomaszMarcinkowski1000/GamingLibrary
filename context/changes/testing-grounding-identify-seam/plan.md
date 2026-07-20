@@ -439,26 +439,26 @@ behavior changes.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npx astro check`
-- [x] 1.2 Linting passes: `npm run lint`
-- [x] 1.3 Existing suite still green: `npm test`
+- [x] 1.1 Type checking passes: `npx astro check` — 5999a94
+- [x] 1.2 Linting passes: `npm run lint` — 5999a94
+- [x] 1.3 Existing suite still green: `npm test` — 5999a94
 
 #### Manual
 
-- [x] 1.4 Fetch helper's "unexpected fetch" guard visibly fails a test when a URL is unstubbed
+- [x] 1.4 Fetch helper's "unexpected fetch" guard visibly fails a test when a URL is unstubbed — 5999a94
 
 ### Phase 2: `lookupGameMetadata` grounding wiring tests
 
 #### Automated
 
-- [ ] 2.1 New grounding suite passes: `npm test`
-- [ ] 2.2 Type checking passes: `npx astro check`
-- [ ] 2.3 Linting passes: `npm run lint`
+- [x] 2.1 New grounding suite passes: `npm test`
+- [x] 2.2 Type checking passes: `npx astro check`
+- [x] 2.3 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 2.4 Flip a boundary constant locally and confirm the matching boundary test fails (revert)
-- [ ] 2.5 Confirm no test reads `fixtures/shelf/` and no assertion copies a value from `igdb.ts`
+- [x] 2.4 Flip a boundary constant locally and confirm the matching boundary test fails (revert)
+- [x] 2.5 Confirm no test reads `fixtures/shelf/` and no assertion copies a value from `igdb.ts`
 
 ### Phase 3: `/api/identify` route seam tests
 
