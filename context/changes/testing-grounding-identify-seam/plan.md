@@ -464,23 +464,23 @@ behavior changes.
 
 #### Automated
 
-- [x] 3.1 New route suite passes: `npm test`
-- [x] 3.2 Type checking passes: `npx astro check`
-- [x] 3.3 Linting passes: `npm run lint`
+- [x] 3.1 New route suite passes: `npm test` — de4392e
+- [x] 3.2 Type checking passes: `npx astro check` — de4392e
+- [x] 3.3 Linting passes: `npm run lint` — de4392e
 
 #### Manual
 
-- [x] 3.4 Confirm persist-save assertions read the captured payload, not merely that insert ran
-- [x] 3.5 Confirm the normalize test does not mock `@/lib/services/vision`
+- [x] 3.4 Confirm persist-save assertions read the captured payload, not merely that insert ran — de4392e
+- [x] 3.5 Confirm the normalize test does not mock `@/lib/services/vision` — de4392e
 
 ### Phase 4: Cookbook and plan sync
 
 #### Automated
 
-- [ ] 4.1 Full suite green: `npm test`
-- [ ] 4.2 Linting/format on docs: `npm run lint`
+- [x] 4.1 Full suite green: `npm test`
+- [x] 4.2 Linting/format on docs: `npm run lint`
 
 #### Manual
 
-- [ ] 4.3 test-plan §6.2 reads as a followable recipe
-- [ ] 4.4 §3 Phase 1 status and `change.md` status both read `complete`
+- [x] 4.3 test-plan §6.2 reads as a followable recipe
+- [x] 4.4 §3 Phase 1 status and `change.md` status both read `complete`

@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-07-18 (Phase 1 change opened: testing-grounding-identify-seam)
+> Last updated: 2026-07-20 (Phase 1 complete: testing-grounding-identify-seam)
 
 ## 1. Strategy
 
@@ -85,7 +85,7 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|------------|-----------------|----------------|-----------|--------|----------------|
-| 1 | Grounding & identify-seam integration | Prove the photo path cannot silently save the wrong game/metadata | #1, #2 | integration + unit | researched | context/changes/testing-grounding-identify-seam/ |
+| 1 | Grounding & identify-seam integration | Prove the photo path cannot silently save the wrong game/metadata | #1, #2 | integration + unit | complete | context/changes/testing-grounding-identify-seam/ |
 | 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | not started | — |
 | 3 | API route contracts + cross-user isolation | Prove routes enforce ownership and validation parity, not just auth | #5, #6 | integration | not started | — |
 | 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | not started | — |
@@ -158,10 +158,53 @@ relevant rollout phase ships; before that, it reads "TBD — see §3 Phase N."
 
 ### 6.2 Adding an integration test (grounding / identify seam)
 
-- TBD — see §3 Phase 1. Will cover: mock IGDB/vision at the network edge,
-  assert edition-collapse and `no_match` behavior against the S-09 shelf
-  fixture, and the read→normalize→ground→save decision (including the
-  abstain→manual branch).
+Hermetic integration: mock the two providers at the `globalThis.fetch` edge,
+stub Supabase, and **never** mock the internal grounding or the vision
+normalizers — those are the seam under test.
+
+- **Location / naming**:
+  - Grounding wiring (`lookupGameMetadata` end-to-end):
+    `src/lib/services/igdb.integration.test.ts` (co-located; `.integration.`
+    infix distinguishes it from the pure-unit `igdb.test.ts` next to it).
+  - Route seam (`/api/identify` contract): `src/pages/api/identify.test.ts`
+    (co-located with the route).
+- **The mock edge is `globalThis.fetch`.** `igdb.ts` never calls `fetch`
+  directly — the wrapper's token-caching fetch forwards everything except the
+  cached Twitch token to `globalThis.fetch`, so intercepting it exercises the
+  **real** wrapper query serialization. Use the shared router
+  `test/helpers/fetch-mock.ts` → `installFetchRouter(routes)`: routes are keyed
+  by URL substring (`id.twitch.tv/oauth2/token`, `/v4/games`,
+  `/v4/game_time_to_beats`, `openrouter.ai`), the Twitch token endpoint is
+  answered by default (every IGDB call mints on a cache miss), and any unrouted
+  URL throws a loud "unexpected fetch" instead of hitting the network. Call
+  `router.restore()` in `afterEach`; read `router.requests` to assert the
+  **outgoing** request (e.g. the `/v4/games` body carries the normalized title).
+- **Env stub**: `test/stubs/astro-env-server.ts` (aliased in
+  `vitest.config.ts`) supplies non-empty *dummy* `TWITCH_CLIENT_ID/SECRET` and
+  `OPENROUTER_API_KEY` so `createIgdbClient` / `identifyGameFromPhoto` run their
+  real paths instead of throwing on a missing secret. `SUPABASE_*` stay
+  `undefined` on purpose.
+- **Supabase stub**: mock `@/lib/supabase`'s `createClient` to return the
+  capturing `insertClient()` shape (`.insert().select().single()` capturing the
+  payload — mirrors `library.test.ts`). The persist path then needs no
+  `SUPABASE_*` env, and assertions read the exact payload that would be written.
+  Under vitest also `vi.mock("cloudflare:workers", () => ({ env: { IGDB_TOKENS:
+  {} } }))` — a `{}`-shaped KV forces the token cache to miss so the router
+  answers the mint.
+- **Reference tests**: `src/lib/services/igdb.integration.test.ts` (grounding),
+  `src/pages/api/identify.test.ts` (route seam).
+- **Two hard rules**:
+  1. Never mock the internal grounding (`lookupGameMetadata` /
+     `collapseToBaseGame` / `isConfidentMatch`) — over-mocking hollows out the
+     seam under test.
+  2. Never mock the `vision.ts` module — its normalizers are load-bearing for
+     the saved value; mocking it skips them and makes a normalize-before-ground
+     assertion hollow.
+- **Oracle, not mirror**: the edition-collapse / `no_match` truth comes from
+  authored `Game`-shaped fixtures encoding base-game truth (the S-09 shelf
+  fixture is gitignored, so it is *authored*, never read from disk). Never copy
+  a value produced by `igdb.ts` into an assertion.
+- **Run locally**: `npm test`.
 
 ### 6.3 Adding an e2e test
 
@@ -184,6 +227,34 @@ relevant rollout phase ships; before that, it reads "TBD — see §3 Phase N."
 
 (Optional. After each phase lands, `/10x-implement` appends a 2–3 line note
 here capturing anything surprising the phase taught.)
+
+**Phase 1 — Grounding & identify-seam integration (2026-07-20).**
+
+- **Abstain-asymmetry oracle correction.** The two abstain faces are *not*
+  symmetric, and a test that treats them as such mirrors a misread requirement.
+  Vision `unsure` → `{status:"unsure"}`, **no save** (the FR-006/US-01 manual-entry
+  line). But a *confident* vision read that IGDB-misses **still saves** a row with
+  `igdb_id=null, metadata_status='no_match'` — correct by design. On the harness
+  path (`persist` off) that same confident-miss *folds* back to `unsure`. The
+  protective assertion is that these faces stay distinct, not that any of them
+  routes to manual.
+- **Assert on shape, not presence.** Because a confident ground-miss also writes a
+  row, "an insert ran" / "a row exists" passes against an un-grounded guess. Read
+  the captured insert payload's `metadata_status` / `igdb_id`, never mere insert
+  invocation.
+- **Two known code gaps recorded, not fixed** (a test-writing phase changes no
+  production behavior — see §7):
+  - *Empty-title pass-through.* `vision.ts` validates the title with `z.string()`
+    (no `.min(1)`), so a high-confidence empty title passes as `identified` and is
+    auto-saved. No test written (it would mirror a probable bug or demand a
+    behavior change).
+  - *No ambiguity disambiguation.* `isConfidentMatch` compares only the single
+    resolved base against the query — there is no multiple-close-hits detection, so
+    "genuine ambiguity ⇒ abstain" is unimplemented. No test written (it would
+    pretend coverage of an absent feature).
+  Both are candidates for a future non-test change; see
+  `context/changes/testing-grounding-identify-seam/plan.md` → "What We're NOT
+  Doing".
 
 ## 7. What We Deliberately Don't Test
 
