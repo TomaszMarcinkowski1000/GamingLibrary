@@ -13,6 +13,10 @@ skills-lock.json
 # build output
 dist/
 
+# stryker mutation testing
+.stryker-tmp/
+reports/mutation/
+
 # generated types
 .astro/
 
