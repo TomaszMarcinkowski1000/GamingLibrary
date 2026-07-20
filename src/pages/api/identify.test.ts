@@ -224,6 +224,23 @@ describe("POST /api/identify — normalize-before-ground", () => {
   });
 });
 
+describe("POST /api/identify — vision request payload", () => {
+  it("sends the uploaded photo to OpenRouter as a base64 data URL", async () => {
+    // Oracle: the vision call must carry the image as a `data:<mime>;base64,<data>` URL built from
+    // the upload's bytes. `imageFile()` is the 4 bytes [1,2,3,4] as image/png; base64([1,2,3,4]) is
+    // "AQIDBA==" (RFC 4648), so the outgoing body must embed exactly `data:image/png;base64,AQIDBA==`.
+    // Pins the whole `toBase64DataUrl` encoder, which the mocked fetch edge otherwise leaves unchecked.
+    const r = mockProviders({
+      vision: visionEnvelope({ title: "Whatever", platform: "PlayStation 5", confidence: 0.3 }),
+    });
+
+    await POST(postContext(photoForm()));
+
+    const visionReq = r.requests.find((req) => req.url.includes("openrouter.ai"));
+    expect(visionReq?.bodyText).toContain("data:image/png;base64,AQIDBA==");
+  });
+});
+
 describe("POST /api/identify — auth & upload boundaries", () => {
   it("401s when unauthenticated (before any form parsing)", async () => {
     const res = await POST(postContext(undefined, null));
@@ -244,6 +261,17 @@ describe("POST /api/identify — auth & upload boundaries", () => {
     const tooBig = new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.png", { type: "image/png" });
     const res = await POST(postContext(photoForm({ file: tooBig })));
     expect(res.status).toBe(400);
+  });
+
+  it("accepts a `photo` exactly at the 10 MB limit (boundary is inclusive)", async () => {
+    // The ">10 MB" case above only proves strictly-larger is rejected. This pins BOTH the limit
+    // constant (10·1024·1024) and the inclusive `<=`: a file of exactly 10 MB must pass the size
+    // gate. A confident vision abstain lets us read "passed the gate" as a clean 200 without the
+    // grounding path.
+    const exactly = new File([new Uint8Array(10 * 1024 * 1024)], "limit.png", { type: "image/png" });
+    mockProviders({ vision: visionEnvelope({ title: "Blurry", platform: "PlayStation 5", confidence: 0.3 }) });
+    const res = await POST(postContext(photoForm({ file: exactly })));
+    expect(res.status).toBe(200);
   });
 
   it("400s on a non-image mime type", async () => {

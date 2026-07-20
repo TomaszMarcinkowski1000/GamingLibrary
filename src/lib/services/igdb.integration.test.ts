@@ -90,7 +90,12 @@ describe("lookupGameMetadata — edition-variant collapse", () => {
       total_rating_count: 200,
       first_release_date: unixDate(2023, 10, 27),
       genres: genres("Shooter"),
-      involved_companies: developer("Remedy Entertainment"),
+      // A publisher (developer:false) sits first so the `developer` mapping must actually filter on
+      // the `developer === true` flag rather than take the first / every involved company.
+      involved_companies: [
+        { developer: false, company: { name: "Epic Games Publishing" } },
+        ...developer("Remedy Entertainment"),
+      ] as Game["involved_companies"],
       collections: collections("Alan Wake"),
     });
     const deluxe = game({
@@ -112,11 +117,48 @@ describe("lookupGameMetadata — edition-variant collapse", () => {
       igdbId: 200,
       collapsedFrom: 201,
       genre: ["Shooter"],
-      developer: ["Remedy Entertainment"],
+      developer: ["Remedy Entertainment"], // publisher excluded
       series: ["Alan Wake"],
       releaseYear: 2023,
+      // Exact ISO date off the base's `first_release_date` (no per-platform `release_dates` → the
+      // `?? first_release_date` fallback feeds `toIsoDate`). Pins the epoch-seconds→YYYY-MM-DD map.
+      releaseDate: "2023-10-27",
       lengthHours: 15,
     });
+  });
+
+  it("prefers the base entry over an equally-named edition flagged by version_title", async () => {
+    // Two candidates share the exact display name "Nova Prime"; only the top one carries a
+    // `version_title`, so it is an edition entry with NO parent relation — this drives the
+    // title-match fallback, not relation collapse. Both names are the same length, so the
+    // shortest-name tie-break can't decide: only the edition flag (`isEditionEntry`) can. The
+    // unflagged entry (501) is the base truth; the flagged one (500) is collapsed away.
+    const edition = game({
+      id: 500,
+      name: "Nova Prime",
+      version_title: "Deluxe Edition",
+      platforms: platforms("PlayStation 5"),
+      total_rating_count: 100,
+    });
+    const base = game({ id: 501, name: "Nova Prime", platforms: platforms("PlayStation 5"), total_rating_count: 100 });
+    mockIgdb([edition, base]);
+
+    const result = await lookupGameMetadata("Nova Prime", "PlayStation 5", stubKv);
+
+    expect(result).toMatchObject({ status: "matched", igdbId: 501, collapsedFrom: 500 });
+  });
+});
+
+describe("lookupGameMetadata — field-mapping edges", () => {
+  it("maps a matched game with no release date to null releaseYear and releaseDate", async () => {
+    // A confident match can still lack any release date (sparse IGDB coverage). The date maps must
+    // degrade to null rather than construct a date from `undefined` (which would surface NaN year).
+    const base = game({ id: 700, name: "Timeless", platforms: platforms("PlayStation 5"), total_rating_count: 100 });
+    mockIgdb([base], 3600);
+
+    const result = await lookupGameMetadata("Timeless", "PlayStation 5", stubKv);
+
+    expect(result).toMatchObject({ status: "matched", igdbId: 700, releaseYear: null, releaseDate: null });
   });
 });
 
@@ -246,6 +288,31 @@ describe("lookupGameMetadata — confidence boundary constants", () => {
       const c = game({ id: 31, name: "Orbit", platforms: platforms("PlayStation 5"), total_rating_count: 4 });
       mockIgdb([c]);
       await expect(lookup()).resolves.toEqual({ status: "no_match" });
+    });
+  });
+
+  describe("MIN_QUERY_INFO_CHARS (2)", () => {
+    // The abstain suite's "e" case pins the floor from below (1 info-char → no_match). This pins the
+    // comparison DIRECTION: a title with exactly 2 info-chars is not thin and must still ground, so
+    // the gate is `< 2`, not `<= 2`. "Go" is a perfect name match (dice 1.0) on a popular PS5 entry,
+    // so only the thin-term gate can turn it away.
+    it("grounds a two-character title exactly at the info-chars floor", async () => {
+      const c = game({ id: 40, name: "Go", platforms: platforms("PlayStation 5"), total_rating_count: 500 });
+      mockIgdb([c], 3600);
+      await expect(lookupGameMetadata("Go", "PlayStation 5", stubKv)).resolves.toMatchObject({
+        status: "matched",
+        igdbId: 40,
+      });
+    });
+
+    it("abstains on a one-character title even against a perfectly-named popular candidate", async () => {
+      // Isolates the thin-term gate from the name-similarity floor: "e" is a perfect name match
+      // (dice 1.0) on a popular PS5 entry named "e", so ONLY the info-chars gate can reject it. The
+      // abstain suite's "e" case leans on a name mismatch (Everwild); this one proves the gate fires
+      // on its own — a would-be confident match is still degraded to no_match on a single-char query.
+      const c = game({ id: 41, name: "e", platforms: platforms("PlayStation 5"), total_rating_count: 500 });
+      mockIgdb([c]);
+      await expect(lookupGameMetadata("e", "PlayStation 5", stubKv)).resolves.toEqual({ status: "no_match" });
     });
   });
 });
