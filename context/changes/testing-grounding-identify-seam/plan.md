@@ -451,27 +451,27 @@ behavior changes.
 
 #### Automated
 
-- [x] 2.1 New grounding suite passes: `npm test`
-- [x] 2.2 Type checking passes: `npx astro check`
-- [x] 2.3 Linting passes: `npm run lint`
+- [x] 2.1 New grounding suite passes: `npm test` — d6abd6b
+- [x] 2.2 Type checking passes: `npx astro check` — d6abd6b
+- [x] 2.3 Linting passes: `npm run lint` — d6abd6b
 
 #### Manual
 
-- [x] 2.4 Flip a boundary constant locally and confirm the matching boundary test fails (revert)
-- [x] 2.5 Confirm no test reads `fixtures/shelf/` and no assertion copies a value from `igdb.ts`
+- [x] 2.4 Flip a boundary constant locally and confirm the matching boundary test fails (revert) — d6abd6b
+- [x] 2.5 Confirm no test reads `fixtures/shelf/` and no assertion copies a value from `igdb.ts` — d6abd6b
 
 ### Phase 3: `/api/identify` route seam tests
 
 #### Automated
 
-- [ ] 3.1 New route suite passes: `npm test`
-- [ ] 3.2 Type checking passes: `npx astro check`
-- [ ] 3.3 Linting passes: `npm run lint`
+- [x] 3.1 New route suite passes: `npm test`
+- [x] 3.2 Type checking passes: `npx astro check`
+- [x] 3.3 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.4 Confirm persist-save assertions read the captured payload, not merely that insert ran
-- [ ] 3.5 Confirm the normalize test does not mock `@/lib/services/vision`
+- [x] 3.4 Confirm persist-save assertions read the captured payload, not merely that insert ran
+- [x] 3.5 Confirm the normalize test does not mock `@/lib/services/vision`
 
 ### Phase 4: Cookbook and plan sync
 
