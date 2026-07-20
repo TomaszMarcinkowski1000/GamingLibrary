@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-07-20 (Phase 1 complete: testing-grounding-identify-seam)
+> Last updated: 2026-07-20 (Phase 1 complete + mutation-hardened: testing-grounding-identify-seam)
 
 ## 1. Strategy
 
@@ -223,7 +223,64 @@ normalizers — those are the seam under test.
   de-prioritization, determinism, and empty-state-reason contracts as pure
   unit tests.
 
-### 6.6 Per-rollout-phase notes
+### 6.6 Hardening a phase with mutation testing (Stryker)
+
+Once a risk phase's tests pass, run Stryker as a **selective** gate (not on
+every commit) to find assertions that execute a line but wouldn't fail if it
+broke. It is wired for this repo (`stryker.config.json`, `npm run test:mutation`).
+
+- **Scope narrowly, one file per run.** Mutate only the module the phase
+  covers: `npx stryker run --mutate "src/lib/services/igdb.ts"`. CLI quirk: a
+  repeated `--mutate` flag *overrides* rather than accumulates, so run each
+  source file in its own invocation (or list them in the config `mutate` array).
+  The HTML report at `reports/mutation/index.html` is overwritten each run —
+  read it before starting the next file. Stryker mutates **source**, not tests,
+  so the survivor list reflects whatever suite covers that file (here the
+  pure-unit `igdb.test.ts` plus the integration suite together).
+- **Triage every survivor with one question:** *would this change hurt a user
+  or the business?* Yes → add **one** behavioural assertion that kills it. No →
+  ignore it consciously (see the discipline note). Never pin an implementation
+  detail just to raise the score.
+- **Kill techniques that worked here** (each adds signal, none mirrors the code):
+  - *Assert the outgoing payload, not that a call happened.* The whole
+    `toBase64DataUrl` encoder survived because the mocked `fetch` edge never
+    checked the request body — asserting the OpenRouter body carries exactly
+    `data:image/png;base64,AQIDBA==` (base64 of the fixture's bytes, an oracle)
+    kills the entire encoder at once.
+  - *Test the exact boundary, inclusively.* A `> limit` case only proves
+    strictly-larger is rejected; a file of **exactly** 10 MB accepted pins both
+    the constant and the `<=`-vs-`<` direction. Same for format mutants:
+    asserting `releaseDate: "2023-10-27"` kills the epoch→ISO (`*1000`/`/1000`,
+    `.slice(0,10)`) mutants a `releaseYear`-only assertion left alive.
+  - *Isolate one gate from the gate that masks it.* The thin-term gate's disable
+    mutant survived because the existing 1-char probe (`"e"` vs `Everwild`) is
+    also rejected by the name-similarity floor. A 1-char title against a
+    **perfectly-named, popular** candidate makes only the thin-term gate able to
+    reject — killing the mutant.
+  - *Force a flag, not a tie-break, to decide.* `isEditionEntry` was masked by
+    the shortest-name tie-break in `pickBaseCandidate`. Two candidates with the
+    **same display name and equal length**, one flagged by `version_title`, leave
+    the edition flag as the only discriminator.
+  - *Make an excluded input observable.* The `developer === true` filter survived
+    until a publisher (`developer:false`) sat in `involved_companies` and the
+    assertion proved it was excluded from the mapped list.
+- **Conscious-ignore discipline** (log the reason, don't chase 100%):
+  - *Equivalent mutants* — e.g. the base64 chunk loop `i < len` → `i <= len`:
+    the extra iteration is `subarray(len, len+CHUNK)` = empty, appends nothing.
+  - *Unhittable thresholds* — the `NAME_SIM_FLOOR` `<`/`<=` direction needs a
+    Sørensen–Dice of exactly 0.34, unreachable without absurd token counts; the
+    floor value is already pinned by the 0.333-below / 0.40-above probes.
+  - *Unreachable-in-practice branches* — the `isEditionEntry` parent-relation
+    terms: an edition carrying a parent relation is relation-collapsed *before*
+    `pickBaseCandidate`, so those terms never decide a realistic flow.
+  - *Data tables and error strings* — the platform-id map and `Response.json`
+    error messages; cosmetic, not behavioural.
+- **Result of the Phase 1 pass** (2026-07-20): `igdb.ts` 59.96 → 64.82,
+  `identify.ts` 47.70 → 54.02 (covered 64.84 → 73.44); +5 tests, no production
+  change. This is a floor, not a target — the remaining survivors are the
+  consciously-ignored classes above.
+
+### 6.7 Per-rollout-phase notes
 
 (Optional. After each phase lands, `/10x-implement` appends a 2–3 line note
 here capturing anything surprising the phase taught.)
@@ -255,6 +312,11 @@ here capturing anything surprising the phase taught.)
   Both are candidates for a future non-test change; see
   `context/changes/testing-grounding-identify-seam/plan.md` → "What We're NOT
   Doing".
+- **Mutation-hardened (Stryker).** After the suite went green, a selective
+  Stryker pass added 5 targeted assertions — one per business-relevant survived
+  mutant, no implementation-pinning. Scores rose `igdb.ts` 59.96 → 64.82 and
+  `identify.ts` 47.70 → 54.02. The reusable kill techniques and the
+  consciously-ignored survivor classes are recorded in §6.6.
 
 ## 7. What We Deliberately Don't Test
 
