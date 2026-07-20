@@ -477,10 +477,10 @@ behavior changes.
 
 #### Automated
 
-- [x] 4.1 Full suite green: `npm test`
-- [x] 4.2 Linting/format on docs: `npm run lint`
+- [x] 4.1 Full suite green: `npm test` — 0e8fbff
+- [x] 4.2 Linting/format on docs: `npm run lint` — 0e8fbff
 
 #### Manual
 
-- [x] 4.3 test-plan §6.2 reads as a followable recipe
-- [x] 4.4 §3 Phase 1 status and `change.md` status both read `complete`
+- [x] 4.3 test-plan §6.2 reads as a followable recipe — 0e8fbff
+- [x] 4.4 §3 Phase 1 status and `change.md` status both read `complete` — 0e8fbff
