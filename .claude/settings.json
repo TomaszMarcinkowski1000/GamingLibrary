@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/eslint-changed.mjs",
+            "timeout": 30,
+            "statusMessage": "ESLint on edited file"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/test-related-changed.mjs",
+            "timeout": 60,
+            "statusMessage": "Vitest related (risk area)"
+          }
+        ]
+      }
+    ]
+  }
+}
