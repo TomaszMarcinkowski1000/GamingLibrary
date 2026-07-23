@@ -1,5 +1,5 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FetchRouter, type Route, type RouteResult, installFetchRouter } from "../../../test/helpers/fetch-mock";
 
 // Hermetic integration tests for `POST/GET /api/identify`, the orchestration/abstain core of Risk #2.
@@ -108,7 +108,9 @@ function alanWakeMatch(): Game[] {
   return [game({ id: 100, name: "Alan Wake II", platforms: platforms("PlayStation 5"), total_rating_count: 200 })];
 }
 
-let errorSpy: ReturnType<typeof vi.spyOn>;
+// vitest 4's `spyOn` is overloaded, so `ReturnType<typeof vi.spyOn>` collapses to `any`; name the
+// spied procedure instead so `.mockRestore()` stays typed.
+let errorSpy: MockInstance<typeof console.error>;
 
 beforeEach(() => {
   holder.supabaseClient = null;

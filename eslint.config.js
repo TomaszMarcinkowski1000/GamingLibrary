@@ -60,11 +60,14 @@ const reactConfig = tseslint.config({
   },
 });
 
-// Dev-only Node scripts (F-03 accuracy harness). These run in plain Node, not workerd, and do
-// dynamic JSON/CSV work the typed-program rules can't narrow — so disable type-aware linting here
-// and give them Node globals. `console` is the harness's report surface, so `no-console` is off.
+// Dev-only Node scripts: the F-03 accuracy harness and the agent hooks in `.claude/hooks/`.
+// These run in plain Node, not workerd, and do dynamic JSON/CSV work the typed-program rules
+// can't narrow — so disable type-aware linting here and give them Node globals. (TypeScript's
+// `**/*` include skips dot-directories, so `.claude/hooks` is outside the project service and
+// type-aware linting there is a parse error, not just noise.) `console` is the harness's report
+// surface, so `no-console` is off.
 const scriptsConfig = tseslint.config({
-  files: ["scripts/**/*.{js,mjs,cjs}"],
+  files: ["scripts/**/*.{js,mjs,cjs}", ".claude/hooks/**/*.{js,mjs,cjs}"],
   extends: [tseslint.configs.disableTypeChecked],
   languageOptions: {
     globals: {
