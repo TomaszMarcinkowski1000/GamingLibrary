@@ -24,7 +24,7 @@ function game(props: Partial<Game> & { id: number; name: string }): Game {
 const platforms = (...names: string[]) => names.map((name) => ({ name })) as Game["platforms"];
 const genres = (...names: string[]) => names.map((name) => ({ name })) as Game["genres"];
 const collections = (...names: string[]) => names.map((name) => ({ name })) as Game["collections"];
-const developer = (name: string) => [{ developer: true, company: { name } }] as Game["involved_companies"];
+const developer = (name: string) => [{ developer: true, company: { name } }] as NonNullable<Game["involved_companies"]>;
 
 /** Unix seconds for a UTC calendar date — keeps release-year fixtures human-readable. */
 const unixDate = (y: number, m: number, d: number) => Math.floor(Date.UTC(y, m - 1, d) / 1000);

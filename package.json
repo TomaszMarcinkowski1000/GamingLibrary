@@ -66,7 +66,7 @@
     "supabase": "^2.23.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.2",
-    "vitest": "^3.2.6",
+    "vitest": "^4.1.10",
     "wrangler": "^4.90.0"
   },
   "overrides": {
@@ -74,7 +74,8 @@
   },
   "lint-staged": {
     "*.{ts,tsx,astro}": [
-      "eslint --fix"
+      "eslint --fix",
+      "vitest related --run --passWithNoTests"
     ],
     "*.{json,css,md}": [
       "prettier --write"
