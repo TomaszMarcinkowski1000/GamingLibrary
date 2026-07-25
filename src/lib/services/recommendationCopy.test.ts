@@ -22,6 +22,14 @@ import { emptyStateMessage } from "./recommendationCopy";
  *
  * Note what is *not* asserted: that this two-value-reason-plus-mode design is correct. It is a
  * recorded gap (see the plan's "What We're NOT Doing") — these tests prove the workaround works.
+ *
+ * Mutation-testing baseline (`npx stryker run --mutate "src/lib/services/recommendationCopy.ts"`):
+ * **100.00% total / 100.00% covered**, 14 killed, 0 survived, 0 uncovered on the first pass — no
+ * assertions were added for it. Worth noting *why*, since §6.6 classes string-literal mutants as
+ * cosmetic and would have let them go: the constraint-vocabulary matches plus the pairwise
+ * distinctness check kill every literal mutant anyway, because emptying or duplicating any sentence
+ * either drops the required vocabulary or collapses two causes into one. Distinctness is what makes
+ * the difference — vocabulary matching alone would leave the collapse mutants alive.
  */
 
 const empty = (reason: EmptyReason, mode: NoveltyMode): Extract<RecommendationResult, { status: "empty" }> => ({

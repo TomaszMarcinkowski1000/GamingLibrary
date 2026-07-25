@@ -575,29 +575,29 @@ same-behaviour code move; rollback is reverting one import.
 
 #### Automated
 
-- [x] 3.1 Recommender suite green at 33 tests
-- [x] 3.2 Full suite green (`npm test`)
-- [x] 3.3 Lint clean
+- [x] 3.1 Recommender suite green at 33 tests — 26c9307
+- [x] 3.2 Full suite green (`npm test`) — 26c9307
+- [x] 3.3 Lint clean — 26c9307
 
 #### Manual
 
-- [x] 3.4 Each new assertion traced to a PRD line, not a source line
-- [x] 3.5 Relaxing the `completed_100` guard makes the de-prioritization assertion fail (then reverted)
+- [x] 3.4 Each new assertion traced to a PRD line, not a source line — 26c9307
+- [x] 3.5 Relaxing the `completed_100` guard makes the de-prioritization assertion fail (then reverted) — 26c9307
 
 ### Phase 4: Selective mutation pass
 
 #### Automated
 
-- [ ] 4.1 Stryker run on `recommendation.ts` completes
-- [ ] 4.2 Stryker run on `recommendationCopy.ts` completes
-- [ ] 4.3 Full suite green after added assertions
-- [ ] 4.4 Lint clean
+- [x] 4.1 Stryker run on `recommendation.ts` completes
+- [x] 4.2 Stryker run on `recommendationCopy.ts` completes
+- [x] 4.3 Full suite green after added assertions
+- [x] 4.4 Lint clean
 
 #### Manual
 
-- [ ] 4.5 Every survivor killed or logged with an ignore reason
-- [ ] 4.6 No assertion pins a weight constant or string literal
-- [ ] 4.7 Before/after mutation scores recorded
+- [x] 4.5 Every survivor killed or logged with an ignore reason
+- [x] 4.6 No assertion pins a weight constant or string literal
+- [x] 4.7 Before/after mutation scores recorded
 
 ### Phase 5: Cookbook §6.5 + §6.7 note + status sync
 

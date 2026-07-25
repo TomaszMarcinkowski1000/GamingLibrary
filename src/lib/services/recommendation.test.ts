@@ -29,6 +29,53 @@ function entry(overrides: Partial<LibraryEntry> & { id: string }): LibraryEntry 
   } as LibraryEntry;
 }
 
+/**
+ * Mutation-testing triage (`npx stryker run --mutate "src/lib/services/recommendation.ts"`).
+ * **92.36% → 94.27% total** (94.16% → 96.10% covered), 145 → 148 killed, 9 → 6 survived, 3
+ * uncovered. The gain came from two fixture changes, not new tests: giving the permutation suite
+ * (`:322-425`) a tied *triple* whose `created_at` values exercise both tie-break branches, and
+ * making the tie-break fixture at `:455` actually discriminate. The sibling copy module scores
+ * 100.00% (14/14) — see `recommendationCopy.test.ts`. Every survivor below was put to §6.6's
+ * question — *would this change hurt a user or the business?* — and consciously accepted. All six
+ * are equivalent or unreachable; none is a live behaviour gap. Do not chase the remaining points;
+ * re-triage only if the set shifts.
+ *
+ * **Equivalent mutants** — no input distinguishes them from the original:
+ * - `:131` `release_date === null ? NaN : …`: `Date.parse(null)` is already `NaN`, as are
+ *   `undefined` and `""`; the ternary is a type guard, not behaviour.
+ * - `:201` / `:204` `<` → `<=`: each sits inside a `!==` guard, where the two operators agree.
+ *   `created_at` and `id` are non-nullable strings, so no coercion case escapes the guard.
+ *
+ * **Unreachable, or harmless in practice** — the triggering input cannot arrive, or the difference
+ * is unobservable:
+ * - `:60` dropping `lengthHours >= minH`: the buckets are contiguous and iterated low→high, so for
+ *   every *number* — negatives included, via the `short` fallthrough — the upper bound alone picks
+ *   the same bucket. `NaN` is the one divergence: it fails every `<` and lands in the open-ended
+ *   `very_long` rather than `short`. `z.number()` rejects `NaN` on every write path.
+ * - `:65` the negative-length fallthrough: negatives are blocked independently by
+ *   `z.number().min(0)` (`validation/library.ts:41`) on the edit path, and by `lengthHoursFromSeconds`
+ *   returning `null` for `<= 0` (`igdb.ts:163-167`) on the create/enrichment path, which writes
+ *   `length_hours` straight through `metadataFromGrounding` without zod. There is no DB CHECK
+ *   behind either — `length_hours numeric` is unconstrained.
+ * - `:75` the empty-bucket-selection guard: `parseRecommendationParams` falls back to all four
+ *   buckets (`validation/library.ts:110-111`) and is the only production producer of `lengthBuckets`.
+ * - `:129` `-Infinity` for an unparseable purchase date: `date_bought ?? created_at` reads a `date`
+ *   and a non-null `timestamptz` column, so `Date.parse` cannot meet a malformed string.
+ * - `:203` `if (a.id !== b.id)` → `if (true)`: `id` is the primary key and `listAllEntries` is a
+ *   single-table select, so production never supplies duplicate ids. Even if it did, the original's
+ *   `return 0` and the mutant's `1` take the same path — `Array.sort` only ever tests `cmp < 0`.
+ * - `:224` the `getRecommendations` body: the Supabase I/O boundary, out of scope for a unit
+ *   harness. This one leaves a genuine hole rather than a covered one — `listAllEntries` has no
+ *   test anywhere in the repo, and there is no e2e layer yet (test-plan Phases 3-4).
+ *
+ * **Killed, but worth knowing why it is asserted at all:** dropping the `created_at` tie-break
+ * branch (`:200`) is a real behaviour change, and it is now caught by the test at `:455` — which is
+ * **documentation-of-behaviour, not spec**. The PRD mandates determinism (`prd.md:84`, restated at
+ * `:182`) but never names an ordering key, and "oldest first" appears nowhere in it, so pinning
+ * `created_at` as *the* key would be Oracle Hazard #4 if claimed as a rule. Determinism itself is
+ * asserted spec-side, key-agnostically, by the permutation suite at `:322-425`.
+ */
+
 const ALL_BUCKETS = [...LENGTH_BUCKETS];
 const req = (mode: NoveltyMode, lengthBuckets = ALL_BUCKETS): RecommendationRequest => ({ lengthBuckets, mode });
 const ids = (result: ReturnType<typeof recommend>): string[] =>
@@ -283,15 +330,30 @@ describe("recommend — determinism across input permutations (full result)", ()
    * cannot: a refactor leaning on `Array.prototype.sort` stability instead of the explicit total
    * order — stability preserves *input* order, so a two-permutation check can pass while a third
    * diverges — and score-level nondeterminism, invisible to an ids-only comparison.
+   *
+   * The tie is a **triple**, not a pair, and its `created_at` values are chosen so that *both*
+   * tie-break branches decide a real comparison (Phase 4 mutation pass). A comparator that loses
+   * antisymmetry — `cmp(a,b) === cmp(b,a) === -1`, i.e. either branch at `recommendation.ts:201`
+   * or `:204` degrading to a constant `-1` — makes `Array.sort` return an order that depends on
+   * where the tied entries sat in the input, precisely the nondeterminism `prd.md:182` forbids.
+   * Each branch is only *entered* under its own condition (`:201` when `created_at` differs, `:204`
+   * when it matches), so a fixture whose ties agree on `created_at` probes one and blinds the
+   * other. This does not assert `created_at` → `id` *is* the tie-break key — that stays Oracle
+   * Hazard #4, documented by `:369-378` — only that whatever key is used yields one stable order.
    */
   const library = [
-    // Two entries identical on every scoring axis in every mode ⇒ a genuine score tie.
+    // Three entries identical on every scoring axis in every mode ⇒ a genuine score tie. `created_at`
+    // is not a scoring axis for any of them: all three set `date_bought`, so the `newly_bought`
+    // novelty term never falls back to `created_at` and the scores stay exactly equal.
+    // tie-a/tie-b share a created_at ⇒ the `id` branch separates them;
+    // tie-c differs ⇒ the `created_at` branch separates it from both.
     entry({
       id: "tie-a",
       play_status: "played",
       length_hours: 20,
       release_date: "2021-01-01",
       date_bought: "2026-02-01",
+      created_at: "2026-01-01T00:00:00Z",
     }),
     entry({
       id: "tie-b",
@@ -299,6 +361,15 @@ describe("recommend — determinism across input permutations (full result)", ()
       length_hours: 20,
       release_date: "2021-01-01",
       date_bought: "2026-02-01",
+      created_at: "2026-01-01T00:00:00Z",
+    }),
+    entry({
+      id: "tie-c",
+      play_status: "played",
+      length_hours: 20,
+      release_date: "2021-01-01",
+      date_bought: "2026-02-01",
+      created_at: "2026-04-01T00:00:00Z",
     }),
     // ...and three that differ on length, status and both date axes ⇒ genuine score distinctions.
     entry({
@@ -325,10 +396,10 @@ describe("recommend — determinism across input permutations (full result)", ()
   ];
   // Fixed, hand-written permutations — three distinct reorderings plus the original.
   const PERMUTATIONS = [
-    [0, 1, 2, 3, 4],
-    [4, 3, 2, 1, 0],
-    [2, 0, 4, 1, 3],
-    [1, 4, 0, 3, 2],
+    [0, 1, 2, 3, 4, 5],
+    [5, 4, 3, 2, 1, 0],
+    [2, 0, 4, 1, 5, 3],
+    [1, 5, 0, 3, 2, 4],
   ];
 
   it("returns a deep-equal result — items and scores — across permutations, in every mode", () => {
@@ -366,15 +437,30 @@ describe("recommend — determinism & total-order tie-break", () => {
     expect(first).toEqual(second);
   });
 
+  /**
+   * **Documentation-of-behaviour, not spec.** The PRD mandates determinism (`prd.md:84`) but never
+   * names an ordering key, so a future change to the tie-break would be legitimate and should
+   * re-take this test rather than be blocked by it — the same status the 30h bucket edge carries at
+   * `:98-127`. Determinism *itself* is asserted spec-side by the permutation suite at `:322-425`.
+   *
+   * The fixture is built so each branch decides a comparison the other cannot (Phase 4 mutation
+   * pass — the previous fixture had its `created_at` order agree with its `id` order, so dropping
+   * the `created_at` branch entirely still produced the expected output and the test verified only
+   * half its name):
+   * - `c` is the oldest ⇒ the `created_at` branch alone lifts it above `a`/`b`, whose ids both sort
+   *   lower. Drop that branch and the result becomes `a,b,c`.
+   * - `a` and `b` share a `created_at` ⇒ only the `id` branch separates them, and they are fed in
+   *   `b,a` order so a stable sort cannot fake it. Drop that branch and the result becomes `c,b,a`.
+   */
   it("breaks score ties by created_at ascending, then id ascending", () => {
     // Identical scoring inputs (in-bucket, same status, same date) ⇒ equal score ⇒ tie-break only.
     const tie = (id: string, created_at: string) =>
       entry({ id, created_at, play_status: "not_played", length_hours: 20, release_date: "2021-01-01" });
     const result = recommend(
-      [tie("c", "2026-01-02T00:00:00Z"), tie("b", "2026-01-01T00:00:00Z"), tie("a", "2026-01-01T00:00:00Z")],
+      [tie("c", "2026-01-01T00:00:00Z"), tie("b", "2026-01-03T00:00:00Z"), tie("a", "2026-01-03T00:00:00Z")],
       req("new_releases"),
     );
-    expect(ids(result)).toEqual(["a", "b", "c"]);
+    expect(ids(result)).toEqual(["c", "a", "b"]);
   });
 });
 
