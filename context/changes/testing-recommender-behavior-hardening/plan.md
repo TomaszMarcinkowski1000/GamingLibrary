@@ -115,6 +115,11 @@ as before the extraction.
   (see Current State Analysis).
 - **Not testing `getRecommendations()`** — it is the Supabase I/O boundary; `listAllEntries`
   is already covered by `library.test.ts`.
+  - **Correction (Sub-phase 4/5):** the second clause is false — `listAllEntries` has **no**
+    test coverage (only its definition at `library.ts:339` and its single call site at
+    `recommendation.ts:225`). Sub-phase 4's mutation run surfaced the `:224` no-coverage mutant
+    as a genuine hole; see the test-plan §6.7 note. The decision to skip `getRecommendations()`
+    still stands on the I/O-boundary grounds alone.
 - **Not covering cross-user isolation, route contracts, e2e, or CI gates** — test-plan Phases
   3, 4 and 5 respectively.
 
@@ -364,6 +369,13 @@ results".
 mandates determinism, not that key (research Oracle Hazard #4); the existing `:192-201` test
 stays as code-documentation and is not extended.
 
+> **Superseded by Sub-phase 4.** The mutation pass found that test's fixture had its `created_at`
+> order agreeing with its `id` order, so dropping the `created_at` branch
+> (`recommendation.ts:201`) still produced the expected output — the test verified only half its
+> own name. Sub-phase 4 therefore rewrote its fixture and expected value (`["a","b","c"]` →
+> `["c","a","b"]`, now at `:440-464`), which kills the `:201` mutant. The test's *title* and its
+> documentation-not-spec status are unchanged; only the fixture strength is.
+
 ### Success Criteria
 
 #### Automated Verification
@@ -504,7 +516,9 @@ Doing"; and the Stryker before/after scores.
   the three exclusion causes.
 - `src/lib/services/recommendation.test.ts` (extended by 3) — de-prioritization direction, the
   10h edge end-to-end, determinism across permutations.
-- Existing 30 assertions unchanged in meaning; one comment added.
+- Existing 30 assertions unchanged in meaning; one comment added. (Sub-phase 4 amendment: the
+  tie-break test's fixture and expected value *were* changed — see the Sub-phase 3 anti-pattern
+  note. Its asserted behaviour is the same rule, verified more strictly.)
 
 ### Integration Tests
 

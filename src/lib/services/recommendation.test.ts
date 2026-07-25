@@ -286,7 +286,7 @@ describe("recommend — 100%-complete de-prioritization, asserted as direction",
    * Oracle: "100%-completed games are de-prioritized except under the 'comfort' mode"
    * (`prd.md:83`, restated at `:180`). The spec says *de-prioritized*; the code *excludes*
    * (`isEligible`, `recommendation.ts:92`). Asserting absence — as the spot-check's
-   * `not.toContain("celeste")` (`:471`) does — pins the stricter code, so it would fail the day
+   * `not.toContain("celeste")` (`:557`) does — pins the stricter code, so it would fail the day
    * exclusion is legitimately softened into a heavy penalty. A rank comparison holds under both.
    *
    * Why this is not tautological: `statusPenalty` gives `completed_100` a **0** in new modes
@@ -324,9 +324,9 @@ describe("recommend — determinism across input permutations (full result)", ()
    * Oracle: US-03 AC (`prd.md:84`) and §Business Logic (`prd.md:182`) — "identical inputs produce
    * identical outputs (no randomness in v1)", so re-asking "will not capriciously reshuffle
    * results". The PRD mandates determinism; it does **not** mandate `created_at` → `id` as the key,
-   * so nothing here asserts that key (the existing `:369-378` test keeps documenting it).
+   * so nothing here asserts that key (the existing `:440-464` test keeps documenting it).
    *
-   * Two things this catches that the existing single reversed-input, ids-only check (`:363-367`)
+   * Two things this catches that the existing single reversed-input, ids-only check (`:434-438`)
    * cannot: a refactor leaning on `Array.prototype.sort` stability instead of the explicit total
    * order — stability preserves *input* order, so a two-permutation check can pass while a third
    * diverges — and score-level nondeterminism, invisible to an ids-only comparison.
@@ -339,7 +339,7 @@ describe("recommend — determinism across input permutations (full result)", ()
    * Each branch is only *entered* under its own condition (`:201` when `created_at` differs, `:204`
    * when it matches), so a fixture whose ties agree on `created_at` probes one and blinds the
    * other. This does not assert `created_at` → `id` *is* the tie-break key — that stays Oracle
-   * Hazard #4, documented by `:369-378` — only that whatever key is used yields one stable order.
+   * Hazard #4, documented by `:440-464` — only that whatever key is used yields one stable order.
    */
   const library = [
     // Three entries identical on every scoring axis in every mode ⇒ a genuine score tie. `created_at`
