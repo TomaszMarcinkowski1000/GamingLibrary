@@ -34,6 +34,20 @@ const req = (mode: NoveltyMode, lengthBuckets = ALL_BUCKETS): RecommendationRequ
 const ids = (result: ReturnType<typeof recommend>): string[] =>
   result.status === "ranked" ? result.items.map((i) => i.entry.id) : [];
 
+/** The two modes the PRD's "de-prioritized except under comfort" rule applies to (`prd.md:83`). */
+const NEW_MODES = NOVELTY_MODES.filter((mode) => mode !== "comfort");
+
+/**
+ * Position of an id in a ranked order, where *absent* means "ranked below everything". That
+ * conflation is deliberate: the PRD asks for de-prioritization (`prd.md:83`), and both excluding a
+ * game and ranking it last satisfy that — so a rank comparison stays true under either
+ * implementation, where `not.toContain` only holds under exclusion.
+ */
+const rankOf = (order: string[], id: string): number => {
+  const index = order.indexOf(id);
+  return index === -1 ? Infinity : index;
+};
+
 describe("bucketOf — boundary edges (inclusive-low / exclusive-high)", () => {
   /**
    * Which oracle backs which edge — not all six cases are equal.
@@ -176,6 +190,36 @@ describe("recommend — length dominance", () => {
   });
 });
 
+describe("recommend — the 10h bucket boundary reaches the ranked output", () => {
+  /**
+   * Oracle: FR-016 (`prd.md:160`) defines short as "< 10h", so a 10.0h game belongs to `medium`
+   * unambiguously — the one length boundary the spec actually decides. `bucketOf(10)` is already
+   * pinned at the helper level (`:66-75`), but nothing proved the boundary survives
+   * `bucketOf` → `lengthDistance` → `scoreOf` → sort into the list the user reads.
+   *
+   * The 9.99h entry is given the tie-break-favoured position (older `created_at`, smaller `id`) on
+   * purpose. If a `>=`/`>` flip at `recommendation.ts:60` or a bounds edit at `types.ts:113-117`
+   * pushed exactly-10h into `short`, both entries would sit at distance 1 from `medium`, tie on
+   * score, and the tie-break would hand the top slot to 9.99h — so this fails on the regression
+   * rather than passing by luck.
+   */
+  it("ranks a 10.0h game above a 9.99h one when medium is the selected bucket", () => {
+    const atBoundary = (id: string, lengthHours: number, createdAt: string) =>
+      entry({
+        id,
+        length_hours: lengthHours,
+        created_at: createdAt,
+        release_date: "2021-01-01",
+        date_bought: "2026-01-01",
+      });
+    // aaa-/zzz- ids and the older created_at both favour 9.99h under the tie-break.
+    const justUnder = atBoundary("aaa-9-99h", 9.99, "2026-01-01T00:00:00Z");
+    const exactlyTen = atBoundary("zzz-10h", 10, "2026-06-01T00:00:00Z");
+
+    expect(ids(recommend([justUnder, exactlyTen], req("new_releases", ["medium"])))).toEqual(["zzz-10h", "aaa-9-99h"]);
+  });
+});
+
 describe("recommend — comfort status ordering (novelty held equal)", () => {
   it("ranks playing_now > played > completed > completed_100 when length & date are equal", () => {
     const mk = (id: string, status: PlayStatus) =>
@@ -187,6 +231,125 @@ describe("recommend — comfort status ordering (novelty held equal)", () => {
       mk("played", "played"),
     ];
     expect(ids(recommend(entries, req("comfort")))).toEqual(["playing", "played", "done", "c100"]);
+  });
+});
+
+describe("recommend — 100%-complete de-prioritization, asserted as direction", () => {
+  /**
+   * Oracle: "100%-completed games are de-prioritized except under the 'comfort' mode"
+   * (`prd.md:83`, restated at `:180`). The spec says *de-prioritized*; the code *excludes*
+   * (`isEligible`, `recommendation.ts:92`). Asserting absence — as the spot-check's
+   * `not.toContain("celeste")` (`:471`) does — pins the stricter code, so it would fail the day
+   * exclusion is legitimately softened into a heavy penalty. A rank comparison holds under both.
+   *
+   * Why this is not tautological: `statusPenalty` gives `completed_100` a **0** in new modes
+   * (`recommendation.ts:115`) — the *best* possible penalty, identical to `played`. `isEligible` is
+   * the only thing keeping it out of the ranking. Relax that filter and the two entries below score
+   * exactly equal, at which point the tie-break decides — and the fixture hands the
+   * tie-break-favoured position (older `created_at`, smaller `id`) to the 100%-complete entry. So a
+   * relaxed filter puts it *first*, and this assertion fails. Only real de-prioritization holds it.
+   */
+  it("never lets a 100%-complete game outrank a comparable played one in a new mode", () => {
+    const comparable = (id: string, status: PlayStatus, createdAt: string) =>
+      entry({
+        id,
+        play_status: status,
+        created_at: createdAt,
+        // Every other scoring axis held equal: same bucket, same release date, same purchase date,
+        // so length distance and novelty rank tie in both new modes and only status can separate.
+        length_hours: 20,
+        release_date: "2021-01-01",
+        date_bought: "2026-01-01",
+      });
+    const hundredPercent = comparable("aaa-100pct", "completed_100", "2026-01-01T00:00:00Z");
+    const played = comparable("zzz-played", "played", "2026-06-01T00:00:00Z");
+
+    for (const mode of NEW_MODES) {
+      const order = ids(recommend([hundredPercent, played], req(mode)));
+      expect(order).toContain("zzz-played");
+      expect(rankOf(order, "aaa-100pct")).toBeGreaterThan(rankOf(order, "zzz-played"));
+    }
+  });
+});
+
+describe("recommend — determinism across input permutations (full result)", () => {
+  /**
+   * Oracle: US-03 AC (`prd.md:84`) and §Business Logic (`prd.md:182`) — "identical inputs produce
+   * identical outputs (no randomness in v1)", so re-asking "will not capriciously reshuffle
+   * results". The PRD mandates determinism; it does **not** mandate `created_at` → `id` as the key,
+   * so nothing here asserts that key (the existing `:369-378` test keeps documenting it).
+   *
+   * Two things this catches that the existing single reversed-input, ids-only check (`:363-367`)
+   * cannot: a refactor leaning on `Array.prototype.sort` stability instead of the explicit total
+   * order — stability preserves *input* order, so a two-permutation check can pass while a third
+   * diverges — and score-level nondeterminism, invisible to an ids-only comparison.
+   */
+  const library = [
+    // Two entries identical on every scoring axis in every mode ⇒ a genuine score tie.
+    entry({
+      id: "tie-a",
+      play_status: "played",
+      length_hours: 20,
+      release_date: "2021-01-01",
+      date_bought: "2026-02-01",
+    }),
+    entry({
+      id: "tie-b",
+      play_status: "played",
+      length_hours: 20,
+      release_date: "2021-01-01",
+      date_bought: "2026-02-01",
+    }),
+    // ...and three that differ on length, status and both date axes ⇒ genuine score distinctions.
+    entry({
+      id: "distinct-playing",
+      play_status: "playing_now",
+      length_hours: 20,
+      release_date: "2019-01-01",
+      date_bought: "2026-03-01",
+    }),
+    entry({
+      id: "distinct-short",
+      play_status: "completed",
+      length_hours: 5,
+      release_date: "2023-01-01",
+      date_bought: "2026-01-15",
+    }),
+    entry({
+      id: "distinct-unbucketed",
+      play_status: "played",
+      length_hours: null,
+      release_date: "2015-01-01",
+      date_bought: "2026-05-01",
+    }),
+  ];
+  // Fixed, hand-written permutations — three distinct reorderings plus the original.
+  const PERMUTATIONS = [
+    [0, 1, 2, 3, 4],
+    [4, 3, 2, 1, 0],
+    [2, 0, 4, 1, 3],
+    [1, 4, 0, 3, 2],
+  ];
+
+  it("returns a deep-equal result — items and scores — across permutations, in every mode", () => {
+    for (const mode of NOVELTY_MODES) {
+      const results = PERMUTATIONS.map((order) =>
+        recommend(
+          order.map((i) => library[i]),
+          req(mode),
+        ),
+      );
+
+      // Guard the fixture itself: if it ever lost its ties (or its distinctions) the assertion
+      // below would still pass while no longer probing the region where ordering can wobble.
+      const scores = results[0].status === "ranked" ? results[0].items.map((item) => item.score) : [];
+      expect(new Set(scores).size).toBeLessThan(scores.length);
+      expect(new Set(scores).size).toBeGreaterThan(1);
+
+      for (const result of results.slice(1)) {
+        expect(result).toEqual(results[0]);
+      }
+    }
   });
 });
 

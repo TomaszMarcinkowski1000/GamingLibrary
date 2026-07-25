@@ -559,30 +559,30 @@ same-behaviour code move; rollback is reverting one import.
 
 #### Automated
 
-- [x] 2.1 New copy suite green
-- [x] 2.2 Full suite green (`npm test`)
-- [x] 2.3 Typecheck clean (`npx astro check`)
-- [x] 2.4 Lint clean
-- [x] 2.5 Build succeeds (`npm run build`)
+- [x] 2.1 New copy suite green — e617b96
+- [x] 2.2 Full suite green (`npm test`) — e617b96
+- [x] 2.3 Typecheck clean (`npx astro check`) — e617b96
+- [x] 2.4 Lint clean — e617b96
+- [x] 2.5 Build succeeds (`npm run build`) — e617b96
 
 #### Manual
 
-- [x] 2.6 Empty-library copy + link render unchanged
-- [x] 2.7 Comfort-mode copy renders character-for-character unchanged
-- [x] 2.8 All-100%-complete copy renders unchanged
+- [x] 2.6 Empty-library copy + link render unchanged — e617b96
+- [x] 2.7 Comfort-mode copy renders character-for-character unchanged — e617b96
+- [x] 2.8 All-100%-complete copy renders unchanged — e617b96
 
 ### Phase 3: Spec-direction engine assertions
 
 #### Automated
 
-- [ ] 3.1 Recommender suite green at 33 tests
-- [ ] 3.2 Full suite green (`npm test`)
-- [ ] 3.3 Lint clean
+- [x] 3.1 Recommender suite green at 33 tests
+- [x] 3.2 Full suite green (`npm test`)
+- [x] 3.3 Lint clean
 
 #### Manual
 
-- [ ] 3.4 Each new assertion traced to a PRD line, not a source line
-- [ ] 3.5 Relaxing the `completed_100` guard makes the de-prioritization assertion fail (then reverted)
+- [x] 3.4 Each new assertion traced to a PRD line, not a source line
+- [x] 3.5 Relaxing the `completed_100` guard makes the de-prioritization assertion fail (then reverted)
 
 ### Phase 4: Selective mutation pass
 
