@@ -5,6 +5,7 @@ import ThemedLayout from "@/layouts/ThemedLayout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getRecommendations } from "@/lib/services/recommendation";
+import { emptyStateMessage } from "@/lib/services/recommendationCopy";
 import { parseRecommendationParams } from "@/lib/validation/library";
 import { playStatusBadgeClass } from "@/components/library/playStatus";
 import PlayNextModeSelect from "@/components/library/PlayNextModeSelect";
@@ -48,17 +49,6 @@ function showHref(value: "all" | null): string {
   }
   const qs = params.toString();
   return qs ? `/play-next?${qs}` : "/play-next";
-}
-
-/** Human sentence naming the binding constraint and a suggested relaxation (PRD US-03). */
-function emptyStateMessage(empty: Extract<RecommendationResult, { status: "empty" }>): string {
-  if (empty.reason === "empty_library") {
-    return "Your library is empty — add a game first.";
-  }
-  if (empty.mode === "comfort") {
-    return "Comfort mode needs games you’ve played — you have none yet. Try “new releases”, or mark a game as played.";
-  }
-  return "Every game matching is already 100% completed — try comfort mode.";
 }
 
 function lengthLabel(lengthHours: number | null): string {

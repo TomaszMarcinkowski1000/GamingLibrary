@@ -547,29 +547,29 @@ same-behaviour code move; rollback is reverting one import.
 
 #### Automated
 
-- [x] 1.1 Baseline suite green at 30 tests
-- [x] 1.2 Full suite green (`npm test`)
-- [x] 1.3 Lint clean
+- [x] 1.1 Baseline suite green at 30 tests — 17f9a87
+- [x] 1.2 Full suite green (`npm test`) — 17f9a87
+- [x] 1.3 Lint clean — 17f9a87
 
 #### Manual
 
-- [x] 1.4 Spec-backed vs documentation-of-behaviour boundaries are unambiguous in-file
+- [x] 1.4 Spec-backed vs documentation-of-behaviour boundaries are unambiguous in-file — 17f9a87
 
 ### Phase 2: Empty-state copy — extract + constraint-naming suite
 
 #### Automated
 
-- [ ] 2.1 New copy suite green
-- [ ] 2.2 Full suite green (`npm test`)
-- [ ] 2.3 Typecheck clean (`npx astro check`)
-- [ ] 2.4 Lint clean
-- [ ] 2.5 Build succeeds (`npm run build`)
+- [x] 2.1 New copy suite green
+- [x] 2.2 Full suite green (`npm test`)
+- [x] 2.3 Typecheck clean (`npx astro check`)
+- [x] 2.4 Lint clean
+- [x] 2.5 Build succeeds (`npm run build`)
 
 #### Manual
 
-- [ ] 2.6 Empty-library copy + link render unchanged
-- [ ] 2.7 Comfort-mode copy renders character-for-character unchanged
-- [ ] 2.8 All-100%-complete copy renders unchanged
+- [x] 2.6 Empty-library copy + link render unchanged
+- [x] 2.7 Comfort-mode copy renders character-for-character unchanged
+- [x] 2.8 All-100%-complete copy renders unchanged
 
 ### Phase 3: Spec-direction engine assertions
 
