@@ -1,10 +1,10 @@
 ---
 change_id: testing-route-contracts-isolation
 title: API route contracts + cross-user isolation (test rollout Phase 3)
-status: impl_reviewed
+status: archived
 created: 2026-07-25
 updated: 2026-07-25
-archived_at: null
+archived_at: 2026-07-25T19:23:16Z
 ---
 
 ## Notes
