@@ -1,6 +1,6 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
 import { afterEach, describe, expect, it } from "vitest";
-import { type FetchRouter, installFetchRouter } from "../../../test/helpers/fetch-mock";
+import { type FetchRouter, installFetchRouter } from "@test/helpers/fetch-mock";
 import { lookupGameMetadata } from "./igdb";
 
 // Hermetic integration tests for `lookupGameMetadata`, the id-correctness core of Risk #1.
@@ -108,9 +108,15 @@ describe("lookupGameMetadata — edition-variant collapse", () => {
       involved_companies: developer("WRONG-Studio"),
       collections: collections("WRONG-Series"),
     });
-    mockIgdb([deluxe], 51120); // 14.2h → ceil → 15
+    const r = mockIgdb([deluxe], 51120); // 14.2h → ceil → 15
 
     const result = await lookupGameMetadata("Alan Wake II Deluxe Edition", "PlayStation 5", stubKv);
+
+    // The length follow-up is stubbed by URL, so it answers whatever id was queried. Pin that the
+    // query used the COLLAPSED BASE id — otherwise `lengthHours` below would still read 15 even if
+    // the follow-up asked for the edition (201), leaving the headline property half-proven.
+    const lengthReq = r.requests.find((req) => req.url.includes("/v4/game_time_to_beats"));
+    expect(lengthReq?.bodyText).toContain("game_id = 200");
 
     expect(result).toMatchObject({
       status: "matched",

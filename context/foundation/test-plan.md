@@ -406,7 +406,7 @@ here capturing anything surprising the phase taught.)
   row, "an insert ran" / "a row exists" passes against an un-grounded guess. Read
   the captured insert payload's `metadata_status` / `igdb_id`, never mere insert
   invocation.
-- **Two known code gaps recorded, not fixed** (a test-writing phase changes no
+- **Three known code gaps recorded, not fixed** (a test-writing phase changes no
   production behavior — see §7):
   - *Empty-title pass-through.* `vision.ts` validates the title with `z.string()`
     (no `.min(1)`), so a high-confidence empty title passes as `identified` and is
@@ -416,7 +416,14 @@ here capturing anything surprising the phase taught.)
     resolved base against the query — there is no multiple-close-hits detection, so
     "genuine ambiguity ⇒ abstain" is unimplemented. No test written (it would
     pretend coverage of an absent feature).
-  Both are candidates for a future non-test change; see
+  - *No redaction on the grounding-error path.* `identify.ts` GET returns the
+    caught `error.message` **verbatim** in its 502 body. The planned leak-guard
+    test (stub IGDB to throw an error whose message embeds a token-like string)
+    would therefore have gone red, so it was weakened to a benign upstream 500 —
+    the assertion now only trips if the IGDB wrapper itself starts embedding
+    credentials in its error text. It is a regression tripwire, not proof of
+    redaction. Closing this means mapping the catch to a status-only message.
+  All three are candidates for a future non-test change; see
   `context/changes/testing-grounding-identify-seam/plan.md` → "What We're NOT
   Doing".
 - **Mutation-hardened (Stryker).** After the suite went green, a selective

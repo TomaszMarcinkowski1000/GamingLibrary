@@ -92,12 +92,25 @@ test.
   gap** for a future change; Phase 1 writes no test for it (a test would either mirror a
   probable bug or require a production behavior change, both out of scope for a test-writing
   phase).
+- **Not adding redaction to the grounding-error path.** `identify.ts:108` (GET)
+  returns the caught `error.message` verbatim in its 502 body — nothing strips a
+  credential that an upstream error text might carry. Phase 3's leak-guard test was
+  consequently weakened from the planned "error message embeds a token-like string"
+  to a benign upstream 500, so it is a regression tripwire rather than proof of
+  redaction. Recorded as a **known gap** (test-plan §6.7); fixing it is a production
+  behavior change, out of scope for a test-writing phase.
 - **Not building ambiguity disambiguation.** `isConfidentMatch` compares only the single
   resolved base against the query — there is **no multiple-close-hits detection**
   (`igdb.ts:314` trusts candidate[0]). "Genuine ambiguity ⇒ abstain" is **unimplemented**;
   recorded as a known gap, no test (a test would pretend coverage of an absent feature).
 - **Not running Stryker this phase.** Boundary fixtures at the `isConfidentMatch` constants are
   added, but no mutation-testing gate is stood up (Stryker stays a selective, ad-hoc tool).
+  > **Addendum (2026-07-25, impl review):** this exclusion was **reversed after the epilogue**.
+  > `5cb79d1` added `stryker.config.json`, the `test:mutation` script, and a standing
+  > "## Mutation testing" section in `CLAUDE.md`; `1194e0d` added 5 assertions from a selective
+  > Stryker pass (igdb.ts 59.96 → 64.82, identify.ts 47.70 → 54.02); `92e3728` wrote the test-plan
+  > §6.6 mutation cookbook, which displaced this plan's per-phase note to §6.7. No *gate* was wired
+  > (ad-hoc npm script; absent from CI and `.husky/pre-commit`) and no production source changed.
 - **Not testing the IGDB live API, OpenRouter live API, or Supabase auth internals**
   (test-plan §7 exclusions).
 - **Not covering cross-user isolation or the library routes** — that is test-plan Phase 3.

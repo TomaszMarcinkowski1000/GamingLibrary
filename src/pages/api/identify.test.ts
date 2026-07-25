@@ -1,6 +1,6 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
 import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type FetchRouter, type Route, type RouteResult, installFetchRouter } from "../../../test/helpers/fetch-mock";
+import { type FetchRouter, type Route, type RouteResult, installFetchRouter } from "@test/helpers/fetch-mock";
 
 // Hermetic integration tests for `POST/GET /api/identify`, the orchestration/abstain core of Risk #2.
 //
@@ -154,13 +154,17 @@ describe("POST /api/identify — abstain asymmetry (the two faces stay distinct)
     // shape, not on the mere fact an insert ran (a ground-miss writes a row too).
     const { client, payload, insert } = insertClient();
     holder.supabaseClient = client;
-    mockProviders({
+    const r = mockProviders({
       vision: visionEnvelope({ title: "Obscure Shelf Game", platform: "Evercade", confidence: 0.9 }),
       games: [], // IGDB finds nothing → lookupGameMetadata returns no_match
     });
 
     const res = await POST(postContext(photoForm({ persist: true })));
 
+    // `identify.ts` swallows ANY grounding throw into `grounding = null`, which maps to the same
+    // `no_match` payload — so pin that grounding actually RAN. Without this the assertions below
+    // pass even when the IGDB route is missing entirely (an exploded pipeline reads identically).
+    expect(r.requests.some((req) => req.url.includes("/v4/games"))).toBe(true);
     await expect(res.json()).resolves.toMatchObject({ status: "identified", igdbId: null, metadataStatus: "no_match" });
     expect(insert).toHaveBeenCalledTimes(1);
     expect(payload()).toMatchObject({ metadata_status: "no_match", igdb_id: null });
@@ -189,13 +193,16 @@ describe("POST /api/identify — abstain asymmetry (the two faces stay distinct)
   it("folds a confident vision read + IGDB no_match to `unsure` on the harness path (persist off)", async () => {
     // The inverted, non-persist behavior: with no `persist`, a no_match grounding has no id to score,
     // so it abstains — distinct from the persist save face above. No Supabase client is constructed.
-    mockProviders({
+    const r = mockProviders({
       vision: visionEnvelope({ title: "Alan Wake II", platform: "PlayStation 5", confidence: 0.72 }),
       games: [],
     });
 
     const res = await POST(postContext(photoForm()));
 
+    // Same reason as the persist face above: pin that the fold followed a real grounding miss,
+    // not a swallowed transport failure.
+    expect(r.requests.some((req) => req.url.includes("/v4/games"))).toBe(true);
     await expect(res.json()).resolves.toMatchObject({ status: "unsure", confidence: 0.72 });
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
@@ -221,6 +228,10 @@ describe("POST /api/identify — normalize-before-ground", () => {
     const gamesReq = r.requests.find((req) => req.url.includes("/v4/games"));
     expect(gamesReq?.bodyText).toContain('search "Alan Wake II"');
     expect(gamesReq?.bodyText).not.toContain("ALAN WAKE II");
+    // The normalized PLATFORM is asserted on the saved payload rather than the outgoing body on
+    // purpose: `resolvePlatformIds` maps "ps5" and "PlayStation 5" to the same IGDB id (167), so an
+    // outgoing-body platform assertion would pass without the normalizer and prove nothing. The
+    // saved value is where the normalization is actually observable.
     // The saved values are the normalized forms ("ps5" → "PlayStation 5").
     expect(payload()).toMatchObject({ title: "Alan Wake II", platform: "PlayStation 5" });
   });
@@ -306,6 +317,10 @@ describe("GET /api/identify — grounding shortcut", () => {
     // The credential flow really transits: a cache-miss mint hits the Twitch token endpoint, and the
     // wrapper attaches `Bearer <token>` to the games request. When the games call fails, the 502 must
     // surface a status-only IGDB error — never the secret or the bearer that flowed through the pipeline.
+    //
+    // TRIPWIRE, NOT PROOF OF REDACTION. `identify.ts:108` returns the caught `error.message`
+    // verbatim, so the negative assertions below can only fail if the IGDB wrapper starts embedding
+    // credentials in its error text. Known gap — see test-plan §6.7 and plan.md "What We're NOT Doing".
     const r = mockProviders({ games: { status: 500, body: "igdb upstream boom" } });
 
     const res = await GET(getContext({ title: "Alan Wake II", platform: "PlayStation 5" }));
