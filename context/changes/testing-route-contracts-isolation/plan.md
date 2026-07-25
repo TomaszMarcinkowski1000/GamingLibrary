@@ -953,27 +953,27 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 
 #### Automated
 
-- [x] 3.1 `npm test` green including `library.test.ts` / `identify.test.ts` after the helper migration
-- [x] 3.2 `[id].test.ts` covers PUT, PATCH and DELETE
-- [x] 3.3 `npm run lint` and `npm run typecheck` clean
+- [x] 3.1 `npm test` green including `library.test.ts` / `identify.test.ts` after the helper migration — a7474f3
+- [x] 3.2 `[id].test.ts` covers PUT, PATCH and DELETE — a7474f3
+- [x] 3.3 `npm run lint` and `npm run typecheck` clean — a7474f3
 
 #### Manual
 
-- [x] 3.4 File header states this layer proves translation, not ownership, pointing to the pgTAP suite
-- [x] 3.5 No test in the file would change its result if RLS were disabled
+- [x] 3.4 File header states this layer proves translation, not ownership, pointing to the pgTAP suite — a7474f3
+- [x] 3.5 No test in the file would change its result if RLS were disabled — a7474f3
 
 ### Phase 4: Route contract — POST `/api/library`
 
 #### Automated
 
-- [ ] 4.1 `npm test` green with `index.test.ts`
-- [ ] 4.2 The 400-path tests run without the KV mock and without the fetch router
-- [ ] 4.3 `npm run lint` and `npm run typecheck` clean
+- [x] 4.1 `npm test` green with `index.test.ts`
+- [x] 4.2 The 400-path tests run without the KV mock and without the fetch router
+- [x] 4.3 `npm run lint` and `npm run typecheck` clean
 
 #### Manual
 
-- [ ] 4.4 Platform assertion labelled as a behaviour record with the archive citation
-- [ ] 4.5 No assertion duplicates `igdb.integration.test.ts`'s grounding coverage
+- [x] 4.4 Platform assertion labelled as a behaviour record with the archive citation
+- [x] 4.5 No assertion duplicates `igdb.integration.test.ts`'s grounding coverage
 
 ### Phase 5: Recommender Supabase boundary
 

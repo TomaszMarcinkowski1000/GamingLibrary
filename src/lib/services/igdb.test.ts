@@ -40,6 +40,14 @@ describe("resolvePlatformIds", () => {
     expect(resolvePlatformIds("PlayStation 5")).toEqual([167]);
   });
 
+  it("resolves the `ps5` shorthand to the same id as the full label", () => {
+    // The user-typed shorthand, distinct from the canonical label above. Owned here on purpose:
+    // `src/pages/api/library/index.test.ts` leans on this alias to keep its verbatim-platform
+    // behaviour record grounded ("ps5" must still MATCH while being STORED un-normalized), and a
+    // route contract suite is the wrong layer to be the sole tripwire for a platform-map entry.
+    expect(resolvePlatformIds("ps5")).toEqual([167]);
+  });
+
   it("prefers an exact whole-string map hit over splitting (Xbox Series X|S)", () => {
     expect(resolvePlatformIds("Xbox Series X|S")).toEqual([169]);
   });
