@@ -140,7 +140,7 @@ phase lands; before that, the gate is `planned`.
 |------|-------|-----------|---------|
 | lint + typecheck | local + CI | required (wired today: `eslint`, `astro check`) | syntactic / type drift |
 | unit + integration | local + CI | required after §3 Phase 1 | logic regressions in grounding, identify seam, recommender, routes |
-| db policy (RLS) | **local only** (`npm run test:db`) | required after §3 Phase 3 | policy drift — a policy dropped, widened to `using (true)`, or opened `to anon`; a lost INSERT `WITH CHECK`; an RPC's `user_id` predicate removed |
+| db policy (RLS) | **local only** (`npm run test:db`) | required after §3 Phase 3 | policy drift — a policy dropped, widened to `using (true)` (incl. UPDATE widened alone, caught only by the unfiltered-write assertion — see §6 rule 3), or opened `to anon`; a lost INSERT `WITH CHECK`; an RPC's `user_id` predicate removed |
 | e2e on critical flows | CI on PR | required after §3 Phase 4 | broken mobile photo journey |
 | post-edit hook | local (agent loop) | recommended (optional) | regressions at edit time on the service layer |
 | pre-prod smoke | between merge + prod | optional | Worker/edge-specific failures the local suite misses |
@@ -554,9 +554,20 @@ proves something and a suite that looks like it does:**
    *land* while `RETURNING` filters to empty — "a 404 over a mutated row". That
    state is **not reachable**: Postgres applies SELECT policies to UPDATE/DELETE
    carrying a `WHERE` or `RETURNING` clause, so widening UPDATE alone changes
-   nothing and dropping SELECT blocks the write outright. Measured 2026-07-25; the
-   rule stands on the two reasons above.
-3. **Include an `anon`-role assertion.** `anon` holds full table grants
+   nothing **for statements carrying one of those clauses**, and dropping SELECT
+   blocks the write outright. Measured 2026-07-25; the rule stands on the two
+   reasons above.
+3. **Assert one write with neither a `WHERE` nor a `RETURNING` clause.** The
+   qualifier in rule 2 is load-bearing and easy to lose. A bare
+   `update <table> set <col> = …;` gets no SELECT-policy composition, so a widened
+   UPDATE policy alone *does* cross users for it — and every WHERE-carrying
+   assertion in the suite stays green, silently rescued by the narrow SELECT
+   policy. In `library_entries_rls.test.sql` this is test 8, the only assertion
+   that reddens on "UPDATE widened alone" (measured 2026-07-25). Write it against
+   a column no later assertion reads, so it cannot disturb them. That the
+   application only ever issues filtered writes is an app-layer argument; a DB
+   policy suite owns the database's terms.
+4. **Include an `anon`-role assertion.** `anon` holds full table grants
    (`DELETE,INSERT,SELECT,UPDATE,…` — Supabase defaults), so the *absence of an
    anon policy is the entire wall*, not a second line behind it. A policy widened
    `to anon` or `for all using (true)` is one line of SQL from a full breach and is

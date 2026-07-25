@@ -190,12 +190,20 @@ still carries its original title and still exists.
 > UPDATE policy over a narrow SELECT policy lets the write **land** while `returning`
 > filters to empty, producing "a 404 over a mutated row". **That state is not
 > reachable.** Postgres applies SELECT policies to UPDATE/DELETE carrying a `WHERE`
-> or `RETURNING` clause, so widening UPDATE alone leaves the suite fully green with
-> A's rows provably unchanged, and dropping SELECT blocks the write outright (0 rows
+> or `RETURNING` clause, so widening UPDATE alone leaves those statements fully green
+> with A's rows provably unchanged, and dropping SELECT blocks the write outright (0 rows
 > returned, row unmodified — verified on B's *own* row, the app-level shape). The
 > effect check is kept on the two reasons above, and because it states the claim in
 > the PRD's own terms (`prd.md:171`) — not on the disproved scenario. The full
 > falsification battery is recorded in the suite's file header.
+>
+> **Further narrowed during impl review (2026-07-25).** "Widening UPDATE alone changes
+> nothing" holds only for statements that carry a `WHERE` or `RETURNING` clause — which
+> was every assertion this suite had. A bare `update … set <col> = …;` gets no
+> SELECT-policy composition and **does** cross users under a widened UPDATE policy;
+> measured. Test 8 was added to cover it and is the only assertion that reddens on that
+> injection. The app cannot issue such a statement today (every write goes through
+> `.eq("id", id)`), but the suite owns the database's terms, not the app's.
 
 **3. Guard ordering makes a naive 401 assertion vacuous.** All four library
 handlers check `if (!supabase)` before `if (!locals.user)`, and the vitest env stub
@@ -671,6 +679,17 @@ edge. The 400-path tests need neither and should run without them.
   router (proving they genuinely never reach the IGDB edge)
 - `npm run lint` and `npm run typecheck` clean
 
+> **Adjusted during implementation (2026-07-25).** The second criterion is not
+> expressible as written. `vi.mock` is hoisted per *file*, not per test, so the
+> `cloudflare:workers` mock (`index.test.ts:39-46`) necessarily applies to every test in
+> the suite — there is no "without the KV mock" state to run the 400-path tests in. The
+> substituted claim is **stronger than the original**, not weaker: the KV binding is a
+> counting getter, and every 400/401 test asserts `kv.reads === 0`, which proves the KV
+> was never *consulted* rather than merely never *bound*. The fetch half stands as
+> written — the 400 block installs no fetch router, so `test/setup/no-network.ts`'s
+> deny-all remains armed and any real IGDB call fails the test. Rationale in-file at
+> `index.test.ts:29-37`.
+
 #### Manual Verification:
 
 - The platform assertion is unmistakably labelled as a behaviour record, with the
@@ -967,7 +986,7 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 #### Automated
 
 - [x] 4.1 `npm test` green with `index.test.ts` — e6004b2
-- [x] 4.2 The 400-path tests run without the KV mock and without the fetch router — e6004b2
+- [x] 4.2 The 400-path tests never *consult* the KV (`kv.reads === 0` on every 400/401 test) and run without the fetch router — e6004b2 — *adjusted during implementation; see the Phase 4 success-criteria note. `vi.mock` hoists per file, so "without the KV mock" is not an available state; the counting-getter assertion is the stronger substitute.*
 - [x] 4.3 `npm run lint` and `npm run typecheck` clean — e6004b2
 
 #### Manual

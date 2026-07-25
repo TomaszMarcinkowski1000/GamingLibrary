@@ -304,7 +304,10 @@ describe("listAllEntries", () => {
 
     // Returning here rather than throwing would let `recommend()` run over `null` — the page would
     // render an empty library instead of `/play-next`'s error state.
-    await expect(listAllEntries(client)).rejects.toBeDefined();
+    // The exact object, not `toBeDefined()`: this asserts the PostgREST error is *propagated*.
+    // A truthiness check also passes when the chain itself blows up with an unrelated TypeError,
+    // which would prove nothing about propagation while staying green.
+    await expect(listAllEntries(client)).rejects.toEqual({ message: "boom" });
   });
 });
 
@@ -327,6 +330,6 @@ describe("getLibraryFacets", () => {
     const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "boom" } });
     const client = { rpc } as never;
 
-    await expect(getLibraryFacets(client)).rejects.toBeDefined();
+    await expect(getLibraryFacets(client)).rejects.toEqual({ message: "boom" });
   });
 });

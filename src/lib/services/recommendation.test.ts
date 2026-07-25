@@ -595,7 +595,10 @@ describe("getRecommendations — the Supabase seam", () => {
 
     // A swallowed error here would render `/play-next`'s "you own nothing yet" empty state over a
     // library that failed to load — the page's `loadError` branch would become unreachable.
-    await expect(getRecommendations(client, req("comfort"))).rejects.toBeDefined();
+    // The exact object, not `toBeDefined()`: `listAllEntries` rethrows the raw PostgREST error and
+    // nothing between here and there catches it, so the identity of the error is the claim. A
+    // truthiness check would stay green on an unrelated throw from the stubbed chain.
+    await expect(getRecommendations(client, req("comfort"))).rejects.toEqual({ message: "boom" });
   });
 
   it("maps a zero-row read onto the engine's empty_library state", async () => {
