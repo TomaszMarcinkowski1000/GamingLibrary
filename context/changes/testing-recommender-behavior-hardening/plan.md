@@ -603,11 +603,11 @@ same-behaviour code move; rollback is reverting one import.
 
 #### Automated
 
-- [x] 5.1 No "TBD — see §3 Phase 2" remains in `test-plan.md`
-- [x] 5.2 Prettier check clean on `test-plan.md`
-- [x] 5.3 Full suite still green
+- [x] 5.1 No "TBD — see §3 Phase 2" remains in `test-plan.md` — bc8340a
+- [x] 5.2 Prettier check clean on `test-plan.md` — bc8340a
+- [x] 5.3 Full suite still green — bc8340a
 
 #### Manual
 
-- [x] 5.4 §6.5 is self-sufficient for a new contributor
-- [x] 5.5 §6.7 note records all gaps without prescribing fixes
+- [x] 5.4 §6.5 is self-sufficient for a new contributor — bc8340a
+- [x] 5.5 §6.7 note records all gaps without prescribing fixes — bc8340a
