@@ -1,10 +1,10 @@
 ---
 change_id: testing-grounding-identify-seam
 title: Grounding & identify-seam integration tests (test-plan Phase 1)
-status: impl_reviewed
+status: archived
 created: 2026-07-18
 updated: 2026-07-25
-archived_at: null
+archived_at: 2026-07-25T16:52:12Z
 ---
 
 ## Notes
