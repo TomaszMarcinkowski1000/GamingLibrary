@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRecommendationParams, updateEntrySchema } from "./library";
+import { parseRecommendationParams, patchEntrySchema, updateEntrySchema } from "./library";
 
 const VALID = {
   title: "The Legend of Zelda",
@@ -51,6 +51,128 @@ describe("updateEntrySchema", () => {
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.date_bought).toBeNull();
+    }
+  });
+
+  it("rejects a whitespace-only platform", () => {
+    // prd.md:94 — "Title and platform are required". Trim happens before the length check,
+    // so "   " is a blank platform, not a one-character one.
+    const parsed = updateEntrySchema.safeParse({ ...VALID, platform: "   " });
+    expect(parsed.success).toBe(false);
+  });
+
+  // --- documentation-of-behaviour (not requirements) ------------------------------------
+  // The two assertions below record what the server currently does at a point where no PRD
+  // requirement bounds it. Neither catches a regression by design: if either goes red, that
+  // is a decision to re-take, not a bug to fix. See plan.md "What We're NOT Doing" items 1
+  // and 3 (context/changes/testing-route-contracts-isolation/plan.md).
+
+  it("documentation-of-behaviour: accepts a fractional length_hours", () => {
+    // The server half of a client/server divergence. `length_hours` is a `numeric` column
+    // (migration 20260606150950:17) and the schema is deliberately non-integer, so 12.5 is
+    // valid here — but the edit form's <Input type="number"> carries no `step`
+    // (GameFormFields.tsx:197-205), so the browser's implicit step=1 blocks the whole form
+    // submit and a row holding 12.5 becomes wholly un-editable. That defect violates
+    // prd.md:140 FR-010 and is invisible at this layer: no schema test can observe it.
+    // Recorded as gap 1 and flagged for a follow-up change; only a browser test can prove it.
+    const parsed = updateEntrySchema.safeParse({ ...VALID, length_hours: 12.5 });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("documentation-of-behaviour: accepts a release_year the DB column cannot hold", () => {
+    // `release_year` is a Postgres `integer` (migration 20260606150950:18), whose ceiling is
+    // 2147483647. The schema only asks for an integer, so a larger value passes validation
+    // and fails two layers later as a `22003` numeric-overflow that the route's catch-all
+    // maps to 500 rather than 400. Recorded as gap 3; no PRD requirement bounds the year.
+    const parsed = updateEntrySchema.safeParse({ ...VALID, release_year: 2_147_483_648 });
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("patchEntrySchema", () => {
+  it("rejects an empty object", () => {
+    // The docstring's "at least one key must be present, so an empty body is rejected rather
+    // than silently no-op'ing" (validation/library.ts:54-61).
+    const parsed = patchEntrySchema.safeParse({});
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      // Object-level rejection (empty `path`) — the at-least-one-field rule fired, not a
+      // per-field rule. Asserted as shape rather than by message text: the wording lives in
+      // validation/library.ts and has no oracle outside it, so pinning the literal would
+      // mirror the source. Both keys are optional, so without that rule `{}` would parse.
+      expect(parsed.error.issues).toHaveLength(1);
+      expect(parsed.error.issues[0]?.path).toEqual([]);
+    }
+  });
+
+  it("accepts play_status alone", () => {
+    const parsed = patchEntrySchema.safeParse({ play_status: "completed" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      // The omitted key stays omitted — a partial patch must not clobber hours.
+      expect(parsed.data).toEqual({ play_status: "completed" });
+    }
+  });
+
+  it("accepts play_time_hours alone", () => {
+    const parsed = patchEntrySchema.safeParse({ play_time_hours: 7 });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({ play_time_hours: 7 });
+    }
+  });
+
+  it("accepts an explicit null play_time_hours as the only key", () => {
+    // "clear my hours". An explicit `null` is a *present* key, so it satisfies the
+    // at-least-one-field rule — the deliberate null-vs-omitted distinction the docstring
+    // calls out. A `.refine()` rewritten as a truthiness check would reject this and
+    // silently break the inline clear.
+    const parsed = patchEntrySchema.safeParse({ play_time_hours: null });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({ play_time_hours: null });
+    }
+  });
+
+  it("rejects a negative play_time_hours", () => {
+    // prd.md:70 — "accepts a non-negative integer".
+    const parsed = patchEntrySchema.safeParse({ play_time_hours: -1 });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts zero play_time_hours", () => {
+    // The inclusive edge of the same rule, asserted from the other side: "non-negative"
+    // includes zero, and zero is not "unset".
+    const parsed = patchEntrySchema.safeParse({ play_time_hours: 0 });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({ play_time_hours: 0 });
+    }
+  });
+
+  it("rejects a fractional play_time_hours", () => {
+    // "integer" in prd.md:70 — unlike `length_hours`, hours played is whole-numbered.
+    const parsed = patchEntrySchema.safeParse({ play_time_hours: 12.5 });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an out-of-enum play_status", () => {
+    const parsed = patchEntrySchema.safeParse({ play_status: "abandoned" });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("strips an unknown key rather than carrying it into the patch", () => {
+    // A body-supplied `user_id` must not reach the service. Ownership is enforced entirely
+    // by RLS (services/library.ts:31-33) and the INSERT `WITH CHECK` — if this schema ever
+    // gained a `user_id` key, that check would be the only remaining defense against a row
+    // transfer. See supabase/tests/database/library_entries_rls.test.sql.
+    const parsed = patchEntrySchema.safeParse({
+      play_status: "played",
+      user_id: "00000000-0000-0000-0000-000000000001",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({ play_status: "played" });
     }
   });
 });

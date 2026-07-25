@@ -927,27 +927,27 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 
 #### Automated
 
-- [x] 1.1 `npm run test:db` passes with the local stack up
-- [x] 1.2 Suite goes red when the UPDATE policy is dropped in a scratch transaction
-- [x] 1.3 Positive control goes red first when `request.jwt.claim.sub` is corrupted
-- [x] 1.4 `npm test` still green at 172 tests
+- [x] 1.1 `npm run test:db` passes with the local stack up — 5f2c505
+- [x] 1.2 Suite goes red when the UPDATE policy is dropped in a scratch transaction — 5f2c505
+- [x] 1.3 Positive control goes red first when `request.jwt.claim.sub` is corrupted — 5f2c505
+- [x] 1.4 `npm test` still green at 172 tests — 5f2c505
 
 #### Manual
 
-- [x] 1.5 File reads as an argument — positive control first, effect-check rationale explained
-- [x] 1.6 Recorded limitations (service-key swap; RPC predicate caveat) present in the header
+- [x] 1.5 File reads as an argument — positive control first, effect-check rationale explained — 5f2c505
+- [x] 1.6 Recorded limitations (service-key swap; RPC predicate caveat) present in the header — 5f2c505
 
 ### Phase 2: Validation schemas
 
 #### Automated
 
-- [ ] 2.1 `npm test` green with the extended validation suite
-- [ ] 2.2 `npm run lint` and `npm run typecheck` clean
+- [x] 2.1 `npm test` green with the extended validation suite
+- [x] 2.2 `npm run lint` and `npm run typecheck` clean
 
 #### Manual
 
-- [ ] 2.3 Every documentation-of-behaviour assertion annotated as such in-file
-- [ ] 2.4 No assertion restates a constant from `validation/library.ts`
+- [x] 2.3 Every documentation-of-behaviour assertion annotated as such in-file
+- [x] 2.4 No assertion restates a constant from `validation/library.ts`
 
 ### Phase 3: Route contracts — `[id].ts`
 
