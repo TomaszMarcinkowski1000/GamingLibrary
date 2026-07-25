@@ -35,6 +35,20 @@ const ids = (result: ReturnType<typeof recommend>): string[] =>
   result.status === "ranked" ? result.items.map((i) => i.entry.id) : [];
 
 describe("bucketOf — boundary edges (inclusive-low / exclusive-high)", () => {
+  /**
+   * Which oracle backs which edge — not all six cases are equal.
+   *
+   * - `9.99` / `10` are **spec-backed**: FR-016 (`prd.md:160`) defines short as "< 10h", so 10
+   *   belongs to medium unambiguously.
+   * - `29.99` / `30` are **documentation-of-behaviour**: FR-016 says "medium (10–30h), long
+   *   (30h+)" — both buckets can claim 30, so the spec gives no oracle. `30 → long` records what
+   *   `LENGTH_BUCKET_BOUNDS` (`types.ts:113-117`) does today, not a rule.
+   * - `59.99` / `60` are **documentation-of-behaviour** too, and more so: FR-016 defines three
+   *   buckets ending at "long (30h+)"; `very_long` is a code-only fourth bucket with no FR at all.
+   *
+   * Do not treat a failure on the 30h or 60h rows as a spec violation — treat it as a decision to
+   * re-take. See test-plan §6.5.
+   */
   it.each([
     [9.99, "short"],
     [10, "medium"],
