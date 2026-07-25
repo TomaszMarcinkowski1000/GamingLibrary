@@ -1,6 +1,7 @@
 import type { Game } from "@api-wrappers/igdb-wrapper";
 import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FetchRouter, type Route, type RouteResult, installFetchRouter } from "@test/helpers/fetch-mock";
+import { insertClient } from "@test/helpers/supabase-mock";
 
 // Hermetic integration tests for `POST/GET /api/identify`, the orchestration/abstain core of Risk #2.
 //
@@ -38,18 +39,6 @@ function game(props: Partial<Game> & { id: number; name: string }): Game {
   return { slug: props.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), ...props };
 }
 const platforms = (...names: string[]) => names.map((name) => ({ name })) as Game["platforms"];
-
-/** Mock Supabase client capturing the insert payload; the returned row echoes it (route reads it back). */
-function insertClient() {
-  let captured: Record<string, unknown> | undefined;
-  const single = vi.fn(() => Promise.resolve({ data: { id: "row-1", ...(captured ?? {}) }, error: null }));
-  const select = vi.fn(() => ({ single }));
-  const insert = vi.fn((payload: Record<string, unknown>) => {
-    captured = payload;
-    return { select };
-  });
-  return { client: { from: vi.fn(() => ({ insert })) } as never, payload: () => captured, insert };
-}
 
 /** OpenRouter chat-completion envelope carrying the model's structured `content` (a JSON string). */
 function visionEnvelope(read: { title: string; platform: string; confidence: number } | string): RouteResult {

@@ -941,26 +941,26 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 
 #### Automated
 
-- [x] 2.1 `npm test` green with the extended validation suite
-- [x] 2.2 `npm run lint` and `npm run typecheck` clean
+- [x] 2.1 `npm test` green with the extended validation suite — 0ffdc8d
+- [x] 2.2 `npm run lint` and `npm run typecheck` clean — 0ffdc8d
 
 #### Manual
 
-- [x] 2.3 Every documentation-of-behaviour assertion annotated as such in-file
-- [x] 2.4 No assertion restates a constant from `validation/library.ts`
+- [x] 2.3 Every documentation-of-behaviour assertion annotated as such in-file — 0ffdc8d
+- [x] 2.4 No assertion restates a constant from `validation/library.ts` — 0ffdc8d
 
 ### Phase 3: Route contracts — `[id].ts`
 
 #### Automated
 
-- [ ] 3.1 `npm test` green including `library.test.ts` / `identify.test.ts` after the helper migration
-- [ ] 3.2 `[id].test.ts` covers PUT, PATCH and DELETE
-- [ ] 3.3 `npm run lint` and `npm run typecheck` clean
+- [x] 3.1 `npm test` green including `library.test.ts` / `identify.test.ts` after the helper migration
+- [x] 3.2 `[id].test.ts` covers PUT, PATCH and DELETE
+- [x] 3.3 `npm run lint` and `npm run typecheck` clean
 
 #### Manual
 
-- [ ] 3.4 File header states this layer proves translation, not ownership, pointing to the pgTAP suite
-- [ ] 3.5 No test in the file would change its result if RLS were disabled
+- [x] 3.4 File header states this layer proves translation, not ownership, pointing to the pgTAP suite
+- [x] 3.5 No test in the file would change its result if RLS were disabled
 
 ### Phase 4: Route contract — POST `/api/library`
 

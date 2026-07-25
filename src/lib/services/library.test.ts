@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { deleteClient, filterListClient, insertClient, listClient, updateClient } from "@test/helpers/supabase-mock";
 import type { IgdbLookupResult } from "@/types";
 
 // Mock the enrichment module so the service's mapping logic is tested in isolation —
@@ -18,21 +19,6 @@ import {
 
 const mockLookup = vi.mocked(lookupGameMetadata);
 const KV = {} as unknown as KVNamespace;
-
-/** Mock client capturing the insert payload; `.insert().select().single()` returns a stub row. */
-function insertClient() {
-  let captured: Record<string, unknown> | undefined;
-  const single = vi.fn().mockResolvedValue({ data: { id: "row-1" }, error: null });
-  const select = vi.fn(() => ({ single }));
-  const insert = vi.fn((payload: Record<string, unknown>) => {
-    captured = payload;
-    return { select };
-  });
-  return {
-    client: { from: vi.fn(() => ({ insert })) } as never,
-    payload: () => captured,
-  };
-}
 
 const MATCHED: IgdbLookupResult = {
   status: "matched",
@@ -175,27 +161,6 @@ describe("createLibraryEntryFromGrounding", () => {
 });
 
 describe("updateLibraryEntry", () => {
-  /** Mock client for `.update(patch).eq('id', id).select().single()`, capturing the patch. */
-  function updateClient(result: { data: unknown; error: unknown }) {
-    let captured: Record<string, unknown> | undefined;
-    let eqArgs: [string, string] | undefined;
-    const single = vi.fn().mockResolvedValue(result);
-    const select = vi.fn(() => ({ single }));
-    const eq = vi.fn((column: string, value: string) => {
-      eqArgs = [column, value];
-      return { select };
-    });
-    const update = vi.fn((patch: Record<string, unknown>) => {
-      captured = patch;
-      return { eq };
-    });
-    return {
-      client: { from: vi.fn(() => ({ update })) } as never,
-      patch: () => captured,
-      eq: () => eqArgs,
-    };
-  }
-
   it("writes the patch, scopes by id, and returns the updated row", async () => {
     const row = { id: "row-1", title: "New Title" };
     const { client, patch, eq } = updateClient({ data: row, error: null });
@@ -215,21 +180,6 @@ describe("updateLibraryEntry", () => {
 });
 
 describe("deleteLibraryEntry", () => {
-  /** Mock client for `.delete().eq('id', id).select('id')`. */
-  function deleteClient(result: { data: unknown[]; error: unknown }) {
-    let eqArgs: [string, string] | undefined;
-    const select = vi.fn().mockResolvedValue(result);
-    const eq = vi.fn((column: string, value: string) => {
-      eqArgs = [column, value];
-      return { select };
-    });
-    const del = vi.fn(() => ({ eq }));
-    return {
-      client: { from: vi.fn(() => ({ delete: del })) } as never,
-      eq: () => eqArgs,
-    };
-  }
-
   it("deletes by id when a row is affected", async () => {
     const { client, eq } = deleteClient({ data: [{ id: "row-1" }], error: null });
 
@@ -245,25 +195,6 @@ describe("deleteLibraryEntry", () => {
 });
 
 describe("listLibraryEntries", () => {
-  /** Mock client capturing the `.range(from, to)` args; returns stub rows + count. */
-  function listClient(rows: unknown[], count: number) {
-    let rangeArgs: [number, number] | undefined;
-    const range = vi.fn((from: number, to: number) => {
-      rangeArgs = [from, to];
-      return Promise.resolve({ data: rows, count, error: null });
-    });
-    // order is chainable: the primary order, the optional created_at tiebreaker, and the
-    // final id tiebreaker all return the same node before .range() resolves the page.
-    const orderNode: Record<string, unknown> = { range };
-    const order = vi.fn(() => orderNode);
-    orderNode.order = order;
-    const select = vi.fn(() => ({ order }));
-    return {
-      client: { from: vi.fn(() => ({ select })) } as never,
-      range: () => rangeArgs,
-    };
-  }
-
   it("computes from/to from page and pageSize and returns entries + total", async () => {
     const { client, range } = listClient([{ id: "a" }], 57);
 
@@ -280,49 +211,6 @@ describe("listLibraryEntries", () => {
 
     expect(range()).toEqual([0, 19]);
   });
-
-  /**
-   * Chainable mock recording every filter/order call. `select` returns one builder whose
-   * `ilike`/`in`/`overlaps`/`order` all return the same builder (so the real chaining works);
-   * `range` resolves the page. Lets us assert which PostgREST operators each dimension used.
-   */
-  function filterListClient(rows: unknown[], count: number) {
-    const calls = {
-      ilike: [] as [string, string][],
-      in: [] as [string, unknown][],
-      overlaps: [] as [string, unknown][],
-      order: [] as [string, { ascending: boolean }][],
-    };
-    let rangeArgs: [number, number] | undefined;
-    const builder: Record<string, unknown> = {
-      ilike: vi.fn((col: string, pat: string) => {
-        calls.ilike.push([col, pat]);
-        return builder;
-      }),
-      in: vi.fn((col: string, vals: unknown) => {
-        calls.in.push([col, vals]);
-        return builder;
-      }),
-      overlaps: vi.fn((col: string, vals: unknown) => {
-        calls.overlaps.push([col, vals]);
-        return builder;
-      }),
-      order: vi.fn((col: string, opts: { ascending: boolean }) => {
-        calls.order.push([col, opts]);
-        return builder;
-      }),
-      range: vi.fn((from: number, to: number) => {
-        rangeArgs = [from, to];
-        return Promise.resolve({ data: rows, count, error: null });
-      }),
-    };
-    const select = vi.fn(() => builder);
-    return {
-      client: { from: vi.fn(() => ({ select })) } as never,
-      calls,
-      range: () => rangeArgs,
-    };
-  }
 
   it("applies combined filters (AND across dimensions, OR within) plus a non-default sort", async () => {
     const { client, calls, range } = filterListClient([{ id: "x" }], 1);
