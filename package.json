@@ -12,6 +12,7 @@
     "typecheck": "astro check",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "supabase test db",
     "test:mutation": "stryker run",
     "harness": "node scripts/identify-harness.mjs",
     "lint": "eslint .",
