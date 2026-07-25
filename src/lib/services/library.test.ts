@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteClient, filterListClient, insertClient, listClient, updateClient } from "@test/helpers/supabase-mock";
+import {
+  deleteClient,
+  filterListClient,
+  insertClient,
+  listClient,
+  selectLimitClient,
+  updateClient,
+} from "@test/helpers/supabase-mock";
 import type { IgdbLookupResult } from "@/types";
 
 // Mock the enrichment module so the service's mapping logic is tested in isolation —
@@ -13,6 +20,7 @@ import {
   createLibraryEntryFromGrounding,
   deleteLibraryEntry,
   getLibraryFacets,
+  listAllEntries,
   listLibraryEntries,
   updateLibraryEntry,
 } from "./library";
@@ -254,6 +262,49 @@ describe("listLibraryEntries", () => {
       ["created_at", { ascending: false }],
       ["id", undefined],
     ]);
+  });
+});
+
+/**
+ * The columns `recommend()` actually reads, each traced to the line in `recommendation.ts` that
+ * reads it. Derived from the **engine**, not copied from `RECOMMENDATION_COLUMNS` — mirroring the
+ * constant would restate the source instead of the requirement, and would stay green if a column
+ * the engine needs were dropped from both at once.
+ *
+ * - `length_hours` — `recommendation.ts:74`, read in `lengthDistance` (which hands it to `bucketOf`),
+ *   the dominant score term.
+ * - `play_status` — `:90`/`:92` (`isEligible`), `:104`/`:115` (`statusPenalty`).
+ * - `date_bought` — `:128`, the `newly_bought` novelty axis.
+ * - `created_at` — `:128` (the `date_bought` fallback) and `:200`, the first tie-break key.
+ * - `release_date` — `:131`, the `new_releases` / `comfort` novelty axis.
+ * - `id` — `:148` and `:193` (novelty-rank keying and lookup) and `:203`, the final tie-break key.
+ *
+ * Asserted as *containment*, never equality: the select legitimately carries more than the engine
+ * reads (`/play-next` renders `title`, `platform`, `release_year`), so adding a column must not be a
+ * false failure.
+ */
+const ENGINE_READS = ["length_hours", "play_status", "date_bought", "created_at", "release_date", "id"];
+
+describe("listAllEntries", () => {
+  it("asks for every column the recommender reads", async () => {
+    const { client, columns } = selectLimitClient({ data: [], error: null });
+
+    await listAllEntries(client);
+
+    // Split into columns rather than substring-matching the raw string: `id` occurs inside
+    // `igdb_id`, so a `.includes("id")` check would pass on a select that never asked for the key.
+    const selected = (columns() ?? "").split(",").map((column) => column.trim());
+    for (const column of ENGINE_READS) {
+      expect(selected).toContain(column);
+    }
+  });
+
+  it("throws when Supabase returns an error, instead of handing the engine null rows", async () => {
+    const { client } = selectLimitClient({ data: null, error: { message: "boom" } });
+
+    // Returning here rather than throwing would let `recommend()` run over `null` — the page would
+    // render an empty library instead of `/play-next`'s error state.
+    await expect(listAllEntries(client)).rejects.toBeDefined();
   });
 });
 

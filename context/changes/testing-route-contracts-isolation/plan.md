@@ -966,25 +966,25 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 
 #### Automated
 
-- [x] 4.1 `npm test` green with `index.test.ts`
-- [x] 4.2 The 400-path tests run without the KV mock and without the fetch router
-- [x] 4.3 `npm run lint` and `npm run typecheck` clean
+- [x] 4.1 `npm test` green with `index.test.ts` — e6004b2
+- [x] 4.2 The 400-path tests run without the KV mock and without the fetch router — e6004b2
+- [x] 4.3 `npm run lint` and `npm run typecheck` clean — e6004b2
 
 #### Manual
 
-- [x] 4.4 Platform assertion labelled as a behaviour record with the archive citation
-- [x] 4.5 No assertion duplicates `igdb.integration.test.ts`'s grounding coverage
+- [x] 4.4 Platform assertion labelled as a behaviour record with the archive citation — e6004b2
+- [x] 4.5 No assertion duplicates `igdb.integration.test.ts`'s grounding coverage — e6004b2
 
 ### Phase 5: Recommender Supabase boundary
 
 #### Automated
 
-- [ ] 5.1 `npm test` green with `listAllEntries` and `getRecommendations` additions
-- [ ] 5.2 `npm run lint` and `npm run typecheck` clean
+- [x] 5.1 `npm test` green with `listAllEntries` and `getRecommendations` additions
+- [x] 5.2 `npm run lint` and `npm run typecheck` clean
 
 #### Manual
 
-- [ ] 5.3 Column assertion traceable to engine reads, not to `RECOMMENDATION_COLUMNS`
+- [x] 5.3 Column assertion traceable to engine reads, not to `RECOMMENDATION_COLUMNS`
 
 ### Phase 6: Mutation pass + §6 cookbook update
 

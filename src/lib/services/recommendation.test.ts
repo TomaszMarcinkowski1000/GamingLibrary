@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { selectLimitClient } from "@test/helpers/supabase-mock";
 import type { LibraryEntry, NoveltyMode, PlayStatus, RecommendationRequest } from "@/types";
 import { LENGTH_BUCKETS, NOVELTY_MODES } from "@/types";
 import {
   NULL_DISTANCE,
   bucketOf,
+  getRecommendations,
   isEligible,
   lengthDistance,
   noveltyRank,
@@ -65,8 +67,13 @@ function entry(overrides: Partial<LibraryEntry> & { id: string }): LibraryEntry 
  *   single-table select, so production never supplies duplicate ids. Even if it did, the original's
  *   `return 0` and the mutant's `1` take the same path — `Array.sort` only ever tests `cmp < 0`.
  * - `:224` the `getRecommendations` body: the Supabase I/O boundary, out of scope for a unit
- *   harness. This one leaves a genuine hole rather than a covered one — `listAllEntries` has no
- *   test anywhere in the repo, and there is no e2e layer yet (test-plan Phases 3-4).
+ *   harness. This one left a genuine hole rather than a covered one — `listAllEntries` had no test
+ *   anywhere in the repo, and there is no e2e layer yet (test-plan Phases 3-4).
+ *   **Closed in rollout Phase 3** (`testing-route-contracts-isolation`, Phase 5): the seam is now
+ *   asserted in the "getRecommendations — the Supabase seam" block below, and `listAllEntries` got
+ *   its first tests in `library.test.ts`. The survivor tally above is still the Phase 2 measurement
+ *   — it was **not** re-run, because Phase 3's mutation pass scopes to `src/pages/api/library/[id].ts`
+ *   and `src/lib/validation/library.ts`. Re-measure before treating this bullet as settled.
  *
  * **Killed, but worth knowing why it is asserted at all:** dropping the `created_at` tie-break
  * branch (`:200`) is a real behaviour change, and it is now caught by the test at `:455` — which is
@@ -558,6 +565,47 @@ describe("recommend — realistic spot-check (scratch)", () => {
     expect(order[order.length - 1]).toBe("unknown");
     // Among real-length games (all in-bucket with every bucket selected), newest purchase wins.
     expect(order[0]).toBe("tunic");
+  });
+});
+
+describe("getRecommendations — the Supabase seam", () => {
+  /**
+   * Everything about *ranking* belongs to the blocks above; this one asserts only the seam between
+   * `listAllEntries` and `recommend()` — the boundary the Phase 2 mutation triage recorded as a
+   * genuine hole. The client is a chainable stub and `recommend()` runs for real, so a wiring break
+   * (a dropped `limit`, a swallowed error) is visible in the returned value rather than in a spy.
+   */
+  const library = Array.from({ length: 5 }, (_, i) =>
+    entry({ id: `e${i}`, play_status: "not_played", length_hours: 20, release_date: "2021-01-01" }),
+  );
+
+  it("forwards the caller's limit through to the engine", async () => {
+    const { client } = selectLimitClient({ data: library, error: null });
+
+    const result = await getRecommendations(client, req("new_releases"), 2);
+
+    // Five eligible rows in, two out ⇒ the limit reached `recommend()`. A dropped argument would
+    // fall back to the default of 10 and hand back all five.
+    expect(result.status).toBe("ranked");
+    expect(ids(result)).toHaveLength(2);
+  });
+
+  it("propagates a load failure instead of degrading to an empty library", async () => {
+    const { client } = selectLimitClient({ data: null, error: { message: "boom" } });
+
+    // A swallowed error here would render `/play-next`'s "you own nothing yet" empty state over a
+    // library that failed to load — the page's `loadError` branch would become unreachable.
+    await expect(getRecommendations(client, req("comfort"))).rejects.toBeDefined();
+  });
+
+  it("maps a zero-row read onto the engine's empty_library state", async () => {
+    const { client } = selectLimitClient({ data: [], error: null });
+
+    await expect(getRecommendations(client, req("newly_bought"))).resolves.toEqual({
+      status: "empty",
+      reason: "empty_library",
+      mode: "newly_bought",
+    });
   });
 });
 

@@ -10,7 +10,8 @@
 // The builders were lifted verbatim from `src/lib/services/library.test.ts` (five inline copies) and
 // `src/pages/api/identify.test.ts` (a sixth, a duplicate of the first) so the route suites consume a
 // helper instead of adding a seventh copy. The 172 tests that were green before the extraction are
-// the proof it was faithful.
+// the proof it was faithful. `selectLimitClient` is the one builder written here rather than lifted —
+// `listAllEntries` had no test anywhere in the repo, so there was no inline original to move.
 //
 // The clients are cast to `never` so they satisfy the `SupabaseClient<Database>` parameter without
 // the stub having to implement it — the same cast the inline originals used.
@@ -112,6 +113,32 @@ export function listClient(rows: unknown[], count: number) {
   return {
     client: { from: vi.fn(() => ({ select })) } as never,
     range: () => rangeArgs,
+  };
+}
+
+/**
+ * Mock client for the unpaginated `.from().select(columns).limit(n)` fetch (`listAllEntries`).
+ *
+ * Captures the raw column string handed to `.select()`, so a caller can assert *which columns were
+ * asked for* — the thing a "rows came back" assertion cannot see, and the thing that silently
+ * breaks the recommender when a column is dropped. The result is supplied by the caller so both the
+ * `{ data }` and `{ error }` branches are reachable.
+ *
+ * The row cap handed to `.limit()` is deliberately **not** captured: `RECOMMENDATION_MAX_ROWS` is a
+ * defensive ceiling with no PRD anchor, so asserting its value would mirror the source rather than a
+ * requirement. Add the capture if a test ever needs the distinction.
+ */
+export function selectLimitClient(result: QueryResult<unknown>) {
+  let columns: string | undefined;
+  const limit = vi.fn(() => Promise.resolve(result));
+  const select = vi.fn((cols: string) => {
+    columns = cols;
+    return { limit };
+  });
+  return {
+    client: { from: vi.fn(() => ({ select })) } as never,
+    /** The raw column string handed to `.select()`, exactly as the service wrote it. */
+    columns: () => columns,
   };
 }
 
