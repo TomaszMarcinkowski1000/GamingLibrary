@@ -588,26 +588,26 @@ same-behaviour code move; rollback is reverting one import.
 
 #### Automated
 
-- [x] 4.1 Stryker run on `recommendation.ts` completes
-- [x] 4.2 Stryker run on `recommendationCopy.ts` completes
-- [x] 4.3 Full suite green after added assertions
-- [x] 4.4 Lint clean
+- [x] 4.1 Stryker run on `recommendation.ts` completes — 6315c2c
+- [x] 4.2 Stryker run on `recommendationCopy.ts` completes — 6315c2c
+- [x] 4.3 Full suite green after added assertions — 6315c2c
+- [x] 4.4 Lint clean — 6315c2c
 
 #### Manual
 
-- [x] 4.5 Every survivor killed or logged with an ignore reason
-- [x] 4.6 No assertion pins a weight constant or string literal
-- [x] 4.7 Before/after mutation scores recorded
+- [x] 4.5 Every survivor killed or logged with an ignore reason — 6315c2c
+- [x] 4.6 No assertion pins a weight constant or string literal — 6315c2c
+- [x] 4.7 Before/after mutation scores recorded — 6315c2c
 
 ### Phase 5: Cookbook §6.5 + §6.7 note + status sync
 
 #### Automated
 
-- [ ] 5.1 No "TBD — see §3 Phase 2" remains in `test-plan.md`
-- [ ] 5.2 Prettier check clean on `test-plan.md`
-- [ ] 5.3 Full suite still green
+- [x] 5.1 No "TBD — see §3 Phase 2" remains in `test-plan.md`
+- [x] 5.2 Prettier check clean on `test-plan.md`
+- [x] 5.3 Full suite still green
 
 #### Manual
 
-- [ ] 5.4 §6.5 is self-sufficient for a new contributor
-- [ ] 5.5 §6.7 note records all gaps without prescribing fixes
+- [x] 5.4 §6.5 is self-sufficient for a new contributor
+- [x] 5.5 §6.7 note records all gaps without prescribing fixes

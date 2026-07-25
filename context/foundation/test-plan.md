@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-07-20 (Phase 1 complete + mutation-hardened: testing-grounding-identify-seam)
+> Last updated: 2026-07-25 (Phase 2 complete + mutation-hardened: testing-recommender-behavior-hardening)
 
 ## 1. Strategy
 
@@ -86,7 +86,7 @@ orchestrator updates Status as artifacts appear on disk.
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|------------|-----------------|----------------|-----------|--------|----------------|
 | 1 | Grounding & identify-seam integration | Prove the photo path cannot silently save the wrong game/metadata | #1, #2 | integration + unit | complete | context/changes/testing-grounding-identify-seam/ |
-| 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | planned | context/changes/testing-recommender-behavior-hardening/ |
+| 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | complete | context/changes/testing-recommender-behavior-hardening/ |
 | 3 | API route contracts + cross-user isolation | Prove routes enforce ownership and validation parity, not just auth | #5, #6 | integration | not started | — |
 | 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | not started | — |
 | 5 | Quality-gates wiring | Lock the floor in CI (test + e2e gates) | cross-cutting | gates | not started | — |
@@ -219,9 +219,116 @@ normalizers — those are the seam under test.
 
 ### 6.5 Adding a test for the recommender / scoring rules
 
-- TBD — see §3 Phase 2. Will cover: bucket-boundary values, 100%-complete
-  de-prioritization, determinism, and empty-state-reason contracts as pure
-  unit tests.
+The engine is pure — `recommend(entries, request, limit)` takes plain data and
+returns a discriminated `RecommendationResult`; no Supabase, no clock, no RNG.
+So every recommender test is a plain unit test, and the whole difficulty is the
+**oracle**, not the harness. Read this section before adding one: three of the
+four boundaries a test naturally reaches for have no spec behind them.
+
+- **Location / naming**: co-located, `src/lib/services/<module>.test.ts` —
+  `recommendation.test.ts` (engine + scoring helpers) and
+  `recommendationCopy.test.ts` (the user-facing empty-state sentence).
+- **Run locally**: `npm test`, or
+  `npx vitest run src/lib/services/recommendation.test.ts`.
+- **The surface under test** (`src/types.ts:146-170`), so a first draft compiles:
+
+  ```ts
+  recommend(entries: LibraryEntry[], request: RecommendationRequest, limit = 10): RecommendationResult
+  // RecommendationRequest = { lengthBuckets: LengthBucket[]; mode: NoveltyMode }
+  // NOVELTY_MODES  = ["new_releases", "newly_bought", "comfort"]   // "comfort" is the odd one out
+  // LENGTH_BUCKETS = ["short", "medium", "long", "very_long"]      // four — see the oracle table
+  // RecommendationResult =
+  //   | { status: "ranked"; items: { entry: LibraryEntry; score: number }[] }   // score: higher = better
+  //   | { status: "empty";  reason: EmptyReason; mode: NoveltyMode }
+  // EmptyReason = "empty_library" | "mode_eligibility"
+  ```
+
+  `status` is the discriminant, so narrow on it before touching `items` — the
+  `ids()` / `rankOf()` helpers in `recommendation.test.ts:81-96` already do,
+  and rule 2 below needs `items[].score`, not just the ids.
+- **Fixtures**: use the `entry({ id, … })` factory
+  (`recommendation.test.ts:18-30`). It fills the narrow column set the
+  recommender reads and casts the rest away, mirroring `listAllEntries`'s
+  partial select — so a test never has to author a full `LibraryEntry`.
+  - **Date hygiene.** `noveltyGoodness` calls `Date.parse` on `release_date` /
+    `date_bought` / `created_at` (`recommendation.ts:128,131`). A datetime
+    string **without** an offset parses TZ-dependently, which is a latent flake.
+    Keep new fixtures date-only (`"2021-01-01"`) or ISO-with-offset
+    (`"2026-01-01T00:00:00Z"`), matching the factory.
+  - **Hold every axis but one equal.** Score is a lexicographic composite of
+    length distance, status penalty, and novelty rank. A fixture meant to probe
+    *status* must pin the same `length_hours`, `release_date` **and**
+    `date_bought` on both entries, or the axis under test is not the one that
+    decided the order.
+
+**Which oracle backs which boundary.** Not all bucket edges are equal, and
+treating them as equal is how an invented rule gets pinned:
+
+| Edge | Status | Why |
+|---|---|---|
+| `10h` (short → medium) | **spec-backed** | FR-016 (`prd.md:160`) defines short as "< 10h", so 10 belongs to medium unambiguously. Safe to assert as a rule. |
+| `30h` (medium → long) | **documentation-of-behaviour** | FR-016 says "medium (10–30h), long (30h+)" — both buckets can claim 30. An exact-30h assertion pins a coin-flip, not a requirement. |
+| `60h` (long → very_long) | **documentation-of-behaviour** | Worse: FR-016 defines *three* buckets ending at "long (30h+)". `very_long` (`types.ts:104`) is a code-only fourth bucket with no FR at all. |
+
+Assert the 10h edge; write 30h/60h cases only as behaviour records, annotated
+as such in-file (`recommendation.test.ts:98-127`). A failure on a
+documentation-of-behaviour row is a **decision to re-take**, not a regression.
+
+**Three rules that keep a recommender assertion spec-side, not code-side:**
+
+1. **De-prioritization is a direction, not an absence.** The PRD says
+   100%-complete games are "de-prioritized except under comfort"
+   (`prd.md:83,180`); the code *excludes* them (`isEligible`,
+   `recommendation.ts:92`). `expect(order).not.toContain(id)` asserts the
+   stricter code and would fail the day exclusion is legitimately softened into
+   a heavy penalty. Compare **ranks** instead, treating absent as "ranked below
+   everything" (the `rankOf` helper, `recommendation.test.ts:93-96`) — true
+   under either implementation.
+2. **Assert stability, not the tie-break key.** The PRD mandates that identical
+   inputs produce identical outputs (`prd.md:84,182`); it never names
+   `created_at → id`. So assert deep-equality of the **full** result (items
+   *and* scores) across several permutations of one fixture
+   (`recommendation.test.ts:322-425`), not the secondary order. Two reasons the
+   permutation form matters: an ids-only comparison cannot see score-level
+   nondeterminism, and a two-permutation check can pass on
+   `Array.prototype.sort` stability (which preserves *input* order) while a
+   third diverges. Include a fixture guard asserting the fixture still holds
+   both a score tie and a score distinction — otherwise it can silently stop
+   probing the region where ordering can wobble. Tie-break-key tests may exist,
+   but label them documentation-of-behaviour (`:440-464`).
+3. **Give the entry that must lose the tie-break-favoured position.** Both
+   boundary assertions above would otherwise pass on luck. `statusPenalty`
+   hands `completed_100` a **0** in new modes (`recommendation.ts:115`) —
+   identical to `played` — so a relaxed `isEligible` produces a *score tie*,
+   and the tie-break decides. Give the 100%-complete entry the older
+   `created_at` and the smaller `id`: then a mere tie puts it **first** and the
+   assertion fails, which is the point. Same technique for the 10h edge (the
+   9.99h entry is tie-break-favoured). This is §6.6's "isolate one gate from
+   the gate that masks it", applied before Stryker rather than after.
+
+**The empty state is a two-layer contract — test the layer the user reads.**
+`recommend()` emits only a machine `{status:"empty", reason, mode}`, and
+`EmptyReason` has just two values (`types.ts:162`), so `mode_eligibility`
+**conflates two distinct constraints**: "comfort needs a game you've played" and
+"everything matching is already 100% complete". `mode` is the only
+disambiguator, and `recommendationCopy.ts` → `emptyStateMessage()` is the only
+place that reads it. PRD §Business Logic (`prd.md:182`) promises the empty state
+"names which constraint excluded everything" — so asserting the engine returned
+`mode_eligibility` proves nothing about that promise. Assert the copy:
+
+- Match on **constraint vocabulary** traceable to the PRD's own words
+  ("empty" / "played" / "100%"), plus **pairwise distinctness** across the three
+  causes. Never full-string equality against the implementation's literals — a
+  copy-paste mirror that breaks on an innocuous wording tweak while asserting
+  nothing about meaning.
+- Distinctness is the load-bearing half: vocabulary matching alone lets a
+  refactor collapse the branches into one generic sentence.
+- Reference: `recommendationCopy.test.ts`.
+- Corollary for production code: the copy must stay in a `.ts` module under
+  `src/lib/`, not in `.astro` frontmatter. `vitest.config.ts` registers no Astro
+  plugin, so an `.astro` module is not importable by this harness at all — and a
+  `.ts` file under `src/pages/` would publish an endpoint route as a side
+  effect.
 
 ### 6.6 Hardening a phase with mutation testing (Stryker)
 
@@ -317,6 +424,71 @@ here capturing anything surprising the phase taught.)
   mutant, no implementation-pinning. Scores rose `igdb.ts` 59.96 → 64.82 and
   `identify.ts` 47.70 → 54.02. The reusable kill techniques and the
   consciously-ignored survivor classes are recorded in §6.6.
+
+**Phase 2 — Recommender behavior hardening (2026-07-25).**
+
+- **Verify, don't duplicate.** Research and an independent re-run both found the
+  risk *already* largely covered: `recommendation.test.ts` was green at **30
+  assertions** on `b1d2c59`, with behavioural (non-mirror) coverage of bucket
+  edges, 100%-complete exclusion, deterministic ordering, and all three engine
+  empty-state branches. Two of those were narrower than they looked: the bucket
+  edges were pinned at the `bucketOf` helper only, and determinism at one
+  reversed input, ids-only — which is what the added 10h end-to-end and
+  permutation assertions carried the rest of the way. The phase re-asserted
+  nothing already held. It added **one**
+  new suite (the gap), **three** spec-direction assertions, and a mutation pass.
+  A rollout phase whose honest output is "mostly already protected" is a valid
+  result — the wasteful move would have been a second copy of the same coverage.
+- **The one real gap was a layer boundary, not a missing case.** The engine's
+  machine `reason` was well tested; the *human sentence* naming the constraint
+  lived unexported in `src/pages/play-next/index.astro` frontmatter, untestable
+  because `vitest.config.ts` registers no Astro plugin. Closing it cost the only
+  production edit of the phase — a verbatim move of `emptyStateMessage()` into
+  `src/lib/services/recommendationCopy.ts` (same signature, branches, strings),
+  with the page importing it. Precedent for the pattern:
+  `src/components/library/playStatus.ts`. Not `src/pages/` — a `.ts` file there
+  becomes an endpoint route.
+- **Two spec-vs-code divergences recorded, not fixed** (a test-writing phase
+  changes no production behavior — see §7):
+  - *Exclude vs. de-prioritize.* PRD `prd.md:83,180` says 100%-complete games are
+    *de-prioritized* outside comfort; `isEligible` (`recommendation.ts:92`)
+    *excludes* them. What makes the divergence load-bearing rather than academic:
+    `statusPenalty` hands `completed_100` a **0** in new modes
+    (`recommendation.ts:115`) — the *best* possible penalty, identical to
+    `played` — so `isEligible` is the only thing keeping it out of a ranking. The
+    new assertion compares ranks rather than asserting absence, so it holds under
+    either — see §6.5 rule 1.
+  - *Three spec buckets vs. four code buckets.* FR-016 (`prd.md:160`) and US-03
+    (`prd.md:80`) define short / medium / long (30h+); the code ships a fourth
+    `very_long` at 60h+ and relabels long as "30–60h" (`types.ts:104,124`). This
+    is the root of the 30h ambiguity: the 30h and 60h edges have **no spec
+    oracle at all**. §6.5 records which edge is assertable.
+- **`EmptyReason` conflation — a known gap.** `mode_eligibility`
+  (`types.ts:162`) means both "comfort needs a played game" and "everything
+  matching is 100% complete"; the engine alone cannot name the constraint, and
+  only `mode` disambiguates. Splitting the union into three values is a
+  behaviour change, deliberately out of scope. The copy suite asserts the
+  mode-based workaround **works**, not that it is the right design. See
+  `context/changes/testing-recommender-behavior-hardening/plan.md` → "What We're
+  NOT Doing".
+- **Mutation pass: the wins were fixtures, not new tests.** `recommendation.ts`
+  **92.36% → 94.27%** total (94.16% → 96.10% covered), 145 → 148 killed, 9 → 6
+  survived, 3 uncovered. `recommendationCopy.ts` scored **100.00%** (14/14) on the first pass
+  — nothing added. Both gains came from *correcting* fixtures rather than
+  writing cases: the permutation suite's tied pair became a tied **triple** so
+  both tie-break branches decide a real comparison (killing the constant-`-1`
+  comparator mutants that break sort antisymmetry, i.e. exactly the
+  input-order-dependence `prd.md:182` forbids), and the tie-break test's fixture
+  had its `created_at` order *agreeing* with its `id` order — so dropping the
+  `created_at` branch still produced the expected output and the test verified
+  half its own name. **A green test over an undiscriminating fixture is the
+  failure mode Stryker is best at exposing.** All 9 remaining items (6 survivors
+  + 3 uncovered) are triaged in an in-file block (`recommendation.test.ts:32-77`);
+  one of the *uncovered* is a genuine hole rather than an equivalent mutant —
+  `getRecommendations`'s Supabase boundary, which no layer covers yet (Phases
+  3–4). Note that `listAllEntries` behind it has no test anywhere in the repo,
+  contrary to this plan's "What We're NOT Doing" bullet, which assumed
+  `library.test.ts` covered it.
 
 ## 7. What We Deliberately Don't Test
 

@@ -1,7 +1,7 @@
 ---
 change_id: testing-recommender-behavior-hardening
 title: Recommender behavior hardening — test-plan rollout Phase 2
-status: implementing
+status: complete
 created: 2026-07-25
 updated: 2026-07-25
 archived_at: null
