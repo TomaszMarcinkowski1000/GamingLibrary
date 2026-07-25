@@ -21,6 +21,46 @@ import { deleteClient, updateClient } from "@test/helpers/supabase-mock";
 // status code — Phase 1's impl-review (F2) recorded that a best-effort `catch` lets a status-only
 // assertion pass even with the stub removed.
 
+/**
+ * Mutation-testing triage (`npx stryker run --mutate "src/pages/api/library/?id?.ts"` — the `[` `]`
+ * in the filename are glob metacharacters, so `?id?` is how you address this file from the CLI).
+ * **63.91% → 69.92% total** (75.22% → 78.15% covered), 85 → 93 killed, 28 → 26 survived, 20 → 14
+ * uncovered. Four assertions did it, each answering §6.6's question — *would this change hurt a user
+ * or the business?* — with a yes:
+ * - the two `if (error instanceof EntryNotFoundError)` → `if (true)` mutants on PATCH and DELETE:
+ *   every database failure reported as "Entry not found", so a timed-out delete reads as
+ *   "already gone" and the user never retries. Closed by the two 500 tests below.
+ * - `Response.json({ entry }, …)` → `Response.json({}, …)` on PATCH: the published 200 contract,
+ *   held by nothing until now.
+ * - `?? "Invalid input"` → `&& "Invalid input"` on both verbs: every validation failure collapsed
+ *   into one generic sentence, in a string the form renders verbatim.
+ *
+ * The remaining 26 + 14 were triaged and consciously accepted. Do not chase them:
+ *
+ * **Cosmetic — error copy, not behaviour.** `{ error: "…" }` → `{}` / `""` on the 401, 404 and 500
+ * paths (`:21,46,48,67,92,94,111,124,126` and their uncovered twins at `:26,72,116`). The client
+ * keys off the status and carries its own fallback copy (`GameDialog.tsx:225`,
+ * `DeleteEntryDialog.tsx:52`, `PlayStatusControl.tsx:78`). Killing these means pinning literals —
+ * §6.6's "never pin an implementation detail to raise the score". The one message the user must act
+ * on is the 400, and that one *is* asserted (by field attribution and by distinctness, not by text).
+ *
+ * **Equivalent mutants** — no input distinguishes them from the original:
+ * - `:43,89` `Response.json(body, {})`: `Response.json` already defaults to status 200, so dropping
+ *   the init on the two success paths changes nothing. (The same mutant on the 500 paths *does*
+ *   change the status, and is killed.)
+ * - `:38,84` `issues[0]?.message` → `issues[0].message`: zod guarantees a non-empty `issues` array
+ *   whenever `success === false`, so the optional chain can never short-circuit.
+ *
+ * **Unreachable in practice:**
+ * - `:25,71,115` `if (!id)` → `if (false)`, and the uncovered `"Missing entry id"` blocks behind
+ *   them. Astro's file router only dispatches `[id].ts` when the segment is present and non-empty —
+ *   `/api/library/` resolves to `index.ts`. The guard is defensive; no request can reach it, so
+ *   neither the branch nor its mutant is observable. A test would have to fake a context the router
+ *   cannot produce.
+ * - `:6` `prerender = false` → `true`: build-time adapter config, invisible to any vitest harness.
+ *   `astro check` and the build own it.
+ */
+
 // Inject Supabase by mocking `createClient`: a hoisted holder lets each test swap in a fresh
 // capturing stub — or `null`, which is what the route sees when `SUPABASE_*` is unset.
 const holder = vi.hoisted((): { supabaseClient: unknown } => ({ supabaseClient: null }));
@@ -67,6 +107,11 @@ function context(opts: { method: string; id?: string; body?: unknown; rawBody?: 
   return { request, params: { id }, cookies: {} as never, locals: { user } } as unknown as Parameters<typeof PUT>[0];
 }
 
+/** Read `{ error }` off a parsed JSON body, so a call site can compare messages without asserting a shape. */
+function errorMessage(body: unknown): unknown {
+  return (body as { error?: unknown }).error;
+}
+
 beforeEach(() => {
   holder.supabaseClient = null;
 });
@@ -107,6 +152,39 @@ describe("PUT/PATCH/DELETE /api/library/[id] — not-found translation", () => {
     expect(res.status).toBe(404);
     expect(eq()).toEqual(["id", ENTRY_ID]);
   });
+
+  // The other half of the discrimination: a database failure that is NOT "no such row" must not be
+  // dressed up as one. A 404 tells the user their entry is gone; if a timed-out DELETE answered 404
+  // the row would still be there and they would never retry. PUT's face of this is the `22P02` test
+  // below; these two close the same gap for the verbs that lacked it (both `instanceof` checks
+  // survived Phase 6's mutation pass as `if (true)` — i.e. every failure reported as "not found").
+
+  it("PATCH answers 500 — not a misleading 404 — when the database fails for some other reason", async () => {
+    const { client } = updateClient({
+      data: null,
+      error: { code: "57014", message: "canceling statement due to statement timeout" },
+    });
+    holder.supabaseClient = client;
+
+    const res = await PATCH(context({ method: "PATCH", body: { play_status: "completed" } }));
+
+    expect(res.status).toBe(500);
+  });
+
+  it("DELETE answers 500 — not a misleading 404 — when the database fails for some other reason", async () => {
+    // Sharper here than anywhere else: a 404 on a delete reads as "already deleted", so the user
+    // stops. `deleteLibraryEntry` only derives not-found from an *empty* result set, never from an
+    // error, and the route must preserve that distinction.
+    const { client } = deleteClient({
+      data: [],
+      error: { code: "57014", message: "canceling statement due to statement timeout" },
+    });
+    holder.supabaseClient = client;
+
+    const res = await DELETE(context({ method: "DELETE" }));
+
+    expect(res.status).toBe(500);
+  });
 });
 
 describe("PUT/PATCH/DELETE /api/library/[id] — success contracts", () => {
@@ -133,6 +211,10 @@ describe("PUT/PATCH/DELETE /api/library/[id] — success contracts", () => {
 
     expect(res.status).toBe(200);
     expect(patch()).toEqual({ play_status: "completed" });
+    // The published response contract, same as PUT's. Today's only caller (`PlayStatusControl.tsx`)
+    // reconciles from its own state and never reads the body, which is exactly why dropping `entry`
+    // would go unnoticed until the next consumer relied on it.
+    await expect(res.json()).resolves.toEqual({ entry: row });
   });
 
   it("PATCH forwards an explicit null play_time_hours as a written column ('clear my hours')", async () => {
@@ -234,10 +316,12 @@ describe("PUT/PATCH /api/library/[id] — malformed input", () => {
     const res = await PUT(context({ method: "PUT", body: { ...VALID_UPDATE, title: "   " } }));
 
     expect(res.status).toBe(400);
-    // Asserted as "carries some non-empty message", never as a literal: the wording comes from
+    // Matched on field attribution (`/title/i`), never on the literal: the wording comes from
     // zod/the schema, so pinning it would mirror the library and break on an upgrade while proving
-    // nothing about the contract.
-    await expect(res.json()).resolves.toMatchObject({ error: expect.stringMatching(/.+/) as unknown });
+    // nothing about the contract. Attribution is the half the user needs — `GameDialog.tsx:225`
+    // renders this string verbatim, so a route that answered a generic "Invalid input" for every
+    // failure (the `??` → `&&` mutant) would leave the user hunting for the bad field.
+    await expect(res.json()).resolves.toMatchObject({ error: expect.stringMatching(/title/i) as unknown });
     expect(patch()).toBeUndefined();
   });
 
@@ -250,6 +334,25 @@ describe("PUT/PATCH /api/library/[id] — malformed input", () => {
     expect(res.status).toBe(400);
     // A no-op patch reaching the database would answer 200 over a row it never changed.
     expect(patch()).toBeUndefined();
+  });
+
+  it("PATCH tells two different validation failures apart in the message it returns", async () => {
+    // `PlayStatusControl.tsx:78` shows this string to the user verbatim, so "why was I rejected?"
+    // has to survive the trip. Asserted as pairwise distinctness + non-emptiness rather than by
+    // literal (§6.5's copy technique): rewording either message is not a failure, collapsing both
+    // into one generic string is. Guards the `?? "Invalid input"` fallback against being turned
+    // into an unconditional one.
+    const { client } = updateClient({ data: null, error: null });
+    holder.supabaseClient = client;
+
+    const emptyBody = await PATCH(context({ method: "PATCH", body: {} }));
+    const badEnum = await PATCH(context({ method: "PATCH", body: { play_status: "abandoned" } }));
+
+    const emptyMsg = errorMessage(await emptyBody.json());
+    const enumMsg = errorMessage(await badEnum.json());
+    expect(emptyMsg).toMatch(/.+/);
+    expect(enumMsg).toMatch(/.+/);
+    expect(emptyMsg).not.toBe(enumMsg);
   });
 
   it("documentation-of-behaviour: a Postgres 22P02 (non-uuid id) surfaces as 500, not 400", async () => {

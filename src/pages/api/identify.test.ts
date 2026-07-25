@@ -309,7 +309,8 @@ describe("GET /api/identify — grounding shortcut", () => {
     //
     // TRIPWIRE, NOT PROOF OF REDACTION. `identify.ts:108` returns the caught `error.message`
     // verbatim, so the negative assertions below can only fail if the IGDB wrapper starts embedding
-    // credentials in its error text. Known gap — see test-plan §6.7 and plan.md "What We're NOT Doing".
+    // credentials in its error text. Known gap — see test-plan §6.8 (per-rollout-phase notes, Phase 1;
+    // renumbered from §6.7 when the pgTAP cookbook took that slot) and plan.md "What We're NOT Doing".
     const r = mockProviders({ games: { status: 500, body: "igdb upstream boom" } });
 
     const res = await GET(getContext({ title: "Alan Wake II", platform: "PlayStation 5" }));

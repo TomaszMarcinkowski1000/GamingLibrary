@@ -6,7 +6,9 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-07-25 (Phase 2 complete + mutation-hardened: testing-recommender-behavior-hardening)
+> Last updated: 2026-07-25 (Phase 3 complete + mutation-hardened: testing-route-contracts-isolation —
+> adds the pgTAP database-policy layer, §6.4 route recipe, and new §6.7; the per-rollout-phase
+> notes moved §6.7 → §6.8)
 
 ## 1. Strategy
 
@@ -87,7 +89,7 @@ orchestrator updates Status as artifacts appear on disk.
 |---|------------|-----------------|----------------|-----------|--------|----------------|
 | 1 | Grounding & identify-seam integration | Prove the photo path cannot silently save the wrong game/metadata | #1, #2 | integration + unit | complete | context/changes/testing-grounding-identify-seam/ |
 | 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | complete | context/changes/testing-recommender-behavior-hardening/ |
-| 3 | API route contracts + cross-user isolation | Prove the database enforces ownership and that the route contract translates it faithfully | #5, #6 | db-policy (pgTAP) + integration | planned | context/changes/testing-route-contracts-isolation/ |
+| 3 | API route contracts + cross-user isolation | Prove the database enforces ownership and that the route contract translates it faithfully | #5, #6 | db-policy (pgTAP) + integration | complete | context/changes/testing-route-contracts-isolation/ |
 | 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | not started | — |
 | 5 | Quality-gates wiring | Lock the floor in CI (test + e2e gates) | cross-cutting | gates | not started | — |
 
@@ -109,10 +111,10 @@ The classic test base for this project. AI-native tools (if any) carry a
 
 | Layer | Tool | Version | Notes |
 |-------|------|---------|-------|
-| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **9 test files / 172 tests**, green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts`. `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
+| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **11 test files / 228 tests**, green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts` and the two `src/pages/api/library/` route suites (Phase 3). `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
 | API / provider mocking | `vi.mock` + `installFetchRouter` at the `globalThis.fetch` edge | shipped in Phase 1 | `test/helpers/fetch-mock.ts`; `test/setup/no-network.ts` denies unrouted fetch suite-wide. Mock IGDB/vision HTTP at the edge; never mock internal grounding. |
 | Route contract (API endpoints) | Direct handler invocation + cast `APIContext` | shipped in Phase 1 | `src/pages/api/identify.test.ts` imports the exported handler and hands it `{ request, params, cookies, locals }`. **No Miniflare/workerd needed** — and per Cloudflare's own docs `vi.mock` cannot intercept `@cloudflare/vitest-pool-workers`' injected entry-point, which would discard this repo's whole mocking strategy. The Astro Container API adds only real `AstroCookies`/`params` and still runs no middleware. checked: 2026-07-25 |
-| Database policy (RLS) | pgTAP via `supabase test db` | Supabase CLI 2.x (devDependency) | none yet — see §3 Phase 3. Local stack already configured (`supabase/config.toml`, `enable_confirmations = false`, seed path pre-declared). Tests live in `supabase/tests/database/`. This is the only layer that can prove Risk #5. checked: 2026-07-25 |
+| Database policy (RLS) | pgTAP via `supabase test db` | Supabase CLI 2.x (devDependency) | **Shipped in Phase 3**: `supabase/tests/database/library_entries_rls.test.sql`, **17 assertions**, run with `npm run test:db` (requires Docker + `npx supabase start`; deliberately outside `npm test`). pgTAP is created inside the test transaction and rolled back — no migration. Recipe in §6.7. This is the only layer that can prove Risk #5. checked: 2026-07-25 |
 | e2e | Playwright | — | none yet — see §3 Phase 4. Must cover mobile-browser camera capture. |
 | accessibility | axe-core | — | optional; not currently scoped. |
 | (optional) AI-native | — | — | Not justified under cost × signal for v1; grounding/vision correctness is defended by deterministic integration tests against the S-09 fixture, not a model-on-model check. |
@@ -138,12 +140,16 @@ phase lands; before that, the gate is `planned`.
 |------|-------|-----------|---------|
 | lint + typecheck | local + CI | required (wired today: `eslint`, `astro check`) | syntactic / type drift |
 | unit + integration | local + CI | required after §3 Phase 1 | logic regressions in grounding, identify seam, recommender, routes |
+| db policy (RLS) | **local only** (`npm run test:db`) | required after §3 Phase 3 | policy drift — a policy dropped, widened to `using (true)`, or opened `to anon`; a lost INSERT `WITH CHECK`; an RPC's `user_id` predicate removed |
 | e2e on critical flows | CI on PR | required after §3 Phase 4 | broken mobile photo journey |
 | post-edit hook | local (agent loop) | recommended (optional) | regressions at edit time on the service layer |
 | pre-prod smoke | between merge + prod | optional | Worker/edge-specific failures the local suite misses |
 
 CI today (`.github/workflows/ci.yml`) runs lint + build only; §3 Phase 5
 wires `npm test` (required after Phase 1) and the e2e gate (after Phase 4).
+The db-policy gate is **enforced locally** and its CI wiring is Phase 5's too —
+it needs a Supabase service container, and adding one before `npm test` itself is
+gated would absorb Phase 5's work on top of a gate that does not exist yet.
 
 ## 6. Cookbook Patterns
 
@@ -214,9 +220,99 @@ normalizers — those are the seam under test.
 
 ### 6.4 Adding a test for a new API endpoint
 
-- TBD — see §3 Phase 3. Will cover: route contract (request → response shape
-  AND side-effects), ownership enforcement with two distinct users, and
-  client/server zod validation parity. Mock the external HTTP edge only.
+**Read the boundary first: this layer proves contract translation, never
+ownership.** Every route test here runs against a *stubbed* Supabase client, so
+its assertions would return exactly the same result with RLS disabled entirely.
+A 404 in a route test means "an empty result set became a 404", not "user B
+cannot touch user A's row". Isolation is proven one layer down, in §6.7. Say so
+in the file header — `src/pages/api/library/[id].test.ts:4-22` is the model — or
+the next reader will bank the 404 test as isolation coverage it is not.
+
+- **Location / naming**: co-located with the route,
+  `src/pages/api/<path>/<route>.test.ts` (`library/[id].test.ts`,
+  `library/index.test.ts`, `identify.test.ts`).
+- **Run locally**: `npm test`, or `npx vitest run "src/pages/api/library/[id].test.ts"`.
+- **The pattern is direct handler invocation.** Import the exported `GET`/`POST`/…
+  and hand it a hand-built, cast `APIContext`. No Astro machinery, no HTTP server,
+  no Miniflare — see §4 for why `@cloudflare/vitest-pool-workers` and the Container
+  API were both rejected. The factory is ~10 lines:
+
+  ```ts
+  // `PUT` is the imported handler; `ENTRY_ID` is a fixture const the suite defines itself.
+  function context(opts: { method: string; id?: string; body?: unknown; user?: unknown }) {
+    const { method, id = ENTRY_ID, user = { id: "user-1" } } = opts;
+    const init: RequestInit = { method };
+    if (opts.body !== undefined) {
+      init.body = JSON.stringify(opts.body);
+      init.headers = { "Content-Type": "application/json" };
+    }
+    const request = new Request(`https://test.local/api/library/${id}`, init);
+    // `params` only for a dynamic route; `cookies`/`locals` are what the handler destructures.
+    return { request, params: { id }, cookies: {} as never, locals: { user } } as unknown as Parameters<typeof PUT>[0];
+  }
+  ```
+
+- **Supabase goes in through a hoisted holder**, so each test can swap the stub
+  (or `null`) without re-mocking:
+
+  ```ts
+  const holder = vi.hoisted((): { supabaseClient: unknown } => ({ supabaseClient: null }));
+  vi.mock("@/lib/supabase", () => ({ createClient: vi.fn(() => holder.supabaseClient) }));
+  ```
+
+  The chainable stubs live in `test/helpers/supabase-mock.ts` — import them via the
+  **`@test/*` alias** (`import { updateClient } from "@test/helpers/supabase-mock"`),
+  not a relative path. The builders are `insertClient` / `updateClient` /
+  `deleteClient` / `listClient` / `selectLimitClient` / `filterListClient`;
+  `insertClient()` takes no arguments, the rest take the `{ data, error }` result
+  the terminal call should resolve to. Each captures what flowed through it (the
+  patch payload, the `.eq()` args, the `.select()` column string). Reach for an
+  existing builder before writing a seventh inline copy.
+
+- **Two cost tiers — do not pay for the one you don't need.**
+  - *Cheap*: `library/[id].ts` imports neither `cloudflare:workers` nor IGDB, so
+    its suite needs no KV mock and no fetch router at all.
+  - *Expensive*: `library/index.ts` and `identify.ts` reach the enrichment edge, so
+    they add `vi.mock("cloudflare:workers", () => ({ env: { IGDB_TOKENS: {} } }))`
+    (a `{}`-shaped KV forces a token-cache miss) plus `installFetchRouter` (§6.2).
+    Keep the 400-path tests *outside* that setup: with the suite-wide deny-all
+    fetch (`test/setup/no-network.ts`) still armed, a validation-ordering change
+    that let a rejected body reach IGDB fails loudly instead of passing quietly.
+
+- **The vacuous-401 trap.** The four Supabase-touching library handlers —
+  `[id].ts`'s PUT/PATCH/DELETE and `index.ts`'s POST — check `if (!supabase)`
+  **before** `if (!locals.user)`, and `test/stubs/astro-env-server.ts` leaves
+  `SUPABASE_*` undefined on purpose. So a 401 test written *without* the
+  `@/lib/supabase` mock hits the 500 branch — it either fails outright, or (worse)
+  passes for the wrong reason if it was written as `not.toBe(200)`. Assert **both
+  faces**, each labelled: mocked client + no user → 401; `createClient` → `null` +
+  no user → 500 "Supabase is not configured" (documentation-of-behaviour; it is in
+  tension with `prd.md:188` and is recorded, not fixed).
+  **Check your route's own guard order before copying this.** The fifth route in
+  the same directory, `library/lookup.ts`, does *not* fit the pattern: it never
+  builds a Supabase client, so it checks `!locals.user` first and has no 500 face
+  at all. Assert both faces only where both exist.
+
+- **Assert the outgoing call, not only the status.** Phase 1's impl-review (F2)
+  recorded that a best-effort `catch` lets a status-only assertion pass even with
+  the stub removed. Read the captured `.eq()` args, the captured patch, the
+  captured insert payload — "a 404 came back" is not "the right id went out", and
+  "a 201 came back" is not "the right row was written".
+
+- **Discriminate 404 from 500 on every verb.** A not-found translation is only
+  half the contract; the other half is that a *real* database failure does **not**
+  get dressed up as a 404. Telling a user their entry is gone when a DELETE timed
+  out means they never retry. Phase 6's mutation pass found exactly this gap on
+  PATCH and DELETE (`if (error instanceof EntryNotFoundError)` → `if (true)`
+  survived on both).
+
+- **Error messages: attribution and distinctness, never the literal.** The routes
+  hand `parsed.error.issues[0]?.message` straight to the client, which renders it
+  verbatim (`src/components/library/GameDialog.tsx:225`,
+  `src/components/library/PlayStatusControl.tsx:78`). Pinning the text
+  mirrors zod and breaks on an upgrade; asserting nothing lets every failure
+  collapse into one generic sentence. Match the field name (`/title/i`) where the
+  message has one, and assert pairwise distinctness where it doesn't.
 
 ### 6.5 Adding a test for the recommender / scoring rules
 
@@ -388,7 +484,107 @@ broke. It is wired for this repo (`stryker.config.json`, `npm run test:mutation`
   change. This is a floor, not a target — the remaining survivors are the
   consciously-ignored classes above.
 
-### 6.7 Per-rollout-phase notes
+### 6.7 Adding a database policy (RLS) test
+
+The layer that owns **ownership**. Nothing above it can: the application writes
+exactly one predicate (`.eq("id", id)`) and deliberately filters by no `user_id`
+at all (`src/lib/services/library.ts:31-33`, a decision ratified in the H-04
+edit/delete change). So a policy test is not a redundant second opinion on a
+route test — it is the *only* evidence isolation holds.
+
+- **Location / naming**: `supabase/tests/database/<table>_<concern>.test.sql`.
+  Reference suite: `library_entries_rls.test.sql`.
+- **Run locally**: `npm run test:db` (= `supabase test db`). Requires Docker and
+  the local stack (`npx supabase start`, ~60–120s cold). Deliberately **separate
+  from `npm test`**, which stays hermetic and Docker-free at ~3s.
+- **The skeleton.** pgTAP is created *inside* the test transaction and rolled
+  back, so there is no migration to write and no deployed schema is touched:
+
+  ```sql
+  begin;
+  create extension if not exists pgtap with schema extensions;
+  select plan(N);                     -- N must match the assertion count exactly
+
+  -- fixture (see below), then the assertions
+  select * from finish();
+  rollback;
+  ```
+
+- **The fixture needs real auth users.** `library_entries.user_id` FKs to
+  `auth.users(id)`, so rows cannot exist without them. Only `id` is NOT NULL
+  without a default; supply `email` too, since gotrue's own lookups expect one:
+  `insert into auth.users (id, email) values ('…uuid…', 'user-a@test.local');`
+  Give the two users **disjoint** column values, so a leak surfaces as a *present
+  extra value* rather than as a count mismatch.
+- **Impersonation idiom** — two `set local`s, scoped to the transaction:
+
+  ```sql
+  set local role authenticated;
+  set local request.jwt.claim.sub = '…the user''s uuid…';
+  ```
+
+  It works because `auth.uid()` in this database is
+  `coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''), nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid`
+  (verified live 2026-07-25). Source: Supabase docs via Context7
+  `/supabase/supabase`, **checked: 2026-07-25**. `reset role` returns to the
+  BYPASSRLS role the test connects as — which is how you observe what a blocked
+  write actually did to the table.
+
+**Three rules this phase learned. Each one is the difference between a suite that
+proves something and a suite that looks like it does:**
+
+1. **Positive control first.** If `set local request.jwt.claim.sub` silently fails
+   to take effect, `auth.uid()` is NULL, `auth.uid() = user_id` evaluates to NULL,
+   and *every row is hidden from everyone* — so every "B cannot see A's rows"
+   assertion passes while proving nothing. Open the file by asserting `auth.uid()`
+   is who you think it is, and that the user can see and write their *own* row.
+   Measured on this suite (2026-07-25): with the claim deleted, **8 of its 17
+   assertions stayed green** over a NULL `auth.uid()` — every cross-user write,
+   read, foreign-insert and `anon` assertion it has. Only the positive control and
+   the "B sees B's own data" assertions went red. Without group (a), that is a
+   suite reporting full isolation coverage while proving nothing.
+2. **Assert the effect, not just the RETURNING set.** Prefer `is_empty` over the
+   documented `results_ne($$ … returning 1 $$, $$ values(1) $$)` idiom —
+   `results_ne` passes for *any* set differing from `{(1)}`, including a two-row
+   breach. Then go further and assert the **table**: `reset role` and check the
+   other user's rows still carry their original values and still exist. An empty
+   RETURNING set is evidence about the statement's output, not about the data.
+   **Do not repeat the disproved rationale for this rule.** An earlier draft
+   claimed a widened UPDATE policy over a narrow SELECT policy lets the write
+   *land* while `RETURNING` filters to empty — "a 404 over a mutated row". That
+   state is **not reachable**: Postgres applies SELECT policies to UPDATE/DELETE
+   carrying a `WHERE` or `RETURNING` clause, so widening UPDATE alone changes
+   nothing and dropping SELECT blocks the write outright. Measured 2026-07-25; the
+   rule stands on the two reasons above.
+3. **Include an `anon`-role assertion.** `anon` holds full table grants
+   (`DELETE,INSERT,SELECT,UPDATE,…` — Supabase defaults), so the *absence of an
+   anon policy is the entire wall*, not a second line behind it. A policy widened
+   `to anon` or `for all using (true)` is one line of SQL from a full breach and is
+   completely invisible to a suite that only impersonates authenticated users.
+
+**Falsify the suite before trusting it, and write down what you saw.** A suite
+nobody has watched fail is a suite nobody has reason to trust. Inject each breach
+into a scratch copy inside the same rolled-back transaction, record which test
+numbers go red, and keep the table in the file header
+(`library_entries_rls.test.sql:57-78`). It is what turns "these tests pass" into
+"these tests discriminate" — and it is how the group-(d) caveat below was
+confirmed rather than assumed.
+
+**What this layer cannot prove** — record it in the header so nobody over-reads
+the coverage:
+
+- **A `SUPABASE_KEY` swapped for the service key.** `service_role` and `postgres`
+  carry `rolbypassrls = t`: every guard still passes and every query silently
+  returns all users' rows. pgTAP never goes through the app's client, so no
+  database test can see it. It is a deployment concern
+  (`context/changes/deployment/deployment-plan.md:107`).
+- **A `security invoker` → `definer` flip on an RPC.** Both facet RPCs carry an
+  explicit `user_id = (select auth.uid())` predicate *in addition* to RLS, so the
+  RPC assertions prove the predicate holds — not that RLS is still the backstop
+  behind it. Confirmed by falsification: those tests survive a widened SELECT
+  policy and only go red once the predicate is also gone.
+
+### 6.8 Per-rollout-phase notes
 
 (Optional. After each phase lands, `/10x-implement` appends a 2–3 line note
 here capturing anything surprising the phase taught.)
@@ -498,6 +694,76 @@ here capturing anything surprising the phase taught.)
   contrary to this plan's "What We're NOT Doing" bullet, which assumed
   `library.test.ts` covered it.
 
+**Phase 3 — API route contracts + cross-user isolation (2026-07-25).**
+
+- **§2's response guidance was inverted for both risks, in opposite directions —
+  and research, not the plan, was the ground truth (§1 principle #3).** For Risk #5
+  this plan asked for a route test proving "user A is rejected for user B's id".
+  The route deliberately enforces *no* ownership: RLS is the sole gate, by a
+  ratified decision, and the only predicate the app writes is `.eq("id", id)`. A
+  stubbed-Supabase route test therefore proves nothing about isolation **while
+  reading as coverage** — the anti-pattern §2 itself names. For Risk #6, two of the
+  three probes were unwritable as specified: "a decimal length saves" passes
+  trivially at the schema layer while the real defect lives in the browser, and
+  "platform aliases normalize" asserts a feature H-03 deliberately scoped out of
+  the manual path, so it would fail against correct code. Both cells in §2 were
+  rewritten to match. **The lesson is procedural, not local**: a risk-response cell
+  written before research can name the wrong layer, and following it produces green
+  tests that defend nothing.
+- **The answer was a new layer, not more tests.** Risk #5 got the repo's first
+  pgTAP suite (§6.7) because it is the only layer that can see the failure. Risk #6
+  got schema and route-contract tests (§6.4). The two failure sets are disjoint;
+  running both is not redundancy.
+- **Three code gaps recorded, not fixed** (a test-writing phase changes no
+  production behaviour — see §7). All three are traceable to
+  `context/changes/testing-route-contracts-isolation/plan.md` → "What We're NOT
+  Doing", where each is written up with its oracle (or its absence):
+  - *A fractional `length_hours` row is wholly un-editable.* The edit form's
+    `<Input type="number">` carries no `step` (`GameFormFields.tsx:197-205`), so the
+    browser's implicit `step="1"` blocks the **entire form submit** — no field can
+    be changed on such a row. This violates `prd.md:140` FR-010 ("edit any field",
+    must-have) and is **the one gap with a must-have spec oracle behind it**;
+    flagged for a follow-up change. Not fixed here because no layer in this phase
+    can verify the fix — only a browser can (Phase 4).
+  - *Manual-path platform normalization.* A photo read of `PS5` persists as
+    `PlayStation 5`; a user who types `ps5` persists `ps5`. Deliberately scoped out
+    by H-03, no PRD oracle. Characterized as a behaviour record in
+    `library/index.test.ts`, not corrected.
+  - *`22003` / `22P02` → 500 instead of 400.* An out-of-`int4` `release_year` or a
+    non-UUID `params.id` reaches Postgres and lands in the route's catch-all: a
+    client mistake reported as a server fault. No PRD oracle bounds either.
+  - Also pinned rather than fixed: the **500-before-401 guard order**. All four
+    library handlers check `if (!supabase)` before `if (!locals.user)`, so an
+    anonymous caller against a misconfigured deploy learns "Supabase is not
+    configured". In tension with `prd.md:188`; asserted as documentation-of-behaviour
+    on both faces (see §6.4's vacuous-401 trap, which is the same fact seen from the
+    test side).
+- **Mutation pass — scope limitation, stated plainly.** Stryker mutates TypeScript
+  source, so it **cannot touch the pgTAP layer: Risk #5's actual defense got no
+  mutation signal at all.** This pass hardened Risk #6 and the route contract only,
+  over two files: `src/pages/api/library/[id].ts` **63.91% → 69.92%** (85 → 93
+  killed, 28 → 26 survived, 20 → 14 uncovered) and `src/lib/validation/library.ts`
+  **80.28% → 91.55%** (57 → 65 killed, 14 → 6 survived). What stands in for mutation
+  testing at the SQL layer is the **falsification log** in the suite header — seven
+  injected breaches, each with the test numbers it reddens. Slightly different
+  instrument, same question: *would this test notice?*
+  - CLI quirk worth knowing: the `[` `]` in `[id].ts` are glob metacharacters, so
+    `--mutate "src/pages/api/library/[id].ts"` silently matches **nothing** (Stryker
+    warns, then dry-runs). Address the file as `"src/pages/api/library/?id?.ts"`.
+  - Kill techniques that earned their assertion here: **discriminate the sad paths
+    from each other** — both `if (error instanceof EntryNotFoundError)` checks
+    survived as `if (true)`, i.e. every database failure reported as "Entry not
+    found", which on DELETE tells the user their row is gone when it is not. And
+    **anchor the pattern, not just the shape**: dropping `^`/`$` from the ISO-date
+    regex lets any string *containing* a date validate, which fails two layers later
+    as a 500.
+  - Conscious ignores are triaged in-file, per §6.6 discipline
+    (`[id].test.ts:24-62`, `validation/library.test.ts:4-40`). The recurring classes:
+    error-copy literals the client has its own fallback for, `Response.json(x, {})`
+    on paths that already default to 200, `prerender = false` (build-time config no
+    harness can see), and the `if (!id)` guards — unreachable because Astro's file
+    router never dispatches `[id].ts` without a segment.
+
 ## 7. What We Deliberately Don't Test
 
 Exclusions agreed during the rollout (Phase 2 interview, Q5). Future
@@ -518,10 +784,12 @@ contributors should respect these unless the underlying assumption changes.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-07-18 (§2 Risk #5/#6 wording + guidance and §4 stack rows
-  backported 2026-07-25 from `context/changes/testing-route-contracts-isolation/research.md`)
+- Strategy (§1–§5) last reviewed: 2026-07-25 (§2 Risk #5/#6 wording + guidance and §4 stack rows
+  backported from `context/changes/testing-route-contracts-isolation/research.md`; §3 Phase 3 →
+  complete, §4 Vitest + pgTAP rows re-measured, §5 gained the db-policy gate)
 - Stack versions last verified: 2026-07-25
-- AI-native tool references last verified: 2026-07-18
+- AI-native tool references last verified: 2026-07-18 (the pgTAP impersonation idiom in §6.7 was
+  sourced from Supabase docs via Context7 `/supabase/supabase`, checked: 2026-07-25)
 
 Refresh (`/10x-test-plan --refresh`) when:
 

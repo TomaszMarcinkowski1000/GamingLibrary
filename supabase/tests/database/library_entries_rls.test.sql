@@ -70,9 +70,14 @@
 --                                                          a dropped policy is MORE restrictive)
 --
 -- Two things that log makes explicit and no assertion states on its own:
---   * With the impersonation corrupted, groups (b), (e) and (f) still pass — 6 green isolation
---     assertions over a NULL auth.uid(). That is the vacuous pass in the flesh, and test 1 is
---     the only thing standing between it and a suite that looks like coverage.
+--   * With the impersonation corrupted, groups (b), (e) and (f) still pass IN FULL, and so does
+--     the cross-user read in (c) — 8 green isolation assertions (4-8, 15-17) over a NULL
+--     auth.uid(). Re-measured 2026-07-25 by deleting the `set local request.jwt.claim.sub` line
+--     and running this file directly; only tests 1, 2, 3 and 9-14 go red, which is the same red
+--     set the stranger's-uuid row above records. (An earlier draft of this bullet said "groups
+--     (b), (e) and (f) — 6 assertions"; it undercounted and omitted test 8.) That is the vacuous
+--     pass in the flesh, and test 1 is the only thing standing between it and a suite that looks
+--     like coverage.
 --   * Group (d) survives a widened SELECT policy, because both RPCs carry their own explicit
 --     user_id predicate. It only goes red once that predicate is ALSO gone. That is the caveat
 --     recorded above, confirmed rather than assumed.

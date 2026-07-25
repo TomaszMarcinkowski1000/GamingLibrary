@@ -1,5 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { parseRecommendationParams, patchEntrySchema, updateEntrySchema } from "./library";
+import { lookupRequestSchema, parseRecommendationParams, patchEntrySchema, updateEntrySchema } from "./library";
+
+/**
+ * Mutation-testing triage (`npx stryker run --mutate "src/lib/validation/library.ts"`).
+ * **80.28% → 91.55% total** (fully covered, no uncovered mutants), 57 → 65 killed, 14 → 6 survived.
+ * Three assertions did it, each answering §6.6's question — *would this change hurt a user or the
+ * business?* — with a yes:
+ * - the two `isoDate` regex-anchor mutants (`^` and `$` dropped): unanchored, any string merely
+ *   *containing* ten date-shaped characters validates and reaches a Postgres `date` column, where
+ *   it fails as a 500 the user cannot act on. Exactly the layer-disagreement Risk #6 names.
+ * - `min(1, "title is required")` → `min(1, "")` on `updateEntrySchema` and `lookupRequestSchema`:
+ *   zod's own default names no field, and the route hands the message straight to the form.
+ * - `patchEntrySchema`'s `message: "…"` → `""`: zod emits the empty string verbatim, and
+ *   `PlayStatusControl.tsx:78` uses `??`, so `""` is not nullish and its fallback copy never fires —
+ *   the user gets a blank error. (Note the asymmetry with the survivor below.)
+ *
+ * The remaining 6 were triaged and consciously accepted:
+ *
+ * **Equivalent mutants:**
+ * - `:114` `rawMode ?? ""` → `?? "Stryker was here!"`: both fallbacks are non-members of
+ *   `NOVELTY_MODES`, so `.includes()` is false either way and the mode falls back identically.
+ * - `:51,75` the `_assignable` / `_patchAssignable` arrow bodies. These exist purely to make the
+ *   schema-to-`LibraryEntryUpdate` assignability a compile error if it ever breaks; both are
+ *   `void`ed and never called. Zero runtime behaviour, so no test can see the change — `astro check`
+ *   is what owns them.
+ *
+ * **Invisible at the boundary that consumes it:**
+ * - `:28` `.regex(…, "expected YYYY-MM-DD")` → `""`. `isoDate` is a union
+ *   (`.regex().nullable().or(z.literal(""))`), so a failure surfaces as the *union's* issue and the
+ *   regex's custom message never reaches `issues[0].message` — which is the only thing the routes
+ *   read (`[id].ts:38,84`). The custom text is already dead copy in production; emptying it changes
+ *   nothing a user sees. (Contrast the refine message above, which is not behind a union and is
+ *   asserted.)
+ *
+ * **Unreachable in practice:**
+ * - `:25` dropping `isoDate`'s `.trim()`. The only producers of these strings are
+ *   `<input type="date">` and IGDB-derived ISO dates; neither emits padding. The empty-string →
+ *   `null` branch reads the original value and is unaffected either way.
+ */
 
 const VALID = {
   title: "The Legend of Zelda",
@@ -61,6 +99,46 @@ describe("updateEntrySchema", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it.each([
+    { name: "a trailing time component", value: "2026-06-01T00:00:00Z" },
+    { name: "trailing digits", value: "2026-06-0199" },
+    { name: "leading junk", value: "bought on 2026-06-01" },
+  ])("rejects a date_bought with $name — the pattern is the whole string, not a substring", ({ value }) => {
+    // The anchors are the contract. Unanchored, any string *containing* ten date-shaped
+    // characters would validate and travel to a Postgres `date` column, where it fails as a
+    // `22007` the route's catch-all reports as a 500 — the client mistake reported as a server
+    // fault that Risk #6 is about. `date_bought`/`release_date` are the only free-text-reachable
+    // date fields (the enrichment path writes IGDB-derived ISO dates).
+    const parsed = updateEntrySchema.safeParse({ ...VALID, date_bought: value });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      // Non-empty, so the form has something to show. Not pinned to the wording.
+      expect(parsed.error.issues[0]?.message).toMatch(/.+/);
+    }
+  });
+
+  it("names the offending field when a required string is blank", () => {
+    // `GameDialog.tsx:225` renders the route's 400 message verbatim, so "which field?" has to
+    // survive the trip. Matched loosely (`/title/i`) rather than pinned to the literal — rewording
+    // is not a failure, losing the attribution (or emptying the message) is. Same technique as
+    // `src/pages/api/library/index.test.ts:128`, applied one layer down.
+    // `lookupRequestSchema` is the same required-pair contract behind the edit dialog's
+    // "Re-fetch metadata" button (`api/library/lookup.ts:31` returns its message the same way).
+    const blanks = [
+      { result: updateEntrySchema.safeParse({ ...VALID, title: "  " }), names: /title/i },
+      { result: updateEntrySchema.safeParse({ ...VALID, platform: "  " }), names: /platform/i },
+      { result: lookupRequestSchema.safeParse({ ...VALID, title: "  " }), names: /title/i },
+      { result: lookupRequestSchema.safeParse({ ...VALID, platform: "  " }), names: /platform/i },
+    ];
+
+    for (const { result, names } of blanks) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toMatch(names);
+      }
+    }
+  });
+
   // --- documentation-of-behaviour (not requirements) ------------------------------------
   // The two assertions below record what the server currently does at a point where no PRD
   // requirement bounds it. Neither catches a regression by design: if either goes red, that
@@ -102,6 +180,10 @@ describe("patchEntrySchema", () => {
       // mirror the source. Both keys are optional, so without that rule `{}` would parse.
       expect(parsed.error.issues).toHaveLength(1);
       expect(parsed.error.issues[0]?.path).toEqual([]);
+      // Non-empty, for the same reason the field-attribution test above exists: `PlayStatusControl`
+      // renders this string verbatim (`:78`), and `""` is not nullish, so its own fallback copy
+      // never fires — the user would get a blank error and no way to act on it.
+      expect(parsed.error.issues[0]?.message).toMatch(/.+/);
     }
   });
 
@@ -193,6 +275,13 @@ describe("parseRecommendationParams", () => {
 
   it("reads comma-joined length values", () => {
     expect(parse("length=medium,very_long").lengthBuckets).toEqual(["medium", "very_long"]);
+  });
+
+  it("trims whitespace around comma-joined values, so a hand-typed URL keeps every filter", () => {
+    // `?length=medium, very_long` — the shape a shared or hand-edited link takes. Without the trim
+    // the padded value fails the known-bucket check and is silently *dropped*: the user asked for
+    // two buckets and the page quietly filters on one, with no error to explain the difference.
+    expect(parse("length=medium, very_long").lengthBuckets).toEqual(["medium", "very_long"]);
   });
 
   it("drops unknown length values", () => {

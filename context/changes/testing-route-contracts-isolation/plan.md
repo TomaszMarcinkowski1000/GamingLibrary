@@ -979,25 +979,25 @@ so no deployed database is touched. `supabase/seed.sql` is still not created.
 
 #### Automated
 
-- [x] 5.1 `npm test` green with `listAllEntries` and `getRecommendations` additions
-- [x] 5.2 `npm run lint` and `npm run typecheck` clean
+- [x] 5.1 `npm test` green with `listAllEntries` and `getRecommendations` additions — 4451d5a
+- [x] 5.2 `npm run lint` and `npm run typecheck` clean — 4451d5a
 
 #### Manual
 
-- [x] 5.3 Column assertion traceable to engine reads, not to `RECOMMENDATION_COLUMNS`
+- [x] 5.3 Column assertion traceable to engine reads, not to `RECOMMENDATION_COLUMNS` — 4451d5a
 
 ### Phase 6: Mutation pass + §6 cookbook update
 
 #### Automated
 
-- [ ] 6.1 Both Stryker runs complete, reports read between runs
-- [ ] 6.2 `npm test` green after triage additions
-- [ ] 6.3 `npm run test:db` still green
-- [ ] 6.4 `npm run lint` and `npm run typecheck` clean
+- [x] 6.1 Both Stryker runs complete, reports read between runs
+- [x] 6.2 `npm test` green after triage additions
+- [x] 6.3 `npm run test:db` still green
+- [x] 6.4 `npm run lint` and `npm run typecheck` clean
 
 #### Manual
 
-- [ ] 6.5 §6.4 filled in — a reader could write a new route test from it alone
-- [ ] 6.6 New pgTAP section present, externally-sourced idiom dated `checked: 2026-07-25`
-- [ ] 6.7 §6.8 Phase 3 note records the mutation-pass scope limitation
-- [ ] 6.8 Three recorded code gaps traceable from the test plan to "What We're NOT Doing"
+- [x] 6.5 §6.4 filled in — a reader could write a new route test from it alone
+- [x] 6.6 New pgTAP section present, externally-sourced idiom dated `checked: 2026-07-25`
+- [x] 6.7 §6.8 Phase 3 note records the mutation-pass scope limitation
+- [x] 6.8 Three recorded code gaps traceable from the test plan to "What We're NOT Doing"
