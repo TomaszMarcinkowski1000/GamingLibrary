@@ -836,13 +836,13 @@ must exist in **both** `.dev.vars` and `.env`, and a `.dev.vars` edit requires a
 
 #### Automated
 
-- [x] 5.1 Full e2e suite green from a cold start: `npm run test:e2e`
-- [x] 5.2 Full unit/integration suite green: `npm test`
-- [x] 5.3 Lint + typecheck pass: `npm run lint`, `npm run typecheck`
-- [x] 5.4 No break left in the tree: `git diff` over `src/` shows only the Phase 1 seam
+- [x] 5.1 Full e2e suite green from a cold start: `npm run test:e2e` — c0c242d
+- [x] 5.2 Full unit/integration suite green: `npm test` — c0c242d
+- [x] 5.3 Lint + typecheck pass: `npm run lint`, `npm run typecheck` — c0c242d
+- [x] 5.4 No break left in the tree: `git diff` over `src/` shows only the Phase 1 seam — c0c242d
 
 #### Manual
 
-- [x] 5.5 All three breaks observed red and documented in the spec headers
-- [x] 5.6 §6.3 no longer lists Risk #3 as owed; no foundation doc claims mobile-Safari coverage
-- [x] 5.7 Spec headers alone convey what the green run does and does not prove
+- [x] 5.5 All three breaks observed red and documented in the spec headers — c0c242d
+- [x] 5.6 §6.3 no longer lists Risk #3 as owed; no foundation doc claims mobile-Safari coverage — c0c242d
+- [x] 5.7 Spec headers alone convey what the green run does and does not prove — c0c242d
