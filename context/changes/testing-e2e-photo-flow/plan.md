@@ -823,26 +823,26 @@ must exist in **both** `.dev.vars` and `.env`, and a `.dev.vars` edit requires a
 
 #### Automated
 
-- [x] 4.1 Spec passes: `npm run test:e2e -- e2e/photo-gallery-desktop.spec.ts`
-- [x] 4.2 Whole suite green: `npm run test:e2e`
-- [x] 4.3 Lint passes: `npm run lint`
+- [x] 4.1 Spec passes: `npm run test:e2e -- e2e/photo-gallery-desktop.spec.ts` — 7e45c25
+- [x] 4.2 Whole suite green: `npm run test:e2e` — 7e45c25
+- [x] 4.3 Lint passes: `npm run lint` — 7e45c25
 
 #### Manual
 
-- [x] 4.4 No rows left behind after the run
-- [x] 4.5 File-selection mechanism used (`filechooser` vs fallback) recorded in-file
+- [x] 4.4 No rows left behind after the run — 7e45c25
+- [x] 4.5 File-selection mechanism used (`filechooser` vs fallback) recorded in-file — 7e45c25
 
 ### Phase 5: Falsification and documentation
 
 #### Automated
 
-- [ ] 5.1 Full e2e suite green from a cold start: `npm run test:e2e`
-- [ ] 5.2 Full unit/integration suite green: `npm test`
-- [ ] 5.3 Lint + typecheck pass: `npm run lint`, `npm run typecheck`
-- [ ] 5.4 No break left in the tree: `git diff` over `src/` shows only the Phase 1 seam
+- [x] 5.1 Full e2e suite green from a cold start: `npm run test:e2e`
+- [x] 5.2 Full unit/integration suite green: `npm test`
+- [x] 5.3 Lint + typecheck pass: `npm run lint`, `npm run typecheck`
+- [x] 5.4 No break left in the tree: `git diff` over `src/` shows only the Phase 1 seam
 
 #### Manual
 
-- [ ] 5.5 All three breaks observed red and documented in the spec headers
-- [ ] 5.6 §6.3 no longer lists Risk #3 as owed; no foundation doc claims mobile-Safari coverage
-- [ ] 5.7 Spec headers alone convey what the green run does and does not prove
+- [x] 5.5 All three breaks observed red and documented in the spec headers
+- [x] 5.6 §6.3 no longer lists Risk #3 as owed; no foundation doc claims mobile-Safari coverage
+- [x] 5.7 Spec headers alone convey what the green run does and does not prove

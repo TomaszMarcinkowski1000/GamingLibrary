@@ -58,7 +58,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * | Drop the `[@media(pointer:coarse)]:hidden` class from the desktop button (`PhotoCapture.tsx:199`) — the "a desktop step sneaks in" clause, inverted | `toHaveCount(1)` → `Received: 2` | ✅ red (2026-07-27) |
  * | Hide the desktop button and unhide the dropdown instead — the *same* leak with the count still at 1 | `not.toHaveAttribute("aria-haspopup")` → resolved the Radix trigger | ✅ red (2026-07-27) |
  * | `throw` at the top of `downscaleImage` (`downscale.ts:57`) | `waitForResponse` — no POST is ever made | ✅ red (2026-07-27) |
- * | Drop `entry` from the persist response (`identify.ts:192`) | the `"Edit game"` dialog assertion | Phase 5 |
+ * | Drop `entry` from the persist response (`identify.ts:192`) | the `"Edit game"` dialog assertion (`element(s) not found`) | ✅ red (2026-07-27) |
+ *
+ * The last row carries a contrast rather than a break: under it **all 235 Vitest tests stayed
+ * green** (measured 2026-07-27), because the route still answers `{status, igdbId, metadataStatus}`
+ * — all `identify.test.ts:157,173` ever look at — while the island degrades to add-mode. The two
+ * photo specs are the only things in the repo that notice.
  *
  * The third row is why the `aria-haspopup` assertion is not decorative: the obvious leak is caught
  * by the count alone, but a leak that swaps *which* branch survives keeps the count at 1 and is

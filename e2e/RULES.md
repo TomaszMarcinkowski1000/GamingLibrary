@@ -20,6 +20,27 @@ the seed shows is what a generator reproduces.
   `setup` project already did it; see `e2e/auth.setup.ts`.
 - Name the test after the risk it protects: `test("manually added game survives a page
   reload", …)`, not `test("test 1", …)`.
+- **Reaching a file input goes through `filechooser`, not a CSS selector.** The gallery input
+  carries no label, no id, and no role (`src/components/library/PhotoCapture.tsx:189-195`), so
+  `getByRole`/`getByLabel` cannot see it. Click the *role-located* button and catch the event:
+
+  ```ts
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Add via photo" }).click();
+  await (await chooser).setFiles(filePath);
+  ```
+
+  It fires even for the island's programmatic `ref.current?.click()`. `page.locator('input[type=
+  "file"]')` is the documented fallback if it ever stops firing — and if you need it, say in-file
+  that the missing accessible name is a gap in the app, not a rule bent quietly.
+- **Click an island's trigger with a retry, not a sleep.** Astro islands ship interactive-*looking*
+  SSR HTML before React attaches (`PhotoCapture` is `client:load`, `EntryRowActions` is
+  `client:visible`), so a click landing in that window is swallowed with no error and no effect. A
+  spec that reaches a trigger immediately after `goto` loses this race (both photo specs did, while
+  being written; `seed.spec.ts` never does, because unrelated round-trips hydrate it first). Wrap
+  the click in `expect(async () => { … }).toPass()` waiting on what it should reveal —
+  `photo-capture-mobile.spec.ts:109`'s `clickUntilRevealed` is the shared shape. That is still a
+  wait-for-state: a genuinely broken affordance fails the block.
 
 ## What earns a spec here
 
@@ -50,6 +71,62 @@ E2E does not mean zero mocking, but the split is not negotiable:
   and the OpenRouter vision call. Caveat that bites on this stack: those are called
   **server-side** from Astro routes, so browser-level `page.route()` will not intercept them.
   Mock them where the server calls out, or pick a flow that doesn't reach them.
+
+### `page.route()` *can* see the app's own routes
+
+The caveat above is about the **Worker → OpenRouter/IGDB** hop only. `POST /api/identify` is the
+island's own same-origin `fetch` (`PhotoCapture.tsx:137`), so `page.route("**/api/identify", …)` does
+intercept it. Use that to **add headers and `continue()`** — never to fulfil a canned response, which
+would delete the route, the DB, and the SSR re-render from the test:
+
+```ts
+await page.route("**/api/identify", async (route) => {
+  await route.continue({
+    headers: { ...route.request().headers(), "x-e2e-vision-key": STUB_KEY, "x-e2e-vision-title": title },
+  });
+});
+```
+
+### The vision determinism seam
+
+`stubbedVisionRead` (`src/lib/services/vision.ts`) replaces **the provider network hop and nothing
+else**: a request carrying a header that matches the server-side `E2E_VISION_STUB_KEY` gets a canned
+`identified` read, and the route's auth gate, multipart parse, size/mime validation, base64 encode,
+`vision.ts`'s **normalizers**, grounding, the insert, and the SSR re-render all still run for real.
+Rules for using it, and for any seam like it:
+
+- **A seam replaces a network call, never a normalizer.** Stub past `normalizeTitleCasing` /
+  `normalizePlatformLabel` and every §6.2 assertion about normalize-before-ground goes hollow at the
+  one layer that could still have caught it. Pick a title the normalizers leave alone (mixed case +
+  a numeric suffix) so the value you assert on is the value you sent.
+- **Two locks, both absent in production**: the secret must be set *and* the request must present
+  it. Its four guard cases live in `src/lib/services/vision.test.ts`; the whole Vitest suite runs
+  with the key `undefined` (`test/stubs/astro-env-server.ts`), so it is continuous evidence that the
+  default state is dead. Never set it in a deployed environment.
+- **The key lives in two files and they must match**: `.dev.vars` (the dev server reads it) and
+  `.env` (`playwright.config.ts:22` loads it so the spec can send the header). See `.env.example`.
+  **`.dev.vars` beats `process.env` in wrangler and Astro binds secrets at worker init — so edit it,
+  then restart the dev server**, or `reuseExistingServer` hands you a server still holding the old
+  value and the spec fails with the real provider's 502.
+- Assert `response.status()` on the intercepted request. A disarmed seam then reads as "the POST
+  502'd" instead of an unexplained dialog timeout three assertions later.
+
+### Fake camera: both launch args, or the spec silently tests the wrong path
+
+`getUserMedia` needs **both** flags, per-file via `test.use({ launchOptions: { args: [...] } })`:
+
+```ts
+"--use-fake-device-for-media-stream",                  // without it: NotFoundError
+"--use-fake-ui-for-media-stream",                      // without it: NotSupportedError, even after grantPermissions(["camera"])
+`--use-file-for-fake-video-capture=${absoluteY4mPath}` // byte-deterministic frames; path must be absolute
+```
+
+Either omission fails **silently in the app's favour**: `CameraCapture` routes to `onError` and the
+UI falls back to the gallery picker, so the spec passes green while exercising the file-input path it
+was written to avoid. The permanent guard is an assertion, not a comment — `CameraCapture`'s Capture
+button is `disabled={!ready}` and `ready` flips only when `getUserMedia` resolves, so **"the camera
+dialog is visible and Capture is enabled" *is* "getUserMedia succeeded"**. Keep it in any camera spec.
+These flags are Chromium-only, which is one reason WebKit is declined here (test-plan §4).
 
 ## The control question
 

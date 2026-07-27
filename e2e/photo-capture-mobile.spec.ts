@@ -50,8 +50,13 @@ import { devices, expect, test, type Locator } from "@playwright/test";
  * | Break | Assertion that reddens | Observed |
  * |---|---|---|
  * | Comment out `window.location.assign("/library")` (`PhotoCapture.tsx:259-261`) — *the risk itself* | the final row assertion | ✅ red (2026-07-27) |
- * | Drop `entry` from the persist response (`identify.ts:192`) | the `"Edit game"` dialog assertion | Phase 5 |
+ * | Drop `entry` from the persist response (`identify.ts:192`) | the `"Edit game"` dialog assertion (`element(s) not found`) | ✅ red (2026-07-27) |
  * | Remove `--use-fake-ui-for-media-stream` | the enabled-Capture assertion | ✅ red (Phase 2 probe) |
+ *
+ * The second row is the one worth reading twice: under that break **all 235 Vitest tests stayed
+ * green** (measured 2026-07-27). The route keeps answering `{status, igdbId, metadataStatus}`, which
+ * is all `identify.test.ts:157,173` ever look at, while the island silently degrades to add-mode.
+ * This spec is the only thing in the repo that notices.
  *
  * Breaks are applied to a scratch tree, observed, and reverted — never committed.
  *

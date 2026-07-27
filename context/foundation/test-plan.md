@@ -6,9 +6,12 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-07-27 (Phase 4 researched: §2 Risk #3's evidence and response guidance
-> rewritten from `testing-e2e-photo-flow/research.md`, Risk #2's FR citation fixed, §4's e2e row
-> scoped honestly to emulated Chromium). Prior: 2026-07-25 (Phase 3 complete + mutation-hardened:
+> Last updated: 2026-07-27 (**Phase 4 complete**: §3 status, §4's e2e row rewritten around the three
+> shipped specs + the determinism seam + the webkit decline, §5's e2e-gate contract settled for
+> Phase 5, §6.3 filled in with the e2e cookbook, a §6.8 phase note, and a §7 bullet recording the
+> production-change exception). Earlier the same day (Phase 4 researched): §2 Risk #3's evidence and
+> response guidance rewritten from `testing-e2e-photo-flow/research.md`, Risk #2's FR citation fixed,
+> §4's e2e row scoped honestly to emulated Chromium. Prior: 2026-07-25 (Phase 3 complete + mutation-hardened:
 > testing-route-contracts-isolation — adds the pgTAP database-policy layer, §6.4 route recipe, and
 > new §6.7; the per-rollout-phase notes moved §6.7 → §6.8)
 
@@ -92,7 +95,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 1 | Grounding & identify-seam integration | Prove the photo path cannot silently save the wrong game/metadata | #1, #2 | integration + unit | complete | context/changes/testing-grounding-identify-seam/ |
 | 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | complete | context/changes/testing-recommender-behavior-hardening/ |
 | 3 | API route contracts + cross-user isolation | Prove the database enforces ownership and that the route contract translates it faithfully | #5, #6 | db-policy (pgTAP) + integration | complete | context/changes/testing-route-contracts-isolation/ |
-| 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | implementing | context/changes/testing-e2e-photo-flow/ |
+| 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | complete | context/changes/testing-e2e-photo-flow/ |
 | 5 | Quality-gates wiring | Lock the floor in CI (test + e2e gates) | cross-cutting | gates | not started | — |
 
 **Status vocabulary** (fixed — parser literals): `not started` →
@@ -113,11 +116,11 @@ The classic test base for this project. AI-native tools (if any) carry a
 
 | Layer | Tool | Version | Notes |
 |-------|------|---------|-------|
-| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **11 test files / 228 tests**, green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts` and the two `src/pages/api/library/` route suites (Phase 3). `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
+| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **12 test files / 235 tests** (re-measured 2026-07-27; Phase 4 added `src/lib/services/vision.test.ts`, the seam's 4-case guard), green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts` and the two `src/pages/api/library/` route suites (Phase 3). `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
 | API / provider mocking | `vi.mock` + `installFetchRouter` at the `globalThis.fetch` edge | shipped in Phase 1 | `test/helpers/fetch-mock.ts`; `test/setup/no-network.ts` denies unrouted fetch suite-wide. Mock IGDB/vision HTTP at the edge; never mock internal grounding. |
 | Route contract (API endpoints) | Direct handler invocation + cast `APIContext` | shipped in Phase 1 | `src/pages/api/identify.test.ts` imports the exported handler and hands it `{ request, params, cookies, locals }`. **No Miniflare/workerd needed** — and per Cloudflare's own docs `vi.mock` cannot intercept `@cloudflare/vitest-pool-workers`' injected entry-point, which would discard this repo's whole mocking strategy. The Astro Container API adds only real `AstroCookies`/`params` and still runs no middleware. checked: 2026-07-25 |
 | Database policy (RLS) | pgTAP via `supabase test db` | Supabase CLI 2.x (devDependency) | **Shipped in Phase 3**: `supabase/tests/database/library_entries_rls.test.sql`, **17 assertions**, run with `npm run test:db` (requires Docker + `npx supabase start`; deliberately outside `npm test`). pgTAP is created inside the test transaction and rolled back — no migration. Recipe in §6.7. This is the only layer that can prove Risk #5. checked: 2026-07-25 |
-| e2e | Playwright | **1.62.0** (`package.json`; verified 2026-07-27) | **Harness wired, risk coverage still owed.** `playwright.config.ts` + `e2e/` (setup project → `storageState`, `seed.spec.ts`, `RULES.md`), `npm run test:e2e`. Needs `npx supabase start` and a dedicated `E2E_EMAIL`/`E2E_PASSWORD` user in `.env`. Chromium only — mobile is per-spec `test.use({ ...devices["Pixel 5"] })`, not a second project. The seed covers manual-add persistence; **Risk #3 (mobile camera capture) is still uncovered — see §3 Phase 4.**<br>**Scope corrected (research 2026-07-27): this row does not deliver "a real mobile browser."** `devices["Pixel 5"]` is Chromium with a mobile UA, 393×727 viewport, `isMobile`/`hasTouch`. Measured true: it *does* flip `pointer: coarse`, so the app's mobile capture affordance is genuinely under test, and the real `getUserMedia` → canvas → JPEG pipeline runs against a fake device — but only with **both** `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream` (either alone fails, and the failure is silent: the app falls back to the file picker). Against `prd.md:173` (latest-two × four browsers × two form factors) this is ~1 of 16 cells; "Chromium only" is an undocumented decision Phase 4 should ratify or revisit. Not exercisable at all: real mobile Safari, a real camera/permission prompt, OS-level page eviction, and the 10 s p95 latency NFR. |
+| e2e | Playwright | **1.62.0** (`package.json`; verified 2026-07-27) | **Risk #3 covered (Phase 4, 2026-07-27).** `playwright.config.ts` + `e2e/`: setup project → `storageState`, `RULES.md`, and **three specs** — `seed.spec.ts` (manual-add persistence), `photo-capture-mobile.spec.ts` (the camera journey), `photo-gallery-desktop.spec.ts` (the fine-pointer journey + the only execution of `downscaleImage` at any layer). `npm run test:e2e`, ~30s. Needs `npx supabase start`, a dedicated `E2E_EMAIL`/`E2E_PASSWORD` user, and `E2E_VISION_STUB_KEY` — see below. Chromium only; mobile is per-spec `test.use({ ...devices["Pixel 5"] })`, not a second project.<br>**The run is now offline and provider-free.** Phase 4 added a key-guarded seam (`stubbedVisionRead`, `src/lib/services/vision.ts`) that replaces the OpenRouter hop only, so the suite needs **no outbound network and no `OPENROUTER_API_KEY`**; it needs `E2E_VISION_STUB_KEY` in **both** `.dev.vars` (server) and `.env` (spec side), and a dev-server restart after editing `.dev.vars` (`.dev.vars` beats `process.env`). Fixtures are committed and generated in-repo (`e2e/fixtures/`, `scripts/make-e2e-fixtures.mjs`): a single-frame Y4M for the fake camera and a **1600×1200** JPEG that must stay above `DEFAULT_MAX_EDGE = 1024` or the downscale branch stops running.<br>**Scope, stated rather than implied: this row does not deliver "a real mobile browser."** `devices["Pixel 5"]` is Chromium with a mobile UA, 393×727 viewport, `isMobile`/`hasTouch`. Measured true: it *does* flip `pointer: coarse`, so the app's mobile capture affordance is genuinely under test, and the real `getUserMedia` → canvas → JPEG pipeline runs against a fake device — but only with **both** `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream` (either alone fails, and the failure is silent: the app falls back to the file picker). Against `prd.md:173` (latest-two × four browsers × two form factors) this is ~1 of 16 cells. **`webkit` is declined in writing (Phase 4, Decision 3):** the fake-media args are Chromium-only, so a WebKit run of the camera spec would silently exercise the file-input path — and WebKit is not iOS Safari anyway. The four-browser NFR keeps its manual-matrix home (`context/archive/2026-06-17-photo-to-library/plan.md:230-237`). Not exercisable at all: **mobile Safari**, a real camera/permission prompt, OS-level page eviction (the ~80% failure that forced the `<input capture>` → `getUserMedia` rewrite — no emulator reproduces OS app-switching), the real provider integration (moved to manual / pre-prod smoke), and the 10 s p95 latency NFR. |
 | accessibility | axe-core | — | optional; not currently scoped. |
 | (optional) AI-native | — | — | Not justified under cost × signal for v1; grounding/vision correctness is defended by deterministic integration tests against the S-09 fixture, not a model-on-model check. |
 
@@ -143,7 +146,7 @@ phase lands; before that, the gate is `planned`.
 | lint + typecheck | local + CI | required (wired today: `eslint`, `astro check`) | syntactic / type drift |
 | unit + integration | local + CI | required after §3 Phase 1 | logic regressions in grounding, identify seam, recommender, routes |
 | db policy (RLS) | **local only** (`npm run test:db`) | required after §3 Phase 3 | policy drift — a policy dropped, widened to `using (true)` (incl. UPDATE widened alone, caught only by the unfiltered-write assertion — see §6 rule 3), or opened `to anon`; a lost INSERT `WITH CHECK`; an RPC's `user_id` predicate removed |
-| e2e on critical flows | CI on PR | required after §3 Phase 4 | broken mobile photo journey |
+| e2e on critical flows | CI on PR | required after §3 Phase 4 (**now due** — Phase 4 landed 2026-07-27) | broken photo journey: camera capture, the client-side downscale, and the post-close navigation that makes an auto-saved row visible at all |
 | post-edit hook | local (agent loop) | recommended (optional) | regressions at edit time on the service layer |
 | pre-prod smoke | between merge + prod | optional | Worker/edge-specific failures the local suite misses |
 
@@ -152,6 +155,19 @@ wires `npm test` (required after Phase 1) and the e2e gate (after Phase 4).
 The db-policy gate is **enforced locally** and its CI wiring is Phase 5's too —
 it needs a Supabase service container, and adding one before `npm test` itself is
 gated would absorb Phase 5's work on top of a gate that does not exist yet.
+
+**The e2e gate's contract, settled by rollout Phase 4 so §3 Phase 5 inherits it
+rather than rediscovering it** (2026-07-27): the suite needs **no outbound network
+and no `OPENROUTER_API_KEY`** — the vision seam removes the provider hop. It does
+need three things. (1) A Supabase service container plus a confirmed
+`E2E_EMAIL`/`E2E_PASSWORD` user seeded in it. (2) `npx playwright install --with-deps
+chromium`. (3) **CI must write `.dev.vars` from repository secrets before starting
+the dev server**, carrying `SUPABASE_URL`, `SUPABASE_KEY`, and `E2E_VISION_STUB_KEY`
+— setting them as plain env vars is not enough, because wrangler reads `.dev.vars`
+first and consults `process.env` only when that file is absent, and Astro binds
+secrets once at worker init. The same `E2E_VISION_STUB_KEY` value must also reach
+the runner's `.env`/`process.env`, which is where the specs read it to send the
+header. One mechanism for local and CI both.
 
 ## 6. Cookbook Patterns
 
@@ -245,8 +261,60 @@ seed shows. What follows is only the orientation.
   spec go red, revert the break. An assertion that stays green through the break is
   decorative. Never commit the break.
 
-**Still owed:** Risk #3 — mobile-browser camera capture → identify → auto-saved →
-visible in library. See §3 Phase 4; the harness is ready, the coverage is not.
+**The three reference specs and what each owns** (Phase 4, 2026-07-27):
+
+| Spec | Owns | Runs as |
+|---|---|---|
+| `seed.spec.ts` | manual add → persists across a real SSR reload | desktop `chromium` |
+| `photo-capture-mobile.spec.ts` | **Risk #3's headline**: coarse-pointer dropdown → in-page camera → identify → auto-save → **visible row** | `devices["Pixel 5"]` + fake-media args |
+| `photo-gallery-desktop.spec.ts` | the fine-pointer half: real `downscaleImage` in the browser, and *no* camera step on desktop | desktop `chromium` |
+
+**Mobile emulation is per-file, not a second project.** `test.use({ ...devices["Pixel 5"],
+launchOptions: { args: [...] } })` at the top of the one spec that needs it. A second Playwright
+project would make the whole suite pay for a second full run
+(`playwright.config.ts:59-61`); overriding `launchOptions` forces a fresh browser for that
+worker only. Measured true and load-bearing: `devices["Pixel 5"]` really does flip
+`pointer: coarse`, which is what makes the mobile capture affordance reachable at all — both
+branches are always in the DOM, differentiated only by `display:none`
+(`PhotoCapture.tsx:197-240`), so `getByRole("button", { name: "Add via photo" })` resolves to
+exactly one element in each mode.
+
+**Deterministic providers: a seam replaces the network hop, never the normalizers.** The vision
+provider is called server-side, so it cannot be intercepted from the browser and `webServer.env`
+cannot reach the Worker either (`.dev.vars` beats `process.env`). The answer shipped in Phase 4 is
+`stubbedVisionRead` (`src/lib/services/vision.ts`): a request proving knowledge of the server-side
+`E2E_VISION_STUB_KEY` gets a canned `identified` read. Everything else on the route — auth,
+multipart parse, size/mime validation, `vision.ts`'s normalizers, grounding, the insert, the SSR
+re-render — stays real. **Two independent locks** (the secret must be set *and* the request must
+present it), both absent in production and both proven at the Vitest layer
+(`src/lib/services/vision.test.ts`, 4 cases); the whole suite runs with the key `undefined`, so it
+is standing evidence the default state is dead. Arm it by intercepting the app's **own same-origin**
+`POST /api/identify` and adding headers with `route.continue()` — never by fulfilling a canned
+response. Full recipe, plus the `.dev.vars`/`.env` two-copy rule and the restart trap, in
+`e2e/RULES.md`.
+
+**The falsification log is a file-header convention here**, mirroring §6.7's pgTAP table: a
+`| break | assertion that reddens | observed |` table in each spec's header, filled in by
+experiment. Phase 4's most informative row is the one that reddens *only* here — dropping `entry`
+from the identify response (`identify.ts:192`) degrades the review dialog to add-mode while all 235
+Vitest tests stay green (measured 2026-07-27).
+
+**Two anti-patterns, with the symptom each presents:**
+
+1. *Omitting a fake-media launch arg.* Both `--use-fake-device-for-media-stream` and
+   `--use-fake-ui-for-media-stream` are required; either omission fails **silently in the app's
+   favour** — `CameraCapture` routes to `onError` and the UI falls back to the gallery picker, so
+   the spec passes green while exercising the file-input path it was written to avoid. Permanent
+   guard: assert the camera dialog is visible **with Capture enabled** (`disabled={!ready}` flips
+   only when `getUserMedia` resolves).
+2. *Re-asserting §6.2's territory.* No spec at this layer reads a title, an `igdb_id`, or a
+   `metadata_status` — the integration suite owns the identify seam at 37 assertions. Assert journey
+   *shape*.
+
+Two smaller traps worth inheriting: **island hydration** (Astro islands ship interactive-looking SSR
+HTML before React attaches, so a click immediately after `goto` can be swallowed — retry the click
+while waiting on what it should reveal, never sleep), and **locator punctuation** (`PhotoCapture`'s
+copy uses U+2019 and em dashes; an ASCII `couldn't` will not match — copy literals from source).
 
 ### 6.4 Adding a test for a new API endpoint
 
@@ -805,6 +873,53 @@ here capturing anything surprising the phase taught.)
     harness can see), and the `if (!id)` guards — unreachable because Astro's file
     router never dispatches `[id].ts` without a segment.
 
+**Phase 4 — End-to-end photo flow (2026-07-27).**
+
+- **The risk reduced to one line of production code, and that is why it earned a
+  browser.** The library table is 100% SSR (`src/pages/library/index.astro:223-265`)
+  and nothing client-side re-fetches it, so a photo-identified row is only ever seen
+  because `PhotoCapture.tsx:259-261` re-navigates to `/library` when the review dialog
+  closes. Delete that statement and the row is saved, correct, and **invisible** —
+  Risk #3's "never lands visibly" verbatim, with every unit, route-contract and pgTAP
+  test still green. Worth noting the layer argument is stronger than "e2e is cheapest":
+  `vitest.config.ts:24-25` sets `environment: "node"` and collects only `src/**/*.test.ts`,
+  and the repo has no jsdom / happy-dom / testing-library — so Playwright is the **only**
+  layer that can execute a React component here at all.
+- **The determinism seam was a production change in a test-writing phase — the exception,
+  taken once and on purpose.** Rationale, guard, and cost are written up in §7; the recipe
+  is in §6.3 and `e2e/RULES.md`. The rule that generalizes: **a seam replaces the network
+  hop and never the normalizers.** Stubbing past `normalizeTitleCasing` /
+  `normalizePlatformLabel` would have hollowed out §6.2's normalize-before-ground
+  assertions at the one layer that could still have caught the regression.
+- **`webkit` declined in writing.** The fake-media launch args are Chromium-only, so a
+  WebKit run of the camera spec would silently exercise the file-input path — anti-pattern
+  #1 under a different name — and WebKit is not iOS Safari regardless. It would have bought
+  ~1 more of `prd.md:173`'s 16 NFR cells while doubling the phase's runtime. Recorded as a
+  real gap (§4), not papered over.
+- **The two silent traps this phase measured**, both of which produce a *green* run that
+  tests the wrong thing: omitting either fake-media launch arg (the app falls back to the
+  gallery picker — guard with the enabled-Capture assertion), and a gallery fixture at or
+  below **1024 px**, which sends `computeTargetDimensions` down the pass-through branch
+  (`downscale.ts:32-34`) so the resize under test never runs. `e2e/fixtures/README.md`
+  records the 1600×1200 requirement where the fixture lives.
+- **A latent contract gap surfaced exactly where the assertion lands.** The route returns
+  `entry` on the persist path (`identify.ts:192`) and the island reads it
+  (`PhotoCapture.tsx:146`), but no test asserted its presence — `identify.test.ts:157,173`
+  check `{status, igdbId, metadataStatus}` only. Dropping `entry` degrades the review dialog
+  from `"Edit game"` to `"Add a game"` with **all 235 Vitest tests green** (measured under
+  falsification). The dialog title is that gap's only observable face, and the two photo
+  specs are the only things in the repo that notice.
+- **Cleanup is deliberately tolerant, and asserts no row count.** F3
+  (`context/archive/2026-06-17-photo-to-library/reviews/impl-review.md`) is a known,
+  deferred duplication seam on the 30 s abort. Each spec deletes *every* row matching its
+  timestamped title until the count is zero, rather than converting another risk's deferred
+  seam into intermittent red here.
+- **Island hydration is a real race for a spec that acts immediately after `goto`.** Astro
+  islands ship interactive-looking SSR HTML before React attaches, so an early click is
+  swallowed with no error; both specs lost that race while being written, and `seed.spec.ts`
+  never does only because unrelated round-trips hydrate it first. The fix is a click retried
+  while waiting on what it should reveal — a wait-for-state, not a sleep (§6.3, `e2e/RULES.md`).
+
 ## 7. What We Deliberately Don't Test
 
 Exclusions agreed during the rollout (Phase 2 interview, Q5). Future
@@ -822,10 +937,39 @@ contributors should respect these unless the underlying assumption changes.
   Low-likelihood on managed Supabase; belongs to observability/alerting, not
   a test. Re-evaluate if we add a caching layer or self-managed storage.
   (Source: Phase 2 interview Q1 option, deliberately not promoted.)
+- **The real vision-provider integration, in any automated suite** — and the
+  **production-change exception** that put it here. Every prior rollout phase
+  recorded code gaps rather than fixing them; Phase 4 took the exception once,
+  deliberately. The seam (`stubbedVisionRead`, `src/lib/services/vision.ts`, wired
+  at `identify.ts:143`) turns `POST /api/identify` deterministic for a request that
+  proves knowledge of a server-side key. **Why the exception was taken:** there was
+  no existing seam and none could be added from outside the app — `OPENROUTER_ENDPOINT`
+  is a hardcoded const, the provider is called server-side (so `page.route()` is
+  blind to it), and Playwright's `webServer.env` cannot reach the Worker because
+  `.dev.vars` beats `process.env`. The alternative did not keep production untouched;
+  it *transferred* the cost to the CI gate as a mandatory outbound-network +
+  `OPENROUTER_API_KEY` requirement, a per-run charge, and a model-dependent
+  `identified`-vs-`unsure` branch. **How it is guarded:** two independent locks (an
+  optional `astro:env/server` secret must be set *and* the request must present a
+  matching header), four unit cases in `src/lib/services/vision.test.ts`, and the
+  entire Vitest suite running with the key `undefined` as standing evidence the
+  default state is dead. It replaces **the network hop only** — the multipart
+  contract, size caps, mime validation, `vision.ts`'s normalizers, grounding, the
+  insert, and the SSR re-render all still run. **The acknowledged cost:** "the
+  provider integration works in the real runtime" is no longer asserted anywhere
+  automated; it moves to manual / pre-prod smoke (§5's optional gate). Never set
+  `E2E_VISION_STUB_KEY` in a deployed environment — anyone who knows the value
+  disables photo identification.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-07-27 (§2 Risk #3 Source + response guidance rewritten, Risk #2's
+- Strategy (§1–§5) last reviewed: 2026-07-27 (**Phase 4 landed**: §3 Phase 4 → complete; §4's e2e row
+  re-measured against what shipped — three specs, the key-guarded vision seam, an offline provider-free
+  run, and the `webkit` decline with its reason; §5's e2e gate marked due and given its CI contract
+  — no outbound network, but `.dev.vars` must be written from secrets before the dev server starts.
+  §6.3 filled in, §6.8 gained a Phase 4 note, §7 gained the production-change-exception bullet.
+  Vitest count re-measured: **12 files / 235 tests**, green in ~2.8s). Earlier the same day: §2 Risk #3
+  Source + response guidance rewritten, Risk #2's
   FR-006 citation slip corrected, and §4's e2e row de-over-claimed — all backported from
   `context/changes/testing-e2e-photo-flow/research.md`; §3 Phase 4 → researched). Prior review
   2026-07-25 (§2 Risk #5/#6 wording + guidance and §4 stack rows backported from
