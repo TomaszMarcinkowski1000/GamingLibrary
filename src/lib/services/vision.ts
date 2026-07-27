@@ -129,12 +129,9 @@ export function stubbedVisionRead(headers: Headers): VisionIdentifyResult | null
   const serverKey = E2E_VISION_STUB_KEY?.trim();
   if (!serverKey) return null;
 
-  // FALSIFICATION BREAK — DO NOT MERGE. Lock 2 disarmed: the presented key is no longer
-  // compared to the server key, so any caller who sends *any* non-empty header value gets
-  // arbitrary control of the vision read. Reverted immediately after CI is observed red.
+  // Lock 2 — the caller proves knowledge of it. Trimmed for symmetry with lock 1.
   const presentedKey = headers.get(STUB_KEY_HEADER)?.trim();
-  if (!presentedKey) return null;
-  void constantTimeEquals;
+  if (!presentedKey || !constantTimeEquals(presentedKey, serverKey)) return null;
 
   // Lock 3 — a canned read needs something to return.
   const title = headers.get(STUB_TITLE_HEADER)?.trim();
