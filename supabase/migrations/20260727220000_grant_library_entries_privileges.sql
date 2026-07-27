@@ -17,9 +17,18 @@
 -- working database on its own, instead of one that depends on an instance default.
 --
 -- Security is unchanged. A grant is not access: RLS is still enabled on the table and the
--- four policies from 20260606150950 still decide which rows a caller sees. `anon` is
--- deliberately omitted — it has no policy, so it has no access, and there is no reason to
--- widen its reach. This mirrors the explicit `grant execute … to authenticated` the two
--- RPCs already carry (20260611120000, 20260616120000).
+-- four policies from 20260606150950 still decide which rows a caller sees. This mirrors the
+-- explicit `grant execute … to authenticated` the two RPCs already carry (20260611120000,
+-- 20260616120000).
+--
+-- Why `anon` is granted too, rather than left out as the tighter-looking choice. It has no
+-- policy on this table, so RLS denies it everything either way — the grant buys it no access.
+-- What the grant buys is the pgTAP suite's group (f), which says so in its own header
+-- (`library_entries_rls.test.sql:293-298`): "anon holds full table grants, so this is the
+-- assertion that catches a policy widened `to anon` / `using (true)`". Blocking anon at the
+-- privilege layer instead would make that assertion throw 42501 unconditionally — and a
+-- policy widened `to anon` would then sail past it. Measured: without this line the suite
+-- fails 2/18 at line 305. Keeping anon granted is what keeps the breach detectable.
 
 grant select, insert, update, delete on public.library_entries to authenticated;
+grant select, insert, update, delete on public.library_entries to anon;
