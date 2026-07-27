@@ -559,16 +559,16 @@ the gate layer.
 
 #### Automated
 
-- [x] 1.1 Workflow file parses (YAML lint)
-- [x] 1.2 `npm test` green locally (12 files / 238 tests)
-- [x] 1.3 `npm run typecheck` green locally
-- [x] 1.4 `npm run lint` green
+- [x] 1.1 Workflow file parses (YAML lint) — cfb1f0a
+- [x] 1.2 `npm test` green locally (12 files / 238 tests) — cfb1f0a
+- [x] 1.3 `npm run typecheck` green locally — cfb1f0a
+- [x] 1.4 `npm run lint` green — cfb1f0a
 
 #### Manual
 
-- [ ] 1.5 `ci` job on a real PR shows both new steps executed and green
-- [ ] 1.6 Falsification: disarmed vision seam reddens the `npm test` step; break reverted
-- [ ] 1.7 `ci` job wall-clock under ~3 minutes
+- [x] 1.5 `ci` job on a real PR shows both new steps executed and green
+- [x] 1.6 Falsification: disarmed vision seam reddens the `npm test` step; break reverted
+- [x] 1.7 `ci` job wall-clock under ~3 minutes
 
 ### Phase 2: E2E user seeding
 
