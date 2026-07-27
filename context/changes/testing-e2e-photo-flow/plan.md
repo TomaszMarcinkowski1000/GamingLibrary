@@ -810,27 +810,27 @@ must exist in **both** `.dev.vars` and `.env`, and a `.dev.vars` edit requires a
 
 #### Automated
 
-- [x] 3.1 Spec passes: `npm run test:e2e -- e2e/photo-capture-mobile.spec.ts`
-- [x] 3.2 Whole suite still green: `npm run test:e2e`
-- [x] 3.3 Lint passes: `npm run lint`
+- [x] 3.1 Spec passes: `npm run test:e2e -- e2e/photo-capture-mobile.spec.ts` — c72835f
+- [x] 3.2 Whole suite still green: `npm run test:e2e` — c72835f
+- [x] 3.3 Lint passes: `npm run lint` — c72835f
 
 #### Manual
 
-- [x] 3.4 No rows left behind in the local library after the run
-- [x] 3.5 `.click()` vs `.tap()` outcome for the Radix dropdown recorded in-file
+- [x] 3.4 No rows left behind in the local library after the run — c72835f
+- [x] 3.5 `.click()` vs `.tap()` outcome for the Radix dropdown recorded in-file — c72835f
 
 ### Phase 4: The gallery spec
 
 #### Automated
 
-- [ ] 4.1 Spec passes: `npm run test:e2e -- e2e/photo-gallery-desktop.spec.ts`
-- [ ] 4.2 Whole suite green: `npm run test:e2e`
-- [ ] 4.3 Lint passes: `npm run lint`
+- [x] 4.1 Spec passes: `npm run test:e2e -- e2e/photo-gallery-desktop.spec.ts`
+- [x] 4.2 Whole suite green: `npm run test:e2e`
+- [x] 4.3 Lint passes: `npm run lint`
 
 #### Manual
 
-- [ ] 4.4 No rows left behind after the run
-- [ ] 4.5 File-selection mechanism used (`filechooser` vs fallback) recorded in-file
+- [x] 4.4 No rows left behind after the run
+- [x] 4.5 File-selection mechanism used (`filechooser` vs fallback) recorded in-file
 
 ### Phase 5: Falsification and documentation
 
