@@ -1,4 +1,4 @@
-import { OPENROUTER_API_KEY } from "astro:env/server";
+import { E2E_VISION_STUB_KEY, OPENROUTER_API_KEY } from "astro:env/server";
 import { z } from "zod";
 import { normalizePlatformLabel, normalizeTitleCasing } from "@/lib/platforms";
 import type { VisionIdentifyResult } from "@/types";
@@ -65,6 +65,92 @@ const PROMPT =
   "(e.g. PlayStation 5, Nintendo Switch, Xbox Series X). " +
   "Set confidence to your certainty in BOTH the title and the platform together, from 0 to 1. " +
   "If the image is not a recognizable game box, or you cannot read the title, return a low confidence.";
+
+// --- e2e determinism seam ---
+//
+// The Playwright suite needs `POST /api/identify` to reach the saved-and-visible row without a live
+// model call: the provider hop is the one nondeterministic, paid, network-dependent step in the
+// journey. This seam replaces *only* that hop — the route's multipart contract, size/mime caps and
+// base64 encode still run above it, and grounding, the insert and the SSR re-render still run below.
+// The normalizers below stay on the path deliberately, so a stubbed read reaches the insert in the
+// exact shape a real provider read would.
+//
+// Two independent locks, both absent in production: the server must hold a non-empty
+// `E2E_VISION_STUB_KEY` *and* the request must echo it back in a header. `test/stubs/astro-env-server.ts`
+// leaves the key `undefined`, so the whole Vitest suite runs as standing evidence that the default
+// state is dead. See `.env.example` for the two-copies (`.dev.vars` + `.env`) requirement.
+
+/** Header carrying the caller's proof of the server-side `E2E_VISION_STUB_KEY`. */
+const STUB_KEY_HEADER = "x-e2e-vision-key";
+/** Header carrying the title the canned read should return. Required — no title, no stub. */
+const STUB_TITLE_HEADER = "x-e2e-vision-title";
+/** Header carrying the platform the canned read should return. Optional. */
+const STUB_PLATFORM_HEADER = "x-e2e-vision-platform";
+
+/** Platform used when a stub request omits {@link STUB_PLATFORM_HEADER}. A canonical label already. */
+const STUB_DEFAULT_PLATFORM = "PlayStation 5";
+
+/**
+ * Compare two short secrets without leaking, through timing, how long a shared prefix was.
+ *
+ * Unreachable in production — lock 1 below is unconditionally closed there — but once a shared
+ * staging environment arms the seam, lock 2 is the only thing between a caller and arbitrary
+ * control of the vision read, so it should not be a guessing oracle. Hand-rolled rather than
+ * `crypto.timingSafeEqual`: this function is synchronous and runs under both workerd and Vitest's
+ * node environment, and the inputs are short ASCII secrets. The loop length still varies with the
+ * *longer* input, which reveals nothing about the key's content.
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  // The length difference is folded into the accumulator rather than returned early on.
+  let mismatch = a.length ^ b.length;
+  const span = Math.max(a.length, b.length);
+  for (let i = 0; i < span; i++) {
+    // `charCodeAt` past the end is NaN; `|| 0` normalizes it without branching on which string ran out.
+    mismatch |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  }
+  return mismatch === 0;
+}
+
+/**
+ * Test-only substitute for the OpenRouter call, gated on a key the caller cannot know unless the
+ * server was deliberately configured for e2e.
+ *
+ * @returns an `identified` read built from the request headers, or `null` to fall through to the
+ *   real provider. Every failed check yields `null`, never a throw or a 4xx: a malformed test
+ *   request degrades to the production path rather than to a confusing error.
+ */
+export function stubbedVisionRead(headers: Headers): VisionIdentifyResult | null {
+  // Lock 1 — the server opted in. Trimmed first: RFC 7230 strips leading/trailing whitespace from
+  // header values, so a key pasted into `.dev.vars` with a stray space would pass this check and
+  // then be permanently unmatchable at lock 2 — failing closed, but presenting the operator with an
+  // "armed" config that only ever produces the real provider's 502. An empty *or whitespace-only*
+  // string counts as unset (`astro:env` optional secrets make "declared and blank" easy to conflate
+  // with "absent"; both mean disarmed).
+  const serverKey = E2E_VISION_STUB_KEY?.trim();
+  if (!serverKey) return null;
+
+  // Lock 2 — the caller proves knowledge of it. Trimmed for symmetry with lock 1.
+  const presentedKey = headers.get(STUB_KEY_HEADER)?.trim();
+  if (!presentedKey || !constantTimeEquals(presentedKey, serverKey)) return null;
+
+  // Lock 3 — a canned read needs something to return.
+  const title = headers.get(STUB_TITLE_HEADER)?.trim();
+  if (!title) return null;
+
+  // An absent *or blank* platform header takes the default; `??` would let a blank one through.
+  const platformHeader = headers.get(STUB_PLATFORM_HEADER)?.trim();
+  const platform = platformHeader === undefined || platformHeader === "" ? STUB_DEFAULT_PLATFORM : platformHeader;
+
+  // Same normalization choke point the real read passes through (see `identifyGameFromPhoto`'s
+  // return below) — the seam must not become a way to bypass it. Confidence is 1: the stub is by
+  // construction above `CONFIDENCE_THRESHOLD`, so the route takes the identified branch.
+  return {
+    status: "identified",
+    title: normalizeTitleCasing(title),
+    platform: normalizePlatformLabel(platform),
+    confidence: 1,
+  };
+}
 
 /**
  * Identify a game's title + platform from a box photo.

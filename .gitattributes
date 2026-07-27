@@ -13,3 +13,8 @@
 *.webp binary
 *.woff  binary
 *.woff2 binary
+
+# Raw planar video frames (e2e/fixtures/box.y4m). The header is ASCII and the pixel
+# bytes carry no NULs, so git's `text=auto` heuristic classifies these as text — and a
+# fill colour whose bytes happen to form CR LF would then be normalized into corruption.
+*.y4m  binary

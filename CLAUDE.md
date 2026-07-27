@@ -7,6 +7,7 @@ This file provides guidance to AI Agent when working with code in this repositor
 - `npm run dev` — start dev server (Cloudflare workerd runtime)
 - `npm run build` — production build (SSR via `@astrojs/cloudflare`)
 - `npm run preview` — preview production build
+- `npm run test:e2e` — Playwright browser tests (starts the dev server itself)
 - `npm run lint` — ESLint with type-checked rules
 - `npm run lint:fix` — auto-fix lint issues
 - `npm run format` — Prettier (includes prettier-plugin-astro + prettier-plugin-tailwindcss)
@@ -56,6 +57,23 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 ## CI
 
 GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint + build on every push and PR to master. Requires `SUPABASE_URL` and `SUPABASE_KEY` repository secrets for the build step.
+
+## E2E tests
+
+Playwright specs live in `e2e/`. **Read `e2e/RULES.md` before writing or generating one** —
+it carries the locator/isolation/waiting rules, the real-vs-mocked split, and the bar a risk
+must clear to earn a spec at this layer. Model new specs on `e2e/seed.spec.ts`; a generator
+reproduces whatever the seed shows.
+
+Running them locally needs `npx supabase start` (the specs hit real Supabase) and
+`E2E_EMAIL` / `E2E_PASSWORD` in `.env` — a dedicated confirmed user in the local instance,
+never a production account. `e2e/auth.setup.ts` signs in once through the real
+`/api/auth/signin` route and parks the session in `e2e/.auth/user.json`; no spec logs in
+through the UI. Note the Astro CSRF guard: an API-side POST needs an explicit `Origin`
+header or it 403s.
+
+E2E is the most expensive layer here — budget roughly one test per risk from
+`context/foundation/test-plan.md`, never a test per page or per button.
 
 ## Mutation testing
 

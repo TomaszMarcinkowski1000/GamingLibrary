@@ -4,8 +4,8 @@ import { z } from "zod";
 import { lookupGameMetadata } from "@/lib/services/igdb";
 import { createLibraryEntryFromGrounding } from "@/lib/services/library";
 import { createClient } from "@/lib/supabase";
-import { identifyGameFromPhoto } from "@/lib/services/vision";
-import type { IdentifyResponse, IgdbLookupResult, LibraryEntry } from "@/types";
+import { identifyGameFromPhoto, stubbedVisionRead } from "@/lib/services/vision";
+import type { IdentifyResponse, IgdbLookupResult, LibraryEntry, VisionIdentifyResult } from "@/types";
 
 export const prerender = false;
 
@@ -135,16 +135,24 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   const { photo, persist } = parsed.data;
   const dataUrl = toBase64DataUrl(new Uint8Array(await photo.arrayBuffer()), photo.type);
 
-  // Vision call. A missing OPENROUTER_API_KEY or a non-2xx OpenRouter response throws (carrying the
-  // upstream body) — surface it as a clean 502 with the message, never a 500 stack trace.
-  let vision;
-  try {
-    vision = await identifyGameFromPhoto(dataUrl);
-  } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Vision identification failed" },
-      { status: 502 },
-    );
+  // Deterministic e2e seam (`vision.ts`): a request that proves knowledge of the server-side
+  // `E2E_VISION_STUB_KEY` gets a canned identified read instead of the provider hop. Disarmed unless
+  // that secret is set, so it is a no-op in production and across the whole Vitest suite. It sits
+  // here, and only here, so everything above (auth gate, multipart parse, size/mime validation,
+  // base64 encode) and everything below (grounding, persist, response shape) stays on the real path.
+  let vision: VisionIdentifyResult | null = stubbedVisionRead(request.headers);
+
+  if (vision === null) {
+    // Vision call. A missing OPENROUTER_API_KEY or a non-2xx OpenRouter response throws (carrying the
+    // upstream body) — surface it as a clean 502 with the message, never a 500 stack trace.
+    try {
+      vision = await identifyGameFromPhoto(dataUrl);
+    } catch (error) {
+      return Response.json(
+        { error: error instanceof Error ? error.message : "Vision identification failed" },
+        { status: 502 },
+      );
+    }
   }
 
   if (vision.status === "unsure") {
