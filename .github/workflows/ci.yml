@@ -17,7 +17,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx astro sync
+      # Hermetic (test/setup/no-network.ts denies unrouted fetch, test/stubs/astro-env-server.ts
+      # supplies dummy secrets) — deliberately no `env:` block. Placed first among the gates
+      # because it is both the highest-priority one and the fastest (~3s): it is the only
+      # enforcement anywhere that the vision bypass seam stays fail-closed (test-plan §5).
+      - run: npm test
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run build
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

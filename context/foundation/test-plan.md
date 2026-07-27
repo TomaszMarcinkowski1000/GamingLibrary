@@ -96,7 +96,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 2 | Recommender behavior hardening | Lock the reason-to-exist against boundary and negative-space gaps | #4 | unit | complete | context/changes/testing-recommender-behavior-hardening/ |
 | 3 | API route contracts + cross-user isolation | Prove the database enforces ownership and that the route contract translates it faithfully | #5, #6 | db-policy (pgTAP) + integration | complete | context/changes/testing-route-contracts-isolation/ |
 | 4 | End-to-end photo flow | Exercise the mobile capture → identify → visible journey once | #3 | e2e | complete | context/changes/testing-e2e-photo-flow/ |
-| 5 | Quality-gates wiring | Lock the floor in CI (test + e2e gates) | cross-cutting | gates | not started | — |
+| 5 | Quality-gates wiring | Lock the floor in CI (test + e2e gates) | cross-cutting | gates | change opened | context/changes/testing-quality-gates-wiring/ |
 
 **Status vocabulary** (fixed — parser literals): `not started` →
 `change opened` → `researched` → `planned` → `implementing` → `complete`.
