@@ -91,6 +91,27 @@ const STUB_PLATFORM_HEADER = "x-e2e-vision-platform";
 const STUB_DEFAULT_PLATFORM = "PlayStation 5";
 
 /**
+ * Compare two short secrets without leaking, through timing, how long a shared prefix was.
+ *
+ * Unreachable in production — lock 1 below is unconditionally closed there — but once a shared
+ * staging environment arms the seam, lock 2 is the only thing between a caller and arbitrary
+ * control of the vision read, so it should not be a guessing oracle. Hand-rolled rather than
+ * `crypto.timingSafeEqual`: this function is synchronous and runs under both workerd and Vitest's
+ * node environment, and the inputs are short ASCII secrets. The loop length still varies with the
+ * *longer* input, which reveals nothing about the key's content.
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  // The length difference is folded into the accumulator rather than returned early on.
+  let mismatch = a.length ^ b.length;
+  const span = Math.max(a.length, b.length);
+  for (let i = 0; i < span; i++) {
+    // `charCodeAt` past the end is NaN; `|| 0` normalizes it without branching on which string ran out.
+    mismatch |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  }
+  return mismatch === 0;
+}
+
+/**
  * Test-only substitute for the OpenRouter call, gated on a key the caller cannot know unless the
  * server was deliberately configured for e2e.
  *
@@ -99,12 +120,18 @@ const STUB_DEFAULT_PLATFORM = "PlayStation 5";
  *   request degrades to the production path rather than to a confusing error.
  */
 export function stubbedVisionRead(headers: Headers): VisionIdentifyResult | null {
-  // Lock 1 — the server opted in. An empty string counts as unset (`astro:env` optional secrets
-  // make "declared and blank" easy to conflate with "absent"; both mean disarmed).
-  if (!E2E_VISION_STUB_KEY) return null;
+  // Lock 1 — the server opted in. Trimmed first: RFC 7230 strips leading/trailing whitespace from
+  // header values, so a key pasted into `.dev.vars` with a stray space would pass this check and
+  // then be permanently unmatchable at lock 2 — failing closed, but presenting the operator with an
+  // "armed" config that only ever produces the real provider's 502. An empty *or whitespace-only*
+  // string counts as unset (`astro:env` optional secrets make "declared and blank" easy to conflate
+  // with "absent"; both mean disarmed).
+  const serverKey = E2E_VISION_STUB_KEY?.trim();
+  if (!serverKey) return null;
 
-  // Lock 2 — the caller proves knowledge of it.
-  if (headers.get(STUB_KEY_HEADER) !== E2E_VISION_STUB_KEY) return null;
+  // Lock 2 — the caller proves knowledge of it. Trimmed for symmetry with lock 1.
+  const presentedKey = headers.get(STUB_KEY_HEADER)?.trim();
+  if (!presentedKey || !constantTimeEquals(presentedKey, serverKey)) return null;
 
   // Lock 3 — a canned read needs something to return.
   const title = headers.get(STUB_TITLE_HEADER)?.trim();

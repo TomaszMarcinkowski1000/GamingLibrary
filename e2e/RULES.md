@@ -15,7 +15,12 @@ the seed shows is what a generator reproduces.
   `waitForResponse()`.
 - Assert the business outcome, not implementation details.
 - Use unique identifiers (timestamp suffix) for test data so parallel runs and re-runs don't
-  collide, and clean up what the test created.
+  collide, and clean up what the test created. **If the row is created before the first assertion
+  that can fail, the cleanup belongs in `test.afterEach`, not at the end of the test body** —
+  otherwise it only ever runs on green and every red run leaks a row into the shared `E2E_EMAIL`
+  account, accumulating across re-runs. `removeRowsTitled` in `e2e/helpers/cleanup.ts` is the
+  shared shape: it asserts the deletion on a passing test and degrades to best-effort on a failing
+  one, so a cleanup throw can never mask the real failure.
 - Use `storageState` for authentication — never log in through the UI inside a spec. The
   `setup` project already did it; see `e2e/auth.setup.ts`.
 - Name the test after the risk it protects: `test("manually added game survives a page
@@ -39,8 +44,10 @@ the seed shows is what a generator reproduces.
   spec that reaches a trigger immediately after `goto` loses this race (both photo specs did, while
   being written; `seed.spec.ts` never does, because unrelated round-trips hydrate it first). Wrap
   the click in `expect(async () => { … }).toPass()` waiting on what it should reveal —
-  `photo-capture-mobile.spec.ts:109`'s `clickUntilRevealed` is the shared shape. That is still a
-  wait-for-state: a genuinely broken affordance fails the block.
+  `clickUntilRevealed` in `e2e/helpers/hydration.ts` is the shared shape; import it rather than
+  re-copying it. That is still a wait-for-state: a genuinely broken affordance fails the block.
+  `photo-gallery-desktop.spec.ts`'s `pickFileUntilChooserOpens` is the same guard for a trigger
+  whose effect is a file chooser rather than a DOM node.
 
 ## What earns a spec here
 
@@ -100,7 +107,7 @@ Rules for using it, and for any seam like it:
   one layer that could still have caught it. Pick a title the normalizers leave alone (mixed case +
   a numeric suffix) so the value you assert on is the value you sent.
 - **Two locks, both absent in production**: the secret must be set *and* the request must present
-  it. Its four guard cases live in `src/lib/services/vision.test.ts`; the whole Vitest suite runs
+  it. Its ten guard cases live in `src/lib/services/vision.test.ts`; the whole Vitest suite runs
   with the key `undefined` (`test/stubs/astro-env-server.ts`), so it is continuous evidence that the
   default state is dead. Never set it in a deployed environment.
 - **The key lives in two files and they must match**: `.dev.vars` (the dev server reads it) and

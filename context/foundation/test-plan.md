@@ -116,11 +116,11 @@ The classic test base for this project. AI-native tools (if any) carry a
 
 | Layer | Tool | Version | Notes |
 |-------|------|---------|-------|
-| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **12 test files / 235 tests** (re-measured 2026-07-27; Phase 4 added `src/lib/services/vision.test.ts`, the seam's 4-case guard), green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts` and the two `src/pages/api/library/` route suites (Phase 3). `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
+| unit + integration | Vitest | **4.1.10** (`package.json`; verified 2026-07-25) | Configured; **12 test files / 238 tests** (re-measured 2026-07-27; Phase 4 added `src/lib/services/vision.test.ts`, the seam's 10-case guard), green in ~3s — `src/lib/*` plus `src/pages/api/identify.test.ts` and the two `src/pages/api/library/` route suites (Phase 3). `npm test` = `vitest run`. Vitest 4 deltas that bite: `test.workspace` → `test.projects`, and the `basic` reporter was removed. |
 | API / provider mocking | `vi.mock` + `installFetchRouter` at the `globalThis.fetch` edge | shipped in Phase 1 | `test/helpers/fetch-mock.ts`; `test/setup/no-network.ts` denies unrouted fetch suite-wide. Mock IGDB/vision HTTP at the edge; never mock internal grounding. |
 | Route contract (API endpoints) | Direct handler invocation + cast `APIContext` | shipped in Phase 1 | `src/pages/api/identify.test.ts` imports the exported handler and hands it `{ request, params, cookies, locals }`. **No Miniflare/workerd needed** — and per Cloudflare's own docs `vi.mock` cannot intercept `@cloudflare/vitest-pool-workers`' injected entry-point, which would discard this repo's whole mocking strategy. The Astro Container API adds only real `AstroCookies`/`params` and still runs no middleware. checked: 2026-07-25 |
 | Database policy (RLS) | pgTAP via `supabase test db` | Supabase CLI 2.x (devDependency) | **Shipped in Phase 3**: `supabase/tests/database/library_entries_rls.test.sql`, **17 assertions**, run with `npm run test:db` (requires Docker + `npx supabase start`; deliberately outside `npm test`). pgTAP is created inside the test transaction and rolled back — no migration. Recipe in §6.7. This is the only layer that can prove Risk #5. checked: 2026-07-25 |
-| e2e | Playwright | **1.62.0** (`package.json`; verified 2026-07-27) | **Risk #3 covered (Phase 4, 2026-07-27).** `playwright.config.ts` + `e2e/`: setup project → `storageState`, `RULES.md`, and **three specs** — `seed.spec.ts` (manual-add persistence), `photo-capture-mobile.spec.ts` (the camera journey), `photo-gallery-desktop.spec.ts` (the fine-pointer journey + the only execution of `downscaleImage` at any layer). `npm run test:e2e`, ~30s. Needs `npx supabase start`, a dedicated `E2E_EMAIL`/`E2E_PASSWORD` user, and `E2E_VISION_STUB_KEY` — see below. Chromium only; mobile is per-spec `test.use({ ...devices["Pixel 5"] })`, not a second project.<br>**The run is now offline and provider-free.** Phase 4 added a key-guarded seam (`stubbedVisionRead`, `src/lib/services/vision.ts`) that replaces the OpenRouter hop only, so the suite needs **no outbound network and no `OPENROUTER_API_KEY`**; it needs `E2E_VISION_STUB_KEY` in **both** `.dev.vars` (server) and `.env` (spec side), and a dev-server restart after editing `.dev.vars` (`.dev.vars` beats `process.env`). Fixtures are committed and generated in-repo (`e2e/fixtures/`, `scripts/make-e2e-fixtures.mjs`): a single-frame Y4M for the fake camera and a **1600×1200** JPEG that must stay above `DEFAULT_MAX_EDGE = 1024` or the downscale branch stops running.<br>**Scope, stated rather than implied: this row does not deliver "a real mobile browser."** `devices["Pixel 5"]` is Chromium with a mobile UA, 393×727 viewport, `isMobile`/`hasTouch`. Measured true: it *does* flip `pointer: coarse`, so the app's mobile capture affordance is genuinely under test, and the real `getUserMedia` → canvas → JPEG pipeline runs against a fake device — but only with **both** `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream` (either alone fails, and the failure is silent: the app falls back to the file picker). Against `prd.md:173` (latest-two × four browsers × two form factors) this is ~1 of 16 cells. **`webkit` is declined in writing (Phase 4, Decision 3):** the fake-media args are Chromium-only, so a WebKit run of the camera spec would silently exercise the file-input path — and WebKit is not iOS Safari anyway. The four-browser NFR keeps its manual-matrix home (`context/archive/2026-06-17-photo-to-library/plan.md:230-237`). Not exercisable at all: **mobile Safari**, a real camera/permission prompt, OS-level page eviction (the ~80% failure that forced the `<input capture>` → `getUserMedia` rewrite — no emulator reproduces OS app-switching), the real provider integration (moved to manual / pre-prod smoke), and the 10 s p95 latency NFR. |
+| e2e | Playwright | **1.62.0** (`package.json`; verified 2026-07-27) | **Risk #3 covered (Phase 4, 2026-07-27).** `playwright.config.ts` + `e2e/`: setup project → `storageState`, `RULES.md`, and **three specs** — `seed.spec.ts` (manual-add persistence), `photo-capture-mobile.spec.ts` (the camera journey), `photo-gallery-desktop.spec.ts` (the fine-pointer journey + the only execution of `downscaleImage` at any layer). `npm run test:e2e`, ~30s. Needs `npx supabase start`, a dedicated `E2E_EMAIL`/`E2E_PASSWORD` user, and `E2E_VISION_STUB_KEY` — see below. Chromium only; mobile is per-spec `test.use({ ...devices["Pixel 5"] })`, not a second project.<br>**The run makes no vision-provider call.** Phase 4 added a key-guarded seam (`stubbedVisionRead`, `src/lib/services/vision.ts`) that replaces the OpenRouter hop **only**, so the suite needs **no `OPENROUTER_API_KEY` and no outbound network of its own**. Not the same as hermetic: `identify.ts:166` still calls `lookupGameMetadata` on every photo-spec run, which is a live Twitch OAuth + IGDB round-trip whenever `TWITCH_CLIENT_ID/SECRET` are present in `.dev.vars` — as they are for anyone who has run the harness. That is deterministic rather than flaky, and for the same reason `seed.spec.ts:23-27` already gives: a timestamped title can never match, and the throw is swallowed at `identify.ts:167-169`, so the journey's outcome is identical whether IGDB answers, errors, or is not configured at all. §5's CI contract states what the suite *needs*, which is why it is narrower. it needs `E2E_VISION_STUB_KEY` in **both** `.dev.vars` (server) and `.env` (spec side), and a dev-server restart after editing `.dev.vars` (`.dev.vars` beats `process.env`). Fixtures are committed and generated in-repo (`e2e/fixtures/`, `scripts/make-e2e-fixtures.mjs`): a single-frame Y4M for the fake camera and a **1600×1200** JPEG that must stay above `DEFAULT_MAX_EDGE = 1024` or the downscale branch stops running.<br>**Scope, stated rather than implied: this row does not deliver "a real mobile browser."** `devices["Pixel 5"]` is Chromium with a mobile UA, 393×727 viewport, `isMobile`/`hasTouch`. Measured true: it *does* flip `pointer: coarse`, so the app's mobile capture affordance is genuinely under test, and the real `getUserMedia` → canvas → JPEG pipeline runs against a fake device — but only with **both** `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream` (either alone fails, and the failure is silent: the app falls back to the file picker). Against `prd.md:173` (latest-two × four browsers × two form factors) this is ~1 of 16 cells. **`webkit` is declined in writing (Phase 4, Decision 3):** the fake-media args are Chromium-only, so a WebKit run of the camera spec would silently exercise the file-input path — and WebKit is not iOS Safari anyway. The four-browser NFR keeps its manual-matrix home (`context/archive/2026-06-17-photo-to-library/plan.md:230-237`). Not exercisable at all: **mobile Safari**, a real camera/permission prompt, OS-level page eviction (the ~80% failure that forced the `<input capture>` → `getUserMedia` rewrite — no emulator reproduces OS app-switching), the real provider integration (moved to manual / pre-prod smoke), and the 10 s p95 latency NFR. |
 | accessibility | axe-core | — | optional; not currently scoped. |
 | (optional) AI-native | — | — | Not justified under cost × signal for v1; grounding/vision correctness is defended by deterministic integration tests against the S-09 fixture, not a model-on-model check. |
 
@@ -155,6 +155,18 @@ wires `npm test` (required after Phase 1) and the e2e gate (after Phase 4).
 The db-policy gate is **enforced locally** and its CI wiring is Phase 5's too —
 it needs a Supabase service container, and adding one before `npm test` itself is
 gated would absorb Phase 5's work on top of a gate that does not exist yet.
+
+**The `npm test` gate's stakes rose in rollout Phase 4** (2026-07-27, reviewed and
+deliberately deferred rather than pulled forward): the e2e determinism seam in
+`src/lib/services/vision.ts` is a production bypass path that is fail-closed only
+because two independent locks hold, and `src/lib/services/vision.test.ts` is the
+**only** enforcement anywhere that they stay that way — both `vision.ts` and
+`test/stubs/astro-env-server.ts` cite that suite as standing evidence that the
+default state is dead. Until Phase 5 wires the gate, nothing on a PR runs it; the
+husky `vitest related --run` hook mitigates locally but is skippable. So between now
+and Phase 5, a PR can disarm or invert the seam guard with a green CI. Phase 5 should
+treat `- run: npm test` as its first and highest-priority step, ahead of the gates
+that need service containers.
 
 **The e2e gate's contract, settled by rollout Phase 4 so §3 Phase 5 inherits it
 rather than rediscovering it** (2026-07-27): the suite needs **no outbound network
@@ -287,7 +299,7 @@ cannot reach the Worker either (`.dev.vars` beats `process.env`). The answer shi
 multipart parse, size/mime validation, `vision.ts`'s normalizers, grounding, the insert, the SSR
 re-render — stays real. **Two independent locks** (the secret must be set *and* the request must
 present it), both absent in production and both proven at the Vitest layer
-(`src/lib/services/vision.test.ts`, 4 cases); the whole suite runs with the key `undefined`, so it
+(`src/lib/services/vision.test.ts`, 10 cases); the whole suite runs with the key `undefined`, so it
 is standing evidence the default state is dead. Arm it by intercepting the app's **own same-origin**
 `POST /api/identify` and adding headers with `route.continue()` — never by fulfilling a canned
 response. Full recipe, plus the `.dev.vars`/`.env` two-copy rule and the restart trap, in
@@ -951,7 +963,7 @@ contributors should respect these unless the underlying assumption changes.
   `OPENROUTER_API_KEY` requirement, a per-run charge, and a model-dependent
   `identified`-vs-`unsure` branch. **How it is guarded:** two independent locks (an
   optional `astro:env/server` secret must be set *and* the request must present a
-  matching header), four unit cases in `src/lib/services/vision.test.ts`, and the
+  matching header), ten unit cases in `src/lib/services/vision.test.ts`, and the
   entire Vitest suite running with the key `undefined` as standing evidence the
   default state is dead. It replaces **the network hop only** — the multipart
   contract, size caps, mime validation, `vision.ts`'s normalizers, grounding, the
@@ -963,7 +975,15 @@ contributors should respect these unless the underlying assumption changes.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-07-27 (**Phase 4 landed**: §3 Phase 4 → complete; §4's e2e row
+- Strategy (§1–§5) last reviewed: 2026-07-27 (**Phase 4 implementation review triaged** —
+  `context/changes/testing-e2e-photo-flow/reviews/impl-review.md`, 8 findings, all closed. §4's e2e
+  row narrowed from "offline and provider-free" to "makes no vision-provider call", naming the IGDB
+  round-trip that still happens locally and why it stays deterministic (F7). §5 gained a paragraph
+  recording that the `npm test` gate's stakes rose with the seam, and that Phase 5 should wire it
+  first (F3, taken over pulling the CI change forward). Vitest count re-measured after the seam
+  guard was hardened: **12 files / 238 tests**, the guard itself now **10 cases** (F8 added a
+  whitespace-key and a near-miss-key case). §6.2/§6.8 case counts corrected 4 → 10 (F4).)
+- Strategy (§1–§5) reviewed earlier that day: 2026-07-27 (**Phase 4 landed**: §3 Phase 4 → complete; §4's e2e row
   re-measured against what shipped — three specs, the key-guarded vision seam, an offline provider-free
   run, and the `webkit` decline with its reason; §5's e2e gate marked due and given its CI contract
   — no outbound network, but `.dev.vars` must be written from secrets before the dev server starts.

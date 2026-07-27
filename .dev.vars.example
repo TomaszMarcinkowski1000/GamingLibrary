@@ -2,3 +2,16 @@ SUPABASE_URL=
 SUPABASE_KEY=
 TWITCH_CLIENT_ID=
 TWITCH_CLIENT_SECRET=
+
+# Vision provider for photo identification (F-03). Server-only secret; key at
+# https://openrouter.ai/keys. Optional — builds proceed without it; the vision
+# service throws only at call time.
+OPENROUTER_API_KEY=
+
+# Arms the e2e determinism seam (src/lib/services/vision.ts): a POST /api/identify
+# carrying a matching `x-e2e-vision-key` header gets a canned read instead of the
+# OpenRouter call. Must be IDENTICAL here and in .env — wrangler reads THIS file
+# first and only falls back to .env / process.env when it is absent, so this is the
+# one that decides the server's value. Editing it needs a DEV-SERVER RESTART.
+# NEVER set it in production; leaving it unset is the production configuration.
+E2E_VISION_STUB_KEY=

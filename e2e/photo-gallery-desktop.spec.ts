@@ -1,6 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { removeRowsTitled } from "./helpers/cleanup";
+
 /**
  * Risk #3, from the other side of the pointer split — "the end-to-end photo journey breaks …
  * or a desktop step sneaks in." (`context/foundation/test-plan.md` §2 Risk #3; plan
@@ -45,8 +47,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  *   - **The "Identifying your game…" overlay** (`PhotoCapture.tsx:170-179`). Racy or vacuous with
  *     the provider hop stubbed — same call as the camera spec.
  *   - **Row count.** F3 (`context/archive/2026-06-17-photo-to-library/reviews/impl-review.md`) is
- *     a known, deliberately-deferred duplication seam. Cleanup below is tolerant and asserts no
- *     count.
+ *     a known, deliberately-deferred duplication seam. Cleanup (see the `test.afterEach` below) is
+ *     tolerant and asserts no count.
  *   - **Title, `igdb_id`, `metadata_status`.** §6.2's integration suite owns the identify seam at
  *     37 assertions. Journey *shape* only.
  *
@@ -59,6 +61,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * | Hide the desktop button and unhide the dropdown instead — the *same* leak with the count still at 1 | `not.toHaveAttribute("aria-haspopup")` → resolved the Radix trigger | ✅ red (2026-07-27) |
  * | `throw` at the top of `downscaleImage` (`downscale.ts:57`) | `waitForResponse` — no POST is ever made | ✅ red (2026-07-27) |
  * | Drop `entry` from the persist response (`identify.ts:192`) | the `"Edit game"` dialog assertion (`element(s) not found`) | ✅ red (2026-07-27) |
+ * | Fail the test right after the identify 200, with the cleanup hook stubbed out | — (control for the hook itself) | ✅ 1 row leaked (2026-07-27) |
+ * | The same forced failure with the hook live | — | ✅ 0 rows left behind (2026-07-27) |
  *
  * The last row carries a contrast rather than a break: under it **all 235 Vitest tests stayed
  * green** (measured 2026-07-27), because the route still answers `{status, igdbId, metadataStatus}`
@@ -91,21 +95,8 @@ const JPG_PATH = fileURLToPath(new URL("fixtures/box.jpg", import.meta.url));
 const STUB_KEY = process.env.E2E_VISION_STUB_KEY ?? "";
 
 /**
- * Click an island's trigger and wait for what it should reveal, retrying the click if nothing
- * appeared. Same helper as `photo-capture-mobile.spec.ts:109` — the full rationale lives there.
- * In short: Astro islands ship interactive-*looking* SSR HTML before React attaches, so a click
- * landing in that window is swallowed with no error. Not a disguised sleep — the retry waits on
- * state, and a genuinely broken affordance still fails the block.
- */
-async function clickUntilRevealed(trigger: Locator, revealed: Locator) {
-  await expect(async () => {
-    await trigger.click();
-    await expect(revealed).toBeVisible({ timeout: 1000 });
-  }).toPass({ timeout: 15_000 });
-}
-
-/**
- * The same hydration guard, for the one trigger whose effect is not a DOM node: "Add via photo"
+ * The same hydration guard as `clickUntilRevealed` (`e2e/helpers/hydration.ts`), for the one
+ * trigger whose effect is not a DOM node: "Add via photo"
  * calls `galleryInputRef.current?.click()` (`PhotoCapture.tsx:63-67`), so what a landed click
  * reveals is a *file chooser*, not an element. Pre-hydration the React `onClick` isn't attached
  * yet and the chooser never opens.
@@ -125,6 +116,25 @@ async function pickFileUntilChooserOpens(page: Page, trigger: Locator, filePath:
   }).toPass({ timeout: 15_000 });
 }
 
+/** Published by the test for the cleanup hook. One test per file, so a module-level cell is safe. */
+let createdTitle: string | null = null;
+
+/**
+ * Cleanup lives in a hook rather than at the end of the test body because the row is persisted
+ * server-side the moment the file-selection POST returns — *before* the first assertion that can
+ * fail. An in-body delete therefore only ran on green, so every red run leaked a row permanently
+ * into the shared `E2E_EMAIL` account and they accumulated across re-runs. Manual criterion 4.4
+ * ("no rows left behind") is meant to hold unconditionally, not just when the journey passes.
+ * Same shape as `photo-capture-mobile.spec.ts` — the full rationale lives there.
+ */
+test.afterEach(async ({ page }, testInfo) => {
+  const title = createdTitle;
+  createdTitle = null;
+  if (!title) return;
+
+  await removeRowsTitled(page, title, { passed: testInfo.status === "passed" });
+});
+
 test("game chosen from the gallery is downscaled, saved, and visible in the library", async ({ page }) => {
   expect(
     STUB_KEY,
@@ -136,6 +146,9 @@ test("game chosen from the gallery is downscaled, saved, and visible in the libr
   // `normalizeTitleCasing` is on the seam's path deliberately, so the title has to be one it
   // leaves alone: mixed case with a numeric suffix round-trips unchanged (`src/lib/platforms.ts`).
   const rows = page.getByRole("row", { name: new RegExp(title) });
+  // Hand the title to the cleanup hook before anything can throw — the row starts existing at the
+  // identify POST below, which is upstream of every assertion in this test.
+  createdTitle = title;
 
   // Arm the seam per-request: intercept the island's *own same-origin* fetch
   // (`PhotoCapture.tsx:137`) and add headers before continuing — not a mocked response. The
@@ -203,13 +216,5 @@ test("game chosen from the gallery is downscaled, saved, and visible in the libr
   // fresh SSR render as this user can produce it.
   await expect(rows.first()).toBeVisible();
 
-  // Cleanup: remove every row this test created and assert the removal took. The loop (rather than
-  // seed.spec.ts's single delete) is the F3 tolerance — if the abort seam ever duplicates, this
-  // still leaves the library clean instead of failing on a count nobody owns here.
-  for (let remaining = await rows.count(); remaining > 0; remaining = await rows.count()) {
-    const confirm = page.getByRole("alertdialog");
-    await clickUntilRevealed(rows.first().getByRole("button", { name: "Delete" }), confirm);
-    await confirm.getByRole("button", { name: "Delete" }).click();
-    await expect(rows).toHaveCount(remaining - 1);
-  }
+  // Cleanup runs in the `test.afterEach` above, so a red run cannot leak the row.
 });

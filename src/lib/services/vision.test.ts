@@ -60,6 +60,28 @@ describe("stubbedVisionRead — the seam cannot fire without both locks", () => 
     expect(result).toBeNull();
   });
 
+  it("treats a whitespace-only key as unset", () => {
+    // Same boundary as above, one step subtler: `"   "` is truthy, so an untrimmed lock 1 would read
+    // it as "configured" and hand the whole guard to lock 2 — which no caller can then satisfy,
+    // because RFC 7230 strips the whitespace off the header value. Fails closed either way; the
+    // point is that it fails closed at lock 1, where the operator can be told the key is unset.
+    holder.stubKey = "   ";
+
+    expect(stubbedVisionRead(new Headers({ [KEY_HEADER]: "   ", [TITLE_HEADER]: "Alan Wake II" }))).toBeNull();
+    expect(stubbedVisionRead(new Headers({ [KEY_HEADER]: "", [TITLE_HEADER]: "Alan Wake II" }))).toBeNull();
+  });
+
+  it("matches a server key that was configured with stray whitespace", () => {
+    // The operator-error case the trim exists for: a key copied out of `.dev.vars` with a trailing
+    // space. The header cannot carry that space (RFC 7230 strips it), so an untrimmed comparison
+    // would make a correctly-configured e2e environment permanently unarmable.
+    holder.stubKey = `  ${SECRET}\t`;
+
+    const result = stubbedVisionRead(new Headers({ [KEY_HEADER]: SECRET, [TITLE_HEADER]: "Alan Wake II" }));
+
+    expect(result).toMatchObject({ status: "identified", title: "Alan Wake II" });
+  });
+
   it("returns null when the key is set but the request carries no key header", () => {
     // The ordinary production request on an e2e-configured server: no header, real provider path.
     holder.stubKey = SECRET;
@@ -75,6 +97,17 @@ describe("stubbedVisionRead — the seam cannot fire without both locks", () => 
     const result = stubbedVisionRead(new Headers({ [KEY_HEADER]: "wrong-key", [TITLE_HEADER]: "Alan Wake II" }));
 
     expect(result).toBeNull();
+  });
+
+  it("rejects keys that differ only in length or only in the last character", () => {
+    // Exercises both arms of the constant-time comparison: the length fold (a correct prefix, and a
+    // correct key plus a suffix) and the per-character XOR (same length, one byte off). A `startsWith`
+    // or a truncating compare would let one of these through.
+    holder.stubKey = SECRET;
+
+    for (const presented of [SECRET.slice(0, -1), `${SECRET}x`, `${SECRET.slice(0, -1)}X`]) {
+      expect(stubbedVisionRead(new Headers({ [KEY_HEADER]: presented, [TITLE_HEADER]: "Alan Wake II" }))).toBeNull();
+    }
   });
 
   it("returns null when the key matches but no title header is supplied", () => {

@@ -1,5 +1,8 @@
 import { fileURLToPath } from "node:url";
-import { devices, expect, test, type Locator } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
+
+import { removeRowsTitled } from "./helpers/cleanup";
+import { clickUntilRevealed } from "./helpers/hydration";
 
 /**
  * Risk #3 — "the end-to-end photo journey breaks on a mobile browser: camera capture → identify →
@@ -39,9 +42,9 @@ import { devices, expect, test, type Locator } from "@playwright/test";
  *     stubbed it may flash past faster than a locator can catch — an assertion that is either racy
  *     or vacuous. Not asserted.
  *   - **Row count.** F3 (`context/archive/2026-06-17-photo-to-library/reviews/impl-review.md`) is a
- *     known, deliberately-deferred duplication seam on the 30 s abort. Cleanup below is tolerant
- *     and asserts no count, rather than converting someone else's deferred risk into intermittent
- *     red here.
+ *     known, deliberately-deferred duplication seam on the 30 s abort. Cleanup (see the
+ *     `test.afterEach` below) is tolerant and asserts no count, rather than converting someone
+ *     else's deferred risk into intermittent red here.
  *   - **Title, `igdb_id`, `metadata_status`.** §6.2's integration suite owns the identify seam at
  *     37 assertions. This spec asserts journey *shape* only.
  *
@@ -98,25 +101,23 @@ test.use({
   },
 });
 
+/** Published by the test for the cleanup hook. One test per file, so a module-level cell is safe. */
+let createdTitle: string | null = null;
+
 /**
- * Click an island's trigger and wait for what it should reveal, retrying the click if nothing
- * appeared.
- *
- * Not a disguised sleep — the retry waits on state, and a genuinely broken affordance still fails
- * the block. It exists because Astro islands ship interactive-*looking* SSR HTML before React
- * attaches: `PhotoCapture` is `client:load` and `EntryRowActions` is `client:visible`
- * (`src/pages/library/index.astro:188,261`), so a click landing in that window is swallowed with no
- * error and no visible effect. `seed.spec.ts` never hits it because every trigger it touches has
- * had seconds of unrelated round-trips to hydrate; this spec reaches its triggers immediately after
- * a page load, and lost the race twice while being written — once on the dropdown, once on the
- * row's Delete. Worth knowing it is also a real (if narrow) UX property, not a test artifact.
+ * Cleanup lives in a hook rather than at the end of the test body because the row is persisted
+ * server-side the moment the capture POST returns — *before* the first assertion that can fail. An
+ * in-body delete therefore only ran on green, so every red run leaked a row permanently into the
+ * shared `E2E_EMAIL` account and they accumulated across re-runs. Manual criterion 3.4 ("no rows
+ * left behind") is meant to hold unconditionally, not just when the journey passes.
  */
-async function clickUntilRevealed(trigger: Locator, revealed: Locator) {
-  await expect(async () => {
-    await trigger.click();
-    await expect(revealed).toBeVisible({ timeout: 1000 });
-  }).toPass({ timeout: 15_000 });
-}
+test.afterEach(async ({ page }, testInfo) => {
+  const title = createdTitle;
+  createdTitle = null;
+  if (!title) return;
+
+  await removeRowsTitled(page, title, { passed: testInfo.status === "passed" });
+});
 
 test("photographed game is saved and visible in the library on a mobile browser", async ({ page }) => {
   expect(
@@ -129,6 +130,9 @@ test("photographed game is saved and visible in the library on a mobile browser"
   // `normalizeTitleCasing` is on the seam's path deliberately, so the title has to be one it leaves
   // alone: mixed case with a numeric suffix round-trips unchanged (`src/lib/platforms.ts:150-169`).
   const rows = page.getByRole("row", { name: new RegExp(title) });
+  // Hand the title to the cleanup hook before anything can throw — the row starts existing at the
+  // capture POST below, which is upstream of every assertion in this test.
+  createdTitle = title;
 
   // Arm the seam per-request. This intercepts the *island's own same-origin* fetch
   // (`PhotoCapture.tsx:137`) and adds headers before continuing — it does not mock a response, so
@@ -189,13 +193,5 @@ test("photographed game is saved and visible in the library on a mobile browser"
   // only a fresh SSR render as this user can produce it.
   await expect(rows.first()).toBeVisible();
 
-  // Cleanup: remove every row this test created and assert the removal took. The loop (rather than
-  // seed.spec.ts's single delete) is the F3 tolerance — if the abort seam ever duplicates, this
-  // still leaves the library clean instead of failing on a count nobody owns here.
-  for (let remaining = await rows.count(); remaining > 0; remaining = await rows.count()) {
-    const confirm = page.getByRole("alertdialog");
-    await clickUntilRevealed(rows.first().getByRole("button", { name: "Delete" }), confirm);
-    await confirm.getByRole("button", { name: "Delete" }).click();
-    await expect(rows).toHaveCount(remaining - 1);
-  }
+  // Cleanup runs in the `test.afterEach` above, so a red run cannot leak the row.
 });

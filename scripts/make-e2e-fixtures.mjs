@@ -105,19 +105,24 @@ async function main() {
   console.log(`box.y4m  ${Y4M_WIDTH}x${Y4M_HEIGHT} single frame, ${y4m.byteLength} bytes`);
 
   const jpeg = await buildJpeg();
-  await writeFile(JPG_PATH, jpeg);
 
-  // Read the written file back rather than trusting the request: the ">1024 px long edge" property
-  // is the one thing about this fixture that can silently break the gallery spec's purpose.
-  const { width, height } = await sharp(JPG_PATH).metadata();
-  const longEdge = Math.max(width, height);
-  console.log(`box.jpg  ${width}x${height}, ${jpeg.byteLength} bytes, long edge ${longEdge}`);
+  // Inspect the encoded bytes rather than trusting the request: the ">1024 px long edge" property is
+  // the one thing about this fixture that can silently break the gallery spec's purpose. Checked
+  // BEFORE the write, so a bad build can never land on disk over a good fixture. `metadata()` types
+  // width/height as optional — an undefined pair would make Math.max NaN, and `NaN <= 1024` is false,
+  // which would sail past a bare comparison.
+  const { width, height } = await sharp(jpeg).metadata();
 
-  if (longEdge <= 1024) {
-    console.error(`box.jpg long edge is ${longEdge}, which is <= DEFAULT_MAX_EDGE (1024) — it would skip the resize.`);
+  if (!width || !height || Math.max(width, height) <= 1024) {
+    console.error(
+      `box.jpg is ${width ?? "?"}x${height ?? "?"} — the long edge must exceed DEFAULT_MAX_EDGE (1024) or it would skip the resize. Not written.`,
+    );
     process.exitCode = 1;
     return;
   }
+
+  await writeFile(JPG_PATH, jpeg);
+  console.log(`box.jpg  ${width}x${height}, ${jpeg.byteLength} bytes, long edge ${Math.max(width, height)}`);
   console.log("Fixtures written to e2e/fixtures/.");
 }
 
