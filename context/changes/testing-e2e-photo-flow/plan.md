@@ -783,28 +783,28 @@ must exist in **both** `.dev.vars` and `.env`, and a `.dev.vars` edit requires a
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run lint`
-- [x] 1.3 The new guard suite passes: `npx vitest run src/lib/services/vision.test.ts`
-- [x] 1.4 The full existing suite is unaffected: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 3e78f42
+- [x] 1.2 Lint passes: `npm run lint` — 3e78f42
+- [x] 1.3 The new guard suite passes: `npx vitest run src/lib/services/vision.test.ts` — 3e78f42
+- [x] 1.4 The full existing suite is unaffected: `npm test` — 3e78f42
 
 #### Manual
 
-- [x] 1.5 Seam unset → the real provider path is unchanged through the UI
-- [x] 1.6 Deleting the key check turns the "key unset → null" test red, then reverted
+- [x] 1.5 Seam unset → the real provider path is unchanged through the UI — 3e78f42
+- [x] 1.6 Deleting the key check turns the "key unset → null" test red, then reverted — 3e78f42
 
 ### Phase 2: Harness scaffolding and fixtures
 
 #### Automated
 
-- [ ] 2.1 Generator runs clean: `node scripts/make-e2e-fixtures.mjs`
-- [ ] 2.2 Both fixtures exist and `box.jpg`'s long edge is > 1024 px
-- [ ] 2.3 Lint passes: `npm run lint`
+- [x] 2.1 Generator runs clean: `node scripts/make-e2e-fixtures.mjs`
+- [x] 2.2 Both fixtures exist and `box.jpg`'s long edge is > 1024 px
+- [x] 2.3 Lint passes: `npm run lint`
 
 #### Manual
 
-- [ ] 2.4 With both args, a scratch run reaches an enabled Capture button
-- [ ] 2.5 With one arg removed, it does not — the guard assertion discriminates
+- [x] 2.4 With both args, a scratch run reaches an enabled Capture button
+- [x] 2.5 With one arg removed, it does not — the guard assertion discriminates
 
 ### Phase 3: The Risk #3 camera spec
 
