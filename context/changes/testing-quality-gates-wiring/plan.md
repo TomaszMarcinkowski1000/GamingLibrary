@@ -589,9 +589,9 @@ the gate layer.
 
 #### Automated
 
-- [x] 3.1 Workflow file parses (YAML lint)
-- [x] 3.2 `npm run test:db` green locally (17 pgTAP assertions)
-- [x] 3.3 `npm run test:e2e` green locally (3 specs)
+- [x] 3.1 Workflow file parses (YAML lint) — 099bb29
+- [x] 3.2 `npm run test:db` green locally (17 pgTAP assertions) — 099bb29
+- [x] 3.3 `npm run test:e2e` green locally (3 specs) — 099bb29
 - [ ] 3.4 `e2e` job green on a real PR, both gate steps executed
 - [ ] 3.5 Playwright reports 3 specs run, 0 skipped
 

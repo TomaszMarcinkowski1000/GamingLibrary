@@ -1,0 +1,25 @@
+-- Migration: grant table privileges on library_entries to the authenticated role
+--
+-- Why this exists at all. 20260606150950 created the table, enabled RLS, and wrote four
+-- per-operation policies — but never granted the table-level privileges those policies sit
+-- on top of. It worked anyway, because Supabase used to hand every new table in `public`
+-- blanket CRUD grants for anon/authenticated/service_role via default privileges. Supabase
+-- is retiring that: newer instances make Data API exposure strictly opt-in
+-- (supabase docs, securing-your-api → "Default privileges", checked 2026-07-27).
+--
+-- Measured, not assumed: on supabase/postgres:17.6.1.127 the grants are present; on
+-- 17.6.1.143 they are not, and `npm run test:db` dies at its first real assertion with
+-- `permission denied for table library_entries`. The CI e2e job (.github/workflows/ci.yml)
+-- builds its stack from these migrations alone and is what surfaced it.
+--
+-- Existing environments already hold these grants, so this is a no-op there — `grant` is
+-- additive and re-granting changes nothing. What it buys is a schema that produces a
+-- working database on its own, instead of one that depends on an instance default.
+--
+-- Security is unchanged. A grant is not access: RLS is still enabled on the table and the
+-- four policies from 20260606150950 still decide which rows a caller sees. `anon` is
+-- deliberately omitted — it has no policy, so it has no access, and there is no reason to
+-- widen its reach. This mirrors the explicit `grant execute … to authenticated` the two
+-- RPCs already carry (20260611120000, 20260616120000).
+
+grant select, insert, update, delete on public.library_entries to authenticated;
