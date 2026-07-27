@@ -592,23 +592,23 @@ the gate layer.
 - [x] 3.1 Workflow file parses (YAML lint) — 099bb29
 - [x] 3.2 `npm run test:db` green locally (17 pgTAP assertions) — 099bb29
 - [x] 3.3 `npm run test:e2e` green locally (3 specs) — 099bb29
-- [x] 3.4 `e2e` job green on a real PR, both gate steps executed
-- [x] 3.5 Playwright reports 3 specs run, 0 skipped
+- [x] 3.4 `e2e` job green on a real PR, both gate steps executed — 74a99ec
+- [x] 3.5 Playwright reports 3 specs run, 0 skipped — 74a99ec
 
 #### Manual
 
-- [x] 3.6 `ci` and `e2e` start in parallel
-- [x] 3.7 Identify POST returns 200 in the CI log (seam armed, not 502)
-- [x] 3.8 `e2e` job wall-clock under ~10 minutes
+- [x] 3.6 `ci` and `e2e` start in parallel — 74a99ec
+- [x] 3.7 Identify POST returns 200 in the CI log (seam armed, not 502) — 74a99ec
+- [x] 3.8 `e2e` job wall-clock under ~10 minutes — 74a99ec
 - [ ] 3.9 Failed spec produces a downloadable `playwright-report` artifact
-- [x] 3.10 No unmasked secret value in the job log
+- [x] 3.10 No unmasked secret value in the job log — 74a99ec
 
 ### Phase 4: Falsification and documentation sync
 
 #### Automated
 
-- [ ] 4.1 `git status --porcelain` clean of all falsification breaks
-- [ ] 4.2 `npm test`, `npm run typecheck`, `npm run lint` green after the falsification pass
+- [x] 4.1 `git status --porcelain` clean of all falsification breaks
+- [x] 4.2 `npm test`, `npm run typecheck`, `npm run lint` green after the falsification pass
 - [ ] 4.3 Both CI jobs green on the final push
 
 #### Manual

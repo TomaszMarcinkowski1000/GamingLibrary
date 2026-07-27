@@ -3,7 +3,7 @@ change_id: testing-quality-gates-wiring
 title: Wire the test, e2e, and db-policy suites into CI as enforced gates
 status: implementing
 created: 2026-07-27
-updated: 2026-07-27
+updated: 2026-07-28
 archived_at: null
 ---
 
