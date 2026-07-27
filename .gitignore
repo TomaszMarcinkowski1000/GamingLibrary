@@ -53,3 +53,12 @@ scripts/verify-persist.mjs
 fixtures/shelf/*
 !fixtures/shelf/README.md
 !fixtures/shelf/labels.example.csv
+
+# playwright: the signed-in cookie jar written by e2e/auth.setup.ts (a real session), the
+# run artifacts, and the Playwright CLI's console logs.
+e2e/.auth/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+.playwright-cli/

@@ -115,7 +115,7 @@ The classic test base for this project. AI-native tools (if any) carry a
 | API / provider mocking | `vi.mock` + `installFetchRouter` at the `globalThis.fetch` edge | shipped in Phase 1 | `test/helpers/fetch-mock.ts`; `test/setup/no-network.ts` denies unrouted fetch suite-wide. Mock IGDB/vision HTTP at the edge; never mock internal grounding. |
 | Route contract (API endpoints) | Direct handler invocation + cast `APIContext` | shipped in Phase 1 | `src/pages/api/identify.test.ts` imports the exported handler and hands it `{ request, params, cookies, locals }`. **No Miniflare/workerd needed** — and per Cloudflare's own docs `vi.mock` cannot intercept `@cloudflare/vitest-pool-workers`' injected entry-point, which would discard this repo's whole mocking strategy. The Astro Container API adds only real `AstroCookies`/`params` and still runs no middleware. checked: 2026-07-25 |
 | Database policy (RLS) | pgTAP via `supabase test db` | Supabase CLI 2.x (devDependency) | **Shipped in Phase 3**: `supabase/tests/database/library_entries_rls.test.sql`, **17 assertions**, run with `npm run test:db` (requires Docker + `npx supabase start`; deliberately outside `npm test`). pgTAP is created inside the test transaction and rolled back — no migration. Recipe in §6.7. This is the only layer that can prove Risk #5. checked: 2026-07-25 |
-| e2e | Playwright | — | none yet — see §3 Phase 4. Must cover mobile-browser camera capture. |
+| e2e | Playwright | **1.62.0** (`package.json`; verified 2026-07-27) | **Harness wired, risk coverage still owed.** `playwright.config.ts` + `e2e/` (setup project → `storageState`, `seed.spec.ts`, `RULES.md`), `npm run test:e2e`. Needs `npx supabase start` and a dedicated `E2E_EMAIL`/`E2E_PASSWORD` user in `.env`. Chromium only — mobile is per-spec `test.use({ ...devices["Pixel 5"] })`, not a second project. The seed covers manual-add persistence; **Risk #3 (mobile camera capture) is still uncovered — see §3 Phase 4.** |
 | accessibility | axe-core | — | optional; not currently scoped. |
 | (optional) AI-native | — | — | Not justified under cost × signal for v1; grounding/vision correctness is defended by deterministic integration tests against the S-09 fixture, not a model-on-model check. |
 
@@ -215,8 +215,36 @@ normalizers — those are the seam under test.
 
 ### 6.3 Adding an e2e test
 
-- TBD — see §3 Phase 4. Will cover: mobile-browser camera capture →
-  identify → auto-saved → visible in library.
+**Read `e2e/RULES.md` first, and model the spec on `e2e/seed.spec.ts`** — those two
+files are the quality levers for this layer, and a generator reproduces whatever the
+seed shows. What follows is only the orientation.
+
+- **Earning a spec here is the hard part, not writing one.** A risk qualifies when it
+  crosses several real boundaries at once (auth → middleware → SSR → API → RLS insert)
+  or exists only in the hydrated UI. If §6.4's route-contract layer or §6.7's pgTAP
+  suite could prove it, it belongs there — they are faster and far less flake-prone.
+  Budget: **one test per risk**, and no test-per-page.
+- **Location / naming**: `e2e/<feature>.spec.ts`, one test per file. Name the test after
+  the risk (`"manually added game is still in the library after a reload"`), never
+  `"test 1"`.
+- **Run locally**: `npx supabase start`, then `npm run test:e2e` (Playwright starts the
+  dev server itself), or `npm run test:e2e -- e2e/seed.spec.ts` for one spec. Requires
+  `E2E_EMAIL` / `E2E_PASSWORD` in `.env` — a dedicated confirmed user in the local
+  instance, not a personal or production account.
+- **Auth never goes through the UI.** The `setup` project (`e2e/auth.setup.ts`) signs in
+  once via the real `/api/auth/signin` route and saves `e2e/.auth/user.json`; every spec
+  inherits it via `storageState`. Gotcha worth knowing: Astro's `security.checkOrigin`
+  rejects an API-side form POST with a bare 403 unless you set `Origin` yourself.
+- **Real vs mocked**: Supabase auth, middleware, routing, and the DB stay **real** —
+  that's the whole point of the layer. IGDB and the vision provider are called
+  **server-side**, so `page.route()` cannot intercept them; the seed sidesteps this with
+  a timestamped title that can never match, and asserts nothing about metadata.
+- **Verify it protects the risk**: break the production behavior on purpose, watch the
+  spec go red, revert the break. An assertion that stays green through the break is
+  decorative. Never commit the break.
+
+**Still owed:** Risk #3 — mobile-browser camera capture → identify → auto-saved →
+visible in library. See §3 Phase 4; the harness is ready, the coverage is not.
 
 ### 6.4 Adding a test for a new API endpoint
 
