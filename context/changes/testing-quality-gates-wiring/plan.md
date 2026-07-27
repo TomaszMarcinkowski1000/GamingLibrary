@@ -600,20 +600,20 @@ the gate layer.
 - [x] 3.6 `ci` and `e2e` start in parallel — 74a99ec
 - [x] 3.7 Identify POST returns 200 in the CI log (seam armed, not 502) — 74a99ec
 - [x] 3.8 `e2e` job wall-clock under ~10 minutes — 74a99ec
-- [ ] 3.9 Failed spec produces a downloadable `playwright-report` artifact
+- [x] 3.9 Failed spec produces a downloadable `playwright-report` artifact — 2a32e9c
 - [x] 3.10 No unmasked secret value in the job log — 74a99ec
 
 ### Phase 4: Falsification and documentation sync
 
 #### Automated
 
-- [x] 4.1 `git status --porcelain` clean of all falsification breaks
-- [x] 4.2 `npm test`, `npm run typecheck`, `npm run lint` green after the falsification pass
-- [ ] 4.3 Both CI jobs green on the final push
+- [x] 4.1 `git status --porcelain` clean of all falsification breaks — 2a32e9c
+- [x] 4.2 `npm test`, `npm run typecheck`, `npm run lint` green after the falsification pass — 2a32e9c
+- [x] 4.3 Both CI jobs green on the final push — 2a32e9c
 
 #### Manual
 
-- [ ] 4.4 All three breaks observed red on the expected step, each recorded in the §6.8 note
-- [ ] 4.5 `test-plan.md` §5 gate table matches `ci.yml` line by line
-- [ ] 4.6 `CLAUDE.md` names `main`, not `master`
-- [ ] 4.7 `e2e` marked as a required check in branch protection (repo settings)
+- [x] 4.4 All three breaks observed red on the expected step, each recorded in the §6.8 note — 2a32e9c
+- [x] 4.5 `test-plan.md` §5 gate table matches `ci.yml` line by line — 2a32e9c
+- [x] 4.6 `CLAUDE.md` names `main`, not `master` — 2a32e9c
+- [x] 4.7 `e2e` marked as a required check in branch protection (repo settings) — 2a32e9c (n/a: branch protection is unavailable on a private Free-plan repo; both the protection and rulesets APIs answer 403 — recorded in test-plan §6.8)
