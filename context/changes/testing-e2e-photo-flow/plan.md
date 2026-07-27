@@ -797,27 +797,27 @@ must exist in **both** `.dev.vars` and `.env`, and a `.dev.vars` edit requires a
 
 #### Automated
 
-- [x] 2.1 Generator runs clean: `node scripts/make-e2e-fixtures.mjs`
-- [x] 2.2 Both fixtures exist and `box.jpg`'s long edge is > 1024 px
-- [x] 2.3 Lint passes: `npm run lint`
+- [x] 2.1 Generator runs clean: `node scripts/make-e2e-fixtures.mjs` — 2a7850b
+- [x] 2.2 Both fixtures exist and `box.jpg`'s long edge is > 1024 px — 2a7850b
+- [x] 2.3 Lint passes: `npm run lint` — 2a7850b
 
 #### Manual
 
-- [x] 2.4 With both args, a scratch run reaches an enabled Capture button
-- [x] 2.5 With one arg removed, it does not — the guard assertion discriminates
+- [x] 2.4 With both args, a scratch run reaches an enabled Capture button — 2a7850b
+- [x] 2.5 With one arg removed, it does not — the guard assertion discriminates — 2a7850b
 
 ### Phase 3: The Risk #3 camera spec
 
 #### Automated
 
-- [ ] 3.1 Spec passes: `npm run test:e2e -- e2e/photo-capture-mobile.spec.ts`
-- [ ] 3.2 Whole suite still green: `npm run test:e2e`
-- [ ] 3.3 Lint passes: `npm run lint`
+- [x] 3.1 Spec passes: `npm run test:e2e -- e2e/photo-capture-mobile.spec.ts`
+- [x] 3.2 Whole suite still green: `npm run test:e2e`
+- [x] 3.3 Lint passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.4 No rows left behind in the local library after the run
-- [ ] 3.5 `.click()` vs `.tap()` outcome for the Radix dropdown recorded in-file
+- [x] 3.4 No rows left behind in the local library after the run
+- [x] 3.5 `.click()` vs `.tap()` outcome for the Radix dropdown recorded in-file
 
 ### Phase 4: The gallery spec
 
