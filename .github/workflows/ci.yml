@@ -54,12 +54,11 @@ jobs:
     runs-on: ubuntu-latest
     # No `needs:` — this runs concurrently with `ci`, which stays the fast signal.
     env:
-      # Not repository secrets: this account is created by scripts/seed-e2e-user.mjs inside a
-      # Supabase container that is destroyed with the runner. Literals keep the job's
-      # zero-secrets property, so a fork or a fresh clone of this repo needs nothing
-      # configured in repo settings to run it.
+      # Not a repository secret: this account is created by scripts/seed-e2e-user.mjs inside a
+      # Supabase container that is destroyed with the runner, so a literal keeps the job's
+      # zero-secrets property — a fork or a fresh clone needs nothing configured in repo
+      # settings to run it. Its password is NOT a literal; see the plumbing step below.
       E2E_EMAIL: e2e-ci@example.com
-      E2E_PASSWORD: e2e-ci-local-only-pw
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -94,12 +93,19 @@ jobs:
             fi
           done
 
+          # Both generated here rather than carried as workflow literals. `::add-mask::` only
+          # takes effect from the moment it runs, so a value sitting in the job's `env:` block
+          # is echoed in the clear by every step group that precedes the mask — masking it
+          # afterwards is theatre. Generating per run means there is no earlier point at which
+          # either value exists. (Runners are always cold, so the seed script's warm-stack
+          # idempotence is not what this job relies on.)
           STUB_KEY="$(openssl rand -hex 32)"
+          E2E_PASSWORD="$(openssl rand -hex 16)"
           echo "::add-mask::$STUB_KEY"
           echo "::add-mask::$E2E_PASSWORD"
 
           SUPABASE_URL="$API_URL" SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
-            node scripts/seed-e2e-user.mjs
+            E2E_PASSWORD="$E2E_PASSWORD" node scripts/seed-e2e-user.mjs
 
           # Server side. The CONTAINER's keys — see the header comment for why these must not
           # be the repository secrets `npm run build` uses.
@@ -109,7 +115,9 @@ jobs:
           # Spec side, same value: playwright.config.ts tolerates a missing `.env` and falls
           # back to process.env, where photo-capture-mobile.spec.ts:81 and
           # photo-gallery-desktop.spec.ts:95 read the key to send the `x-e2e-vision-key` header.
-          echo "E2E_VISION_STUB_KEY=$STUB_KEY" >> "$GITHUB_ENV"
+          # E2E_PASSWORD rides along for e2e/auth.setup.ts. Both are masked, so later step
+          # groups show them as ***.
+          { echo "E2E_VISION_STUB_KEY=$STUB_KEY"; echo "E2E_PASSWORD=$E2E_PASSWORD"; } >> "$GITHUB_ENV"
 
       # Placed before the browser download so the cheaper gate reports first. Reusing the stack
       # the e2e gate already pays for is what makes this one nearly free.
