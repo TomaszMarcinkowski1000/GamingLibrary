@@ -566,24 +566,24 @@ the gate layer.
 
 #### Manual
 
-- [x] 1.5 `ci` job on a real PR shows both new steps executed and green
-- [x] 1.6 Falsification: disarmed vision seam reddens the `npm test` step; break reverted
-- [x] 1.7 `ci` job wall-clock under ~3 minutes
+- [x] 1.5 `ci` job on a real PR shows both new steps executed and green — 735ed9d
+- [x] 1.6 Falsification: disarmed vision seam reddens the `npm test` step; break reverted — 735ed9d
+- [x] 1.7 `ci` job wall-clock under ~3 minutes — 735ed9d
 
 ### Phase 2: E2E user seeding
 
 #### Automated
 
-- [ ] 2.1 `npm run lint` passes on `scripts/seed-e2e-user.mjs`
-- [ ] 2.2 Script runs green against a live local stack
-- [ ] 2.3 Second consecutive run green (idempotence)
-- [ ] 2.4 Missing-variable path exits non-zero naming the variable
-- [ ] 2.5 Remote guard trips on a non-local `SUPABASE_URL`, with no HTTP request
+- [x] 2.1 `npm run lint` passes on `scripts/seed-e2e-user.mjs`
+- [x] 2.2 Script runs green against a live local stack
+- [x] 2.3 Second consecutive run green (idempotence)
+- [x] 2.4 Missing-variable path exits non-zero naming the variable
+- [x] 2.5 Remote guard trips on a non-local `SUPABASE_URL`, with no HTTP request
 
 #### Manual
 
-- [ ] 2.6 `e2e/seed.spec.ts` passes against a DB seeded only by this script (after a reset)
-- [ ] 2.7 No service-role key or password in the script's output, success or failure
+- [x] 2.6 `e2e/seed.spec.ts` passes against a DB seeded only by this script (after a reset)
+- [x] 2.7 No service-role key or password in the script's output, success or failure
 
 ### Phase 3: The heavy job — Supabase stack, db-policy gate, e2e gate
 

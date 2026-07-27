@@ -17,6 +17,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:mutation": "stryker run",
     "harness": "node scripts/identify-harness.mjs",
+    "seed:e2e-user": "node scripts/seed-e2e-user.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write ."
