@@ -574,24 +574,24 @@ the gate layer.
 
 #### Automated
 
-- [x] 2.1 `npm run lint` passes on `scripts/seed-e2e-user.mjs`
-- [x] 2.2 Script runs green against a live local stack
-- [x] 2.3 Second consecutive run green (idempotence)
-- [x] 2.4 Missing-variable path exits non-zero naming the variable
-- [x] 2.5 Remote guard trips on a non-local `SUPABASE_URL`, with no HTTP request
+- [x] 2.1 `npm run lint` passes on `scripts/seed-e2e-user.mjs` — 809237a
+- [x] 2.2 Script runs green against a live local stack — 809237a
+- [x] 2.3 Second consecutive run green (idempotence) — 809237a
+- [x] 2.4 Missing-variable path exits non-zero naming the variable — 809237a
+- [x] 2.5 Remote guard trips on a non-local `SUPABASE_URL`, with no HTTP request — 809237a
 
 #### Manual
 
-- [x] 2.6 `e2e/seed.spec.ts` passes against a DB seeded only by this script (after a reset)
-- [x] 2.7 No service-role key or password in the script's output, success or failure
+- [x] 2.6 `e2e/seed.spec.ts` passes against a DB seeded only by this script (after a reset) — 809237a
+- [x] 2.7 No service-role key or password in the script's output, success or failure — 809237a
 
 ### Phase 3: The heavy job — Supabase stack, db-policy gate, e2e gate
 
 #### Automated
 
-- [ ] 3.1 Workflow file parses (YAML lint)
-- [ ] 3.2 `npm run test:db` green locally (17 pgTAP assertions)
-- [ ] 3.3 `npm run test:e2e` green locally (3 specs)
+- [x] 3.1 Workflow file parses (YAML lint)
+- [x] 3.2 `npm run test:db` green locally (17 pgTAP assertions)
+- [x] 3.3 `npm run test:e2e` green locally (3 specs)
 - [ ] 3.4 `e2e` job green on a real PR, both gate steps executed
 - [ ] 3.5 Playwright reports 3 specs run, 0 skipped
 

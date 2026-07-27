@@ -1,5 +1,26 @@
 name: CI
 
+# The enforced gate layer for the four suites in context/foundation/test-plan.md §5.
+# Two jobs, both blocking, both running in parallel on every push and PR to `main`:
+#
+#   ci   — npm test (unit + integration, hermetic) · lint · typecheck · build
+#   e2e  — npm run test:db (pgTAP / RLS) · npm run test:e2e (Playwright)
+#
+# Two facts about the `e2e` job that are expensive to re-derive:
+#
+#   1. It consumes ZERO repository secrets. Its SUPABASE_URL / SUPABASE_KEY come from the
+#      local Supabase container (`supabase status -o env`) — never from the production
+#      secrets the `ci` job hands to `npm run build`, because the specs create and delete
+#      library rows in whatever database they are pointed at. E2E_VISION_STUB_KEY is
+#      generated per run, and E2E_EMAIL / E2E_PASSWORD name an account that lives and dies
+#      with the container.
+#   2. `.dev.vars` is not optional and step-level `env:` is not a substitute. Wrangler reads
+#      `.dev.vars` first and consults process.env only when that file is ABSENT, and Astro
+#      binds `astro:env/server` secrets once at worker init. Setting the server-side values
+#      as `env:` fails in the app's favour — the specs would hit the real provider path
+#      instead of the determinism seam. The file must exist before Playwright starts the dev
+#      server, which it does itself (playwright.config.ts `webServer.command`).
+
 on:
   push:
     branches: [main]
@@ -28,3 +49,80 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+  e2e:
+    runs-on: ubuntu-latest
+    # No `needs:` — this runs concurrently with `ci`, which stays the fast signal.
+    env:
+      # Not repository secrets: this account is created by scripts/seed-e2e-user.mjs inside a
+      # Supabase container that is destroyed with the runner. Literals keep the job's
+      # zero-secrets property, so a fork or a fresh clone of this repo needs nothing
+      # configured in repo settings to run it.
+      E2E_EMAIL: e2e-ci@example.com
+      E2E_PASSWORD: e2e-ci-local-only-pw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Boots the stack and applies supabase/migrations/**, so both gates below run against
+      # the real schema rather than a hand-maintained fixture.
+      - run: supabase start
+
+      # One step, because $API_URL / $ANON_KEY / $SERVICE_ROLE_KEY exist only as shell
+      # variables inside it. `supabase status -o env` emits SHELL-QUOTED assignments
+      # (ANON_KEY="eyJ…"), so it has to be `eval`'d: appending that stream straight to
+      # $GITHUB_ENV would store the quotes as part of the value, and the Supabase client
+      # would 401 every request with no obvious cause.
+      - name: Seed the e2e user and write .dev.vars
+        run: |
+          eval "$(supabase status -o env)"
+
+          # The CLI is pinned to `latest`, so this contract can drift under us. An empty
+          # ANON_KEY would otherwise write a plausible-looking `.dev.vars` and surface three
+          # steps later as an unexplained 401 — exactly the quiet failure this job exists to
+          # rule out. (Verified against the CLI's output shape, checked: 2026-07-27.)
+          for name in API_URL ANON_KEY SERVICE_ROLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::supabase status -o env did not provide $name — the CLI's output contract changed; pin supabase/setup-cli to a known version."
+              exit 1
+            fi
+          done
+
+          STUB_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$STUB_KEY"
+          echo "::add-mask::$E2E_PASSWORD"
+
+          SUPABASE_URL="$API_URL" SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+            node scripts/seed-e2e-user.mjs
+
+          # Server side. The CONTAINER's keys — see the header comment for why these must not
+          # be the repository secrets `npm run build` uses.
+          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\nE2E_VISION_STUB_KEY=%s\n' \
+            "$API_URL" "$ANON_KEY" "$STUB_KEY" > .dev.vars
+
+          # Spec side, same value: playwright.config.ts tolerates a missing `.env` and falls
+          # back to process.env, where photo-capture-mobile.spec.ts:81 and
+          # photo-gallery-desktop.spec.ts:95 read the key to send the `x-e2e-vision-key` header.
+          echo "E2E_VISION_STUB_KEY=$STUB_KEY" >> "$GITHUB_ENV"
+
+      # Placed before the browser download so the cheaper gate reports first. Reusing the stack
+      # the e2e gate already pays for is what makes this one nearly free.
+      - run: npm run test:db
+
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
