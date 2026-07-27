@@ -1,7 +1,7 @@
 ---
 change_id: testing-e2e-photo-flow
 title: Test rollout Phase 4 — end-to-end mobile photo flow (Risk #3)
-status: planned
+status: implementing
 created: 2026-07-27
 updated: 2026-07-27
 archived_at: null

@@ -31,6 +31,10 @@ export default defineConfig({
       TWITCH_CLIENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
       TWITCH_CLIENT_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
       OPENROUTER_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Arms the e2e determinism seam in `src/lib/services/vision.ts` (see .env.example). Optional is
+      // load-bearing: builds, CI, and production must proceed without it — and unset means disarmed,
+      // so leaving it out is the production configuration, not a missing one.
+      E2E_VISION_STUB_KEY: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });

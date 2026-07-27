@@ -17,3 +17,9 @@ export const SUPABASE_KEY: string | undefined = undefined;
 export const TWITCH_CLIENT_ID: string | undefined = "test-twitch-client-id";
 export const TWITCH_CLIENT_SECRET: string | undefined = "test-twitch-client-secret";
 export const OPENROUTER_API_KEY: string | undefined = "test-openrouter-key";
+
+// `E2E_VISION_STUB_KEY` stays `undefined` on purpose — the inverse of the dummy credentials above.
+// It arms the e2e determinism seam (`stubbedVisionRead` in `services/vision.ts`), so leaving it unset
+// makes the whole suite standing evidence that the seam is dead in its default state. Tests that need
+// it armed mock `astro:env/server` themselves (see `src/lib/services/vision.test.ts`).
+export const E2E_VISION_STUB_KEY: string | undefined = undefined;
