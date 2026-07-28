@@ -55,8 +55,14 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 - Deploy: `npm run deploy` (requires Cloudflare account + `wrangler` auth). This wraps
   `scripts/deploy-worker.mjs` — build → `sentry-cli sourcemaps inject dist/server` → `wrangler deploy`
   → upload those maps. Do **not** deploy with a bare `npx wrangler deploy`: it ships fine, but the
-  debug-ID injection is skipped and production stack traces stay minified. Sentry credentials are
+  debug-ID injection is skipped and production stack traces stay minified, and `SENTRY_RELEASE`
+  (a per-deploy `--var`, not a `wrangler.jsonc` binding) is dropped. Sentry credentials are
   optional (see `.env.example`); without them the script deploys and just skips the upload.
+- **Cloudflare Workers Builds auto-deploys every push to `main`** and is therefore the deploy path
+  that matters most. Its dashboard deploy command must stay `node scripts/deploy-worker.mjs
+  --skip-build`, with `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` set in its build
+  environment. If it ever reverts to a bare `npx wrangler deploy`, production keeps working and
+  keeps reporting errors — the traces just quietly stop being readable.
 
 ## CI
 
