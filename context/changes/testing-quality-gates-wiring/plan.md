@@ -108,8 +108,22 @@ red against a deliberate break of the behaviour it defends, and the break revert
 ## What We're NOT Doing
 
 - **No new tests.** Every suite this phase enforces already exists and is green.
-- **No production code changes.** (Phase 4 took that exception once, deliberately; see
-  test-plan §7. This phase does not.)
+- **No production code changes — except one, taken in Phase 3 and recorded here after the
+  fact.** The intent held completely for application code: `git diff main...HEAD` touches no
+  file under `src/`. It did not hold for the schema.
+  `supabase/migrations/20260727220000_grant_library_entries_privileges.sql` was added because
+  the `e2e` job builds its stack from `supabase/migrations/**` alone, and that is exactly what
+  surfaced the gap: `20260606150950` enabled RLS and wrote four policies but never granted the
+  table-level privileges those policies sit on top of. It had only ever worked on Supabase's
+  (now retiring) blanket default privileges, and died on `supabase/postgres:17.6.1.143` with
+  `permission denied for table library_entries`. The gate could not go green without the fix and
+  the fix is what the gate was for, so the exception was taken rather than deferred to its own
+  change. **Consequence to know before merging:** this branch is a *schema-touching* merge —
+  `migrate.yml` triggers on `supabase/migrations/**` pushed to `main`, so the grant applies to
+  production. Low risk (`grant` is additive, and production already holds these grants from the
+  old defaults), but not the pure CI-config merge the rest of this plan describes. Recorded as a
+  standing bullet in test-plan §7, alongside the Phase 4 exception. (Phase 4 took the same class
+  of exception once, also deliberately; see test-plan §7.)
 - **No `playwright.config.ts` changes.** It is already CI-shaped; see Current State.
 - **No `concurrency` group and no Playwright browser cache** — both considered and
   declined during planning. Revisit if heavy-job minutes become a problem.

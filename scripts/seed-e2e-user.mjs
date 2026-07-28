@@ -16,8 +16,13 @@
  *
  * CI calls it the same way (.github/workflows/ci.yml, `e2e` job).
  *
- * Idempotent: re-running against a stack that already holds the account is a success, which is
- * what makes it safe on warm Docker volumes and on CI re-runs.
+ * Idempotent AND convergent: re-running against a stack that already holds the account resets
+ * that account to the requested E2E_PASSWORD and re-confirms it, rather than just detecting the
+ * collision and reporting success. The distinction is load-bearing because CI generates a fresh
+ * password per run (.github/workflows/ci.yml). On any warm stack — `act`, a self-hosted runner,
+ * a persisted Docker volume, or a developer who edited .env — a detect-only script seeds nothing,
+ * exits 0, and then fails three steps later at e2e/auth.setup.ts's "sign-in bounced back to
+ * /auth/signin", with nothing in the log pointing back here.
  */
 
 import process from "node:process";
@@ -55,6 +60,57 @@ function isAlreadyRegistered(status, body) {
   );
 }
 
+function adminHeaders(serviceRoleKey) {
+  return {
+    "Content-Type": "application/json",
+    apikey: serviceRoleKey,
+    Authorization: `Bearer ${serviceRoleKey}`,
+  };
+}
+
+/**
+ * Finds the existing account so we can reset it. Two measured facts about GoTrue's admin list
+ * endpoint drive the shape here (probed against v2.188.1, 2026-07-28):
+ *
+ *   - The filter parameter is `filter`, not `email`. An unrecognised `?email=…` is SILENTLY
+ *     IGNORED and the endpoint returns every user — so a script that trusted it would happily
+ *     reset the first unrelated account it got back.
+ *   - `filter` is a PARTIAL match (`?filter=e2e` returns `e2e@example.com`). Hence the exact,
+ *     case-insensitive comparison below; it is the actual correctness check, not a formality.
+ */
+async function findUserByEmail(supabaseUrl, serviceRoleKey, email) {
+  const url = new URL("/auth/v1/admin/users", supabaseUrl);
+  url.searchParams.set("filter", email);
+  url.searchParams.set("per_page", "100");
+
+  const response = await fetch(url, { headers: adminHeaders(serviceRoleKey) });
+  const body = await response.text();
+  if (!response.ok) return { error: `admin list failed with ${response.status}: ${body}` };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { error: `admin list returned a non-JSON body` };
+  }
+
+  const users = Array.isArray(parsed?.users) ? parsed.users : [];
+  const target = email.toLowerCase();
+  return { user: users.find((candidate) => candidate?.email?.toLowerCase() === target) ?? null };
+}
+
+/** Converges the existing account on the requested state: the password we were given, confirmed. */
+async function resetUser(supabaseUrl, serviceRoleKey, userId, password) {
+  const url = new URL(`/auth/v1/admin/users/${userId}`, supabaseUrl);
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: adminHeaders(serviceRoleKey),
+    body: JSON.stringify({ password, email_confirm: true }),
+  });
+  const body = await response.text();
+  return response.ok ? {} : { error: `admin update failed with ${response.status}: ${body}` };
+}
+
 async function main() {
   const missing = REQUIRED_VARS.filter((name) => !process.env[name]);
   if (missing.length > 0) {
@@ -86,11 +142,7 @@ async function main() {
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-      },
+      headers: adminHeaders(serviceRoleKey),
       // `email_confirm: true` is passed explicitly rather than leaning on
       // supabase/config.toml's `enable_confirmations = false`, so the script keeps producing a
       // sign-in-ready account if that flag is ever flipped.
@@ -108,11 +160,38 @@ async function main() {
   }
 
   if (isAlreadyRegistered(response.status, body)) {
-    console.log(`seed-e2e-user: ${email} already exists at ${endpoint.origin} — nothing to do`);
+    // Converge rather than shrug. The account existing is not the same as the account being
+    // usable: CI hands us a freshly generated password every run, so on a warm stack the
+    // stored hash is for a password nobody will present.
+    const { user, error: lookupError } = await findUserByEmail(supabaseUrl, serviceRoleKey, email);
+    if (lookupError) {
+      fail(redact(lookupError, [serviceRoleKey, password]));
+    }
+    if (!user) {
+      fail(
+        `${email} is already registered, but the admin list endpoint did not return it — ` +
+          `GoTrue's filter contract has changed, so the password cannot be reset. Recreate the ` +
+          `stack (\`npx supabase stop --no-backup\`) or fix findUserByEmail().`,
+      );
+    }
+
+    const { error: resetError } = await resetUser(supabaseUrl, serviceRoleKey, user.id, password);
+    if (resetError) {
+      fail(redact(resetError, [serviceRoleKey, password]));
+    }
+
+    console.log(`seed-e2e-user: ${email} already existed at ${endpoint.origin} — password reset, confirmed`);
     return;
   }
 
   fail(`admin create failed with ${response.status}: ${redact(body, [serviceRoleKey, password])}`);
 }
 
-await main();
+// Every path inside main() redacts before printing; an unexpected throw would bypass all of them
+// and print an unhandled rejection instead. This script is the one place in the repo holding both
+// a service-role key and the e2e password, so the last resort redacts too.
+try {
+  await main();
+} catch (error) {
+  fail(redact(`unexpected failure: ${String(error)}`, [process.env.SERVICE_ROLE_KEY, process.env.E2E_PASSWORD]));
+}

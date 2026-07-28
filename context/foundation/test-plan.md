@@ -164,7 +164,8 @@ would reach for):
   immediately. `npm run build` is the only step in either job that consumes the `SUPABASE_URL` /
   `SUPABASE_KEY` repository secrets.
 - **`e2e`** (~4½ min measured green, ~5¼ with a failing spec's retries): `supabase start` → seed the
-  e2e user (`npm run seed:e2e-user`) → write `.dev.vars` from the container's own keys →
+  e2e user (`node scripts/seed-e2e-user.mjs`; `npm run seed:e2e-user` is the same script, and is
+  the entry point local docs use) → write `.dev.vars` from the container's own keys →
   **`npm run test:db`** (18 pgTAP assertions) →
   `npx playwright install --with-deps chromium` → **`npm run test:e2e`** (3 specs + the auth setup
   project). The pgTAP gate is placed before the browser download so the cheaper signal reports
@@ -193,8 +194,12 @@ specs, a `.dev.vars` the server never read. Three breaks, each pushed alone and 
 outbound network and no `OPENROUTER_API_KEY`** — the vision seam removes the provider hop. It does
 need three things. (1) A Supabase service container plus a confirmed `E2E_EMAIL`/`E2E_PASSWORD`
 user seeded in it — `scripts/seed-e2e-user.mjs` / `npm run seed:e2e-user`, added in Phase 5, which
-creates it through GoTrue's admin API (`email_confirm: true`), is idempotent, and refuses a
-non-local `SUPABASE_URL` unless `ALLOW_REMOTE_SEED=1`. (2) `npx playwright install --with-deps
+creates it through GoTrue's admin API (`email_confirm: true`), and refuses a non-local
+`SUPABASE_URL` unless `ALLOW_REMOTE_SEED=1`. It is idempotent *and convergent*: against a stack
+that already holds the account it resets the password to the one it was given rather than
+reporting success and changing nothing. That is what lets CI generate a fresh password per run
+without depending on runners always being cold — the detect-only version would have seeded
+nothing on any warm stack and failed opaquely later, in `auth.setup.ts`. (2) `npx playwright install --with-deps
 chromium`. (3) **CI must write `.dev.vars` before starting the dev server**, carrying
 `SUPABASE_URL`, `SUPABASE_KEY`, and `E2E_VISION_STUB_KEY` — setting them as plain env vars is not
 enough, because wrangler reads `.dev.vars` first and consults `process.env` only when that file is
@@ -1052,6 +1057,28 @@ contributors should respect these unless the underlying assumption changes.
   automated; it moves to manual / pre-prod smoke (§5's optional gate). Never set
   `E2E_VISION_STUB_KEY` in a deployed environment — anyone who knows the value
   disables photo identification.
+- **That a deployed database's grants match what the migrations say** — and the **second
+  production-change exception**, taken in rollout Phase 5. Phase 5 was a gate-wiring phase and
+  declared no production changes, but it shipped one:
+  `supabase/migrations/20260727220000_grant_library_entries_privileges.sql`. **Why it was taken:**
+  the new `e2e` job builds its Postgres from `supabase/migrations/**` and nothing else, which is
+  the first thing in this project's history to ever assert that the migrations produce a working
+  database on their own. They did not. `20260606150950` enabled RLS and wrote four policies but
+  never granted the table-level privileges underneath them; it worked only because Supabase used
+  to hand every new `public` table blanket CRUD grants by default, and Supabase is retiring that.
+  On `supabase/postgres:17.6.1.143` the suite died at its first real assertion with `permission
+  denied for table library_entries`. Deferring the fix would have meant landing a gate that could
+  not pass, so the exception was taken. **How it is bounded:** `authenticated` gets the four
+  privileges its policies presuppose; `anon` gets `select` **only** — enough for the pgTAP suite's
+  group (f) to keep asserting "anon sees no rows at all", which is the detector for a SELECT
+  policy widened `to anon`, while writes stay refused at the privilege layer as a second wall
+  behind RLS. **The acknowledged cost:** group (f)'s write assertion expects SQLSTATE 42501, which
+  covers "permission denied for table" and "new row violates row-level security policy" alike, so
+  it no longer distinguishes a widened INSERT policy from a missing privilege. **And the
+  negative space this bullet names:** nothing asserts that a *deployed* environment's grants match
+  these migrations. Production's grants came from the old instance defaults, not from this file,
+  and the two are only assumed to agree — `grant` being additive is what makes that assumption
+  safe rather than any test. Re-evaluate if a migration ever needs to `revoke`.
 
 ## 8. Freshness Ledger
 

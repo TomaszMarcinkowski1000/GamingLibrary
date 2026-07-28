@@ -61,7 +61,8 @@ PR to `main`:
 
 - **`ci`** — `npm test` (first, and the fastest gate), `npm run lint`, `npm run typecheck`,
   `npm run build`. Only the build step needs the `SUPABASE_URL` / `SUPABASE_KEY` repository secrets.
-- **`e2e`** — boots a local Supabase stack, seeds the e2e user (`npm run seed:e2e-user`), writes
+- **`e2e`** — boots a local Supabase stack, seeds the e2e user (`node scripts/seed-e2e-user.mjs`;
+  `npm run seed:e2e-user` is the same script for local use), writes
   `.dev.vars` from **that container's own keys**, then runs `npm run test:db` (pgTAP/RLS) and
   `npm run test:e2e` (Playwright). It consumes **no** repository secrets: the stub key and the e2e
   password are generated per run, and the account dies with the container. On failure it uploads

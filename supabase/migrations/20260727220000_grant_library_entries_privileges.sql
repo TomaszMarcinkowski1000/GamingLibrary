@@ -21,14 +21,23 @@
 -- explicit `grant execute … to authenticated` the two RPCs already carry (20260611120000,
 -- 20260616120000).
 --
--- Why `anon` is granted too, rather than left out as the tighter-looking choice. It has no
--- policy on this table, so RLS denies it everything either way — the grant buys it no access.
--- What the grant buys is the pgTAP suite's group (f), which says so in its own header
--- (`library_entries_rls.test.sql:293-298`): "anon holds full table grants, so this is the
--- assertion that catches a policy widened `to anon` / `using (true)`". Blocking anon at the
--- privilege layer instead would make that assertion throw 42501 unconditionally — and a
--- policy widened `to anon` would then sail past it. Measured: without this line the suite
--- fails 2/18 at line 305. Keeping anon granted is what keeps the breach detectable.
+-- Why `anon` is granted `select`, rather than left out as the tighter-looking choice. It has
+-- no policy on this table, so RLS denies it every row either way — the grant buys it no access.
+-- What the grant buys is the pgTAP suite's group (f) (`library_entries_rls.test.sql:293-305`):
+-- `is_empty` can only assert "anon sees no rows at all" if anon is allowed to *ask*. Block anon
+-- at the privilege layer and that query throws 42501 instead, so a SELECT policy widened
+-- `to anon` / `using (true)` — the cheapest one-line breach, and invisible to every
+-- authenticated-only assertion above — would sail straight past it. Measured: without a select
+-- grant the suite fails 2/18 at line 305.
+--
+-- Why only `select`, and what that costs. The write privileges are deliberately NOT granted to
+-- anon. Group (f)'s companion assertion (`:307-313`) expects SQLSTATE 42501, which covers
+-- "permission denied for table" and "new row violates row-level security policy" alike — so it
+-- passes with or without the insert grant, and therefore no longer distinguishes a policy
+-- widened `to anon` from a merely missing privilege. That detection is the accepted cost. What
+-- it buys is a second wall: writes are refused at the privilege layer before RLS is consulted,
+-- so `library_entries` is not opted back into anon-facing Data API writes on every future
+-- instance. The read breach — the one the suite was written to catch — stays detectable.
 
 grant select, insert, update, delete on public.library_entries to authenticated;
-grant select, insert, update, delete on public.library_entries to anon;
+grant select on public.library_entries to anon;

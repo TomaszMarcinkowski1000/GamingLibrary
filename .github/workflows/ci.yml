@@ -20,6 +20,14 @@ name: CI
 #      as `env:` fails in the app's favour — the specs would hit the real provider path
 #      instead of the determinism seam. The file must exist before Playwright starts the dev
 #      server, which it does itself (playwright.config.ts `webServer.command`).
+#   3. The failure artifact is NOT masked. `::add-mask::` redacts log output only; it does not
+#      touch uploaded files. A retried `auth.setup.ts` records the sign-in POST body — password
+#      included — in the Playwright trace, because `trace: "on-first-retry"` captures post-data
+#      verbatim (playwright.config.ts:40,46). That is safe here for exactly one reason: both
+#      E2E_PASSWORD and E2E_VISION_STUB_KEY are generated per run and die with the container, so
+#      the captured value is already worthless by the time anyone downloads it. It would NOT be
+#      safe if either became a repository secret. (`e2e/.auth/user.json` holds a real session and
+#      is deliberately outside both upload paths.)
 
 on:
   push:
@@ -27,9 +35,18 @@ on:
   pull_request:
     branches: [main]
 
+# Neither job uses GITHUB_TOKEN beyond actions/checkout, so it gets nothing else. Without this the
+# jobs inherit the repository/org default, which on older repos is read/write-all — the scope a
+# compromised transitive dependency in `npm ci` would run with.
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Measured ~1–2 min. The bound exists so a hung step fails in minutes instead of burning the
+    # 360-minute default.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,6 +70,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     # No `needs:` — this runs concurrently with `ci`, which stays the fast signal.
+    # Measured 4m13s green. `supabase start` (image pulls) and `playwright install` have no
+    # internal timeout of their own, so a stalled download would otherwise run for six hours.
+    timeout-minutes: 20
     env:
       # Not a repository secret: this account is created by scripts/seed-e2e-user.mjs inside a
       # Supabase container that is destroyed with the runner, so a literal keeps the job's
@@ -66,9 +86,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
+      # Pinned twice, deliberately. `@v1` is a MUTABLE tag — it moves, and whoever moves it runs
+      # code in this job — so the action is pinned to the commit that tag currently resolves to.
+      # `version: latest` was the bigger problem: the CLI chooses the `supabase/postgres` image
+      # tag, and that image moving from 17.6.1.127 to 17.6.1.143 is precisely what silently
+      # dropped the default table privileges that
+      # supabase/migrations/20260727220000_grant_library_entries_privileges.sql now grants
+      # explicitly. An unpinned CLI means green today and red tomorrow on an unchanged commit.
+      # 2.98.2 is the version the first all-green run installed (run 30311624002) — a
+      # measured-good stack, not a guessed-current one. Bump it deliberately, watching test:db.
+      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: latest
+          version: 2.98.2
       # Boots the stack and applies supabase/migrations/**, so both gates below run against
       # the real schema rather than a hand-maintained fixture.
       - run: supabase start
@@ -82,13 +111,16 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
 
-          # The CLI is pinned to `latest`, so this contract can drift under us. An empty
-          # ANON_KEY would otherwise write a plausible-looking `.dev.vars` and surface three
-          # steps later as an unexplained 401 — exactly the quiet failure this job exists to
-          # rule out. (Verified against the CLI's output shape, checked: 2026-07-27.)
+          # The CLI is pinned now (see the setup step), so this guards the deliberate upgrade
+          # rather than silent drift — and it does double duty: `eval "$(...)"` discards a
+          # non-zero exit status even under `set -e`, so this loop is also the only thing that
+          # notices `supabase status` itself failing. An empty ANON_KEY would otherwise write a
+          # plausible-looking `.dev.vars` and surface three steps later as an unexplained 401 —
+          # exactly the quiet failure this job exists to rule out. (Output shape verified
+          # against CLI 2.98.2, checked: 2026-07-28.)
           for name in API_URL ANON_KEY SERVICE_ROLE_KEY; do
             if [ -z "${!name}" ]; then
-              echo "::error::supabase status -o env did not provide $name — the CLI's output contract changed; pin supabase/setup-cli to a known version."
+              echo "::error::supabase status -o env did not provide $name — the CLI's output contract changed; check the version pinned on supabase/setup-cli."
               exit 1
             fi
           done
@@ -97,8 +129,9 @@ jobs:
           # takes effect from the moment it runs, so a value sitting in the job's `env:` block
           # is echoed in the clear by every step group that precedes the mask — masking it
           # afterwards is theatre. Generating per run means there is no earlier point at which
-          # either value exists. (Runners are always cold, so the seed script's warm-stack
-          # idempotence is not what this job relies on.)
+          # either value exists. A fresh password every run is safe on a warm stack too: the
+          # seed script RESETS an existing account rather than skipping it, so this no longer
+          # depends on GitHub runners always being cold.
           STUB_KEY="$(openssl rand -hex 32)"
           E2E_PASSWORD="$(openssl rand -hex 16)"
           echo "::add-mask::$STUB_KEY"

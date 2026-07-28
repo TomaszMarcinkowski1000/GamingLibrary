@@ -49,7 +49,9 @@ gate has been watched go red against a deliberate break of the behaviour it defe
 on failure); a three-break falsification pass; sync of test-plan §3/§5/§6.8/§8 and
 CLAUDE.md's CI paragraph.
 
-**Out of scope:** any new test; any production code change; `playwright.config.ts` changes;
+**Out of scope:** any new test; any production code change — *held for `src/`, but one schema
+exception was taken in Phase 3 and is recorded in the plan's "What We're NOT Doing" and in
+test-plan §7*; `playwright.config.ts` changes;
 a `concurrency` group and a browser cache (both declined); `continue-on-error` or a skip
 label; `.env.example` / `e2e/RULES.md` rewrites; CI troubleshooting prose; Stryker in CI;
 branch-protection settings (flagged as a manual criterion, not a file change).
