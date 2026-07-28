@@ -15,3 +15,8 @@ OPENROUTER_API_KEY=
 # one that decides the server's value. Editing it needs a DEV-SERVER RESTART.
 # NEVER set it in production; leaving it unset is the production configuration.
 E2E_VISION_STUB_KEY=
+
+# Sentry DSN. Normally NOT set here — production gets it via `wrangler secret put SENTRY_DSN`, and
+# unset locally means the SDK no-ops (see .env.example). Fill it in only to verify the wiring by
+# hand, RESTART the dev server, and remove it afterwards.
+SENTRY_DSN=

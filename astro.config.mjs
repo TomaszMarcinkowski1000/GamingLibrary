@@ -35,6 +35,11 @@ export default defineConfig({
       // load-bearing: builds, CI, and production must proceed without it — and unset means disarmed,
       // so leaving it out is the production configuration, not a missing one.
       E2E_VISION_STUB_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Error-monitoring sink. Read only at the Worker entrypoint (`sentry.server.config.ts`),
+      // never from app code — it is declared here so it is a known part of the config surface.
+      // Optional is load-bearing the same way: unset means the SDK no-ops, which is the correct
+      // local and CI configuration (see .env.example).
+      SENTRY_DSN: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });
