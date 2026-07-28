@@ -56,7 +56,24 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 
 ## CI
 
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint + build on every push and PR to master. Requires `SUPABASE_URL` and `SUPABASE_KEY` repository secrets for the build step.
+GitHub Actions (`.github/workflows/ci.yml`) runs **two blocking jobs in parallel** on every push and
+PR to `main`:
+
+- **`ci`** — `npm test` (first, and the fastest gate), `npm run lint`, `npm run typecheck`,
+  `npm run build`. Only the build step needs the `SUPABASE_URL` / `SUPABASE_KEY` repository secrets.
+- **`e2e`** — boots a local Supabase stack, seeds the e2e user (`node scripts/seed-e2e-user.mjs`;
+  `npm run seed:e2e-user` is the same script for local use), writes
+  `.dev.vars` from **that container's own keys**, then runs `npm run test:db` (pgTAP/RLS) and
+  `npm run test:e2e` (Playwright). It consumes **no** repository secrets: the stub key and the e2e
+  password are generated per run, and the account dies with the container. On failure it uploads
+  `playwright-report/` + `test-results/` as an artifact.
+
+Do not hand the server-side values to a step as `env:` — wrangler consults `process.env` only when
+`.dev.vars` is absent, so that fails silently in the app's favour. See the header comment in
+`ci.yml` and `context/foundation/test-plan.md` §5.
+
+A separate workflow (`.github/workflows/migrate.yml`) applies `supabase/migrations/**` to production
+on push to `main`.
 
 ## E2E tests
 

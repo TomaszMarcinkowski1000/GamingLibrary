@@ -1,0 +1,43 @@
+-- Migration: grant table privileges on library_entries to the authenticated role
+--
+-- Why this exists at all. 20260606150950 created the table, enabled RLS, and wrote four
+-- per-operation policies — but never granted the table-level privileges those policies sit
+-- on top of. It worked anyway, because Supabase used to hand every new table in `public`
+-- blanket CRUD grants for anon/authenticated/service_role via default privileges. Supabase
+-- is retiring that: newer instances make Data API exposure strictly opt-in
+-- (supabase docs, securing-your-api → "Default privileges", checked 2026-07-27).
+--
+-- Measured, not assumed: on supabase/postgres:17.6.1.127 the grants are present; on
+-- 17.6.1.143 they are not, and `npm run test:db` dies at its first real assertion with
+-- `permission denied for table library_entries`. The CI e2e job (.github/workflows/ci.yml)
+-- builds its stack from these migrations alone and is what surfaced it.
+--
+-- Existing environments already hold these grants, so this is a no-op there — `grant` is
+-- additive and re-granting changes nothing. What it buys is a schema that produces a
+-- working database on its own, instead of one that depends on an instance default.
+--
+-- Security is unchanged. A grant is not access: RLS is still enabled on the table and the
+-- four policies from 20260606150950 still decide which rows a caller sees. This mirrors the
+-- explicit `grant execute … to authenticated` the two RPCs already carry (20260611120000,
+-- 20260616120000).
+--
+-- Why `anon` is granted `select`, rather than left out as the tighter-looking choice. It has
+-- no policy on this table, so RLS denies it every row either way — the grant buys it no access.
+-- What the grant buys is the pgTAP suite's group (f) (`library_entries_rls.test.sql:293-305`):
+-- `is_empty` can only assert "anon sees no rows at all" if anon is allowed to *ask*. Block anon
+-- at the privilege layer and that query throws 42501 instead, so a SELECT policy widened
+-- `to anon` / `using (true)` — the cheapest one-line breach, and invisible to every
+-- authenticated-only assertion above — would sail straight past it. Measured: without a select
+-- grant the suite fails 2/18 at line 305.
+--
+-- Why only `select`, and what that costs. The write privileges are deliberately NOT granted to
+-- anon. Group (f)'s companion assertion (`:307-313`) expects SQLSTATE 42501, which covers
+-- "permission denied for table" and "new row violates row-level security policy" alike — so it
+-- passes with or without the insert grant, and therefore no longer distinguishes a policy
+-- widened `to anon` from a merely missing privilege. That detection is the accepted cost. What
+-- it buys is a second wall: writes are refused at the privilege layer before RLS is consulted,
+-- so `library_entries` is not opted back into anon-facing Data API writes on every future
+-- instance. The read breach — the one the suite was written to catch — stays detectable.
+
+grant select, insert, update, delete on public.library_entries to authenticated;
+grant select on public.library_entries to anon;
