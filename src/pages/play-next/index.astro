@@ -4,6 +4,7 @@ import { LENGTH_BUCKETS, LENGTH_BUCKET_LABELS, NOVELTY_MODES, NOVELTY_MODE_LABEL
 import ThemedLayout from "@/layouts/ThemedLayout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
+import { logError } from "@/lib/logger";
 import { getRecommendations } from "@/lib/services/recommendation";
 import { emptyStateMessage } from "@/lib/services/recommendationCopy";
 import { parseRecommendationParams } from "@/lib/validation/library";
@@ -30,7 +31,9 @@ if (supabase) {
     // Always rank the whole eligible set; the page slices it to the visible window below, so it
     // knows whether a "show all" affordance is warranted without a second query.
     result = await getRecommendations(supabase, request, Number.MAX_SAFE_INTEGER);
-  } catch {
+  } catch (error) {
+    // The page shows a generic error state; without this the cause is gone.
+    logError("play_next.page.recommendations_failed", error, { mode: request.mode });
     loadError = true;
   }
 }

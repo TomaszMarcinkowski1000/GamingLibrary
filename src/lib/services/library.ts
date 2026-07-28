@@ -10,6 +10,7 @@ import type {
   PlayStatus,
 } from "@/types";
 import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS } from "@/types";
+import { logError } from "@/lib/logger";
 import { lookupGameMetadata } from "./igdb";
 
 /**
@@ -64,8 +65,11 @@ export async function createLibraryEntry(
   let grounding: IgdbLookupResult | null = null;
   try {
     grounding = await lookupGameMetadata(title, platform, kv);
-  } catch {
-    // Swallow — degrade to a `no_match` save below.
+  } catch (error) {
+    // Degrade to a `no_match` save below — but never silently. Without this line an IGDB outage is
+    // indistinguishable from a library of genuinely obscure games: the only trace it leaves is a
+    // run of `metadata_status='no_match'` rows with no way to tell them apart after the fact.
+    logError("library.create.enrichment_failed", error, { title, platform });
   }
 
   const payload: LibraryEntryInsert = {

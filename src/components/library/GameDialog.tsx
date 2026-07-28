@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { GameFormFields, type GameFormValues } from "./GameFormFields";
+import { GameFormFields, type GameFormValues, type RefetchOutcome } from "./GameFormFields";
 import { DeleteEntryDialog } from "./DeleteEntryDialog";
 import { subscribeEntryPatch } from "./entrySync";
 
@@ -143,7 +143,10 @@ export default function GameDialog({
   // dialog open over a stale list, so on close we must refresh to reflect what was added.
   const [savedSinceOpen, setSavedSinceOpen] = useState(false);
   const [refetchPending, setRefetchPending] = useState(false);
-  const [refetchNoMatch, setRefetchNoMatch] = useState(false);
+  // Three-way, not a boolean: "IGDB has no such game" and "we couldn't reach IGDB" call for
+  // different words and only the second one is worth retrying. `/api/library/lookup` answers 502
+  // for the latter, so the distinction survives the round trip.
+  const [refetchOutcome, setRefetchOutcome] = useState<RefetchOutcome>("none");
   // Captured as state (not a ref) so the popover container is set before the user opens
   // the combobox — letting it portal inside the dialog's scroll-lock subtree.
   const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
@@ -163,7 +166,7 @@ export default function GameDialog({
     setValues(activeEntry ? mapEntryToValues(activeEntry) : EMPTY);
     setErrors({});
     setServerError(null);
-    setRefetchNoMatch(false);
+    setRefetchOutcome("none");
   }
 
   function patchValues(patch: Partial<GameFormValues>) {
@@ -255,7 +258,7 @@ export default function GameDialog({
       setValues(mapEntryToValues(result.created));
       setErrors({});
       setServerError(null);
-      setRefetchNoMatch(false);
+      setRefetchOutcome("none");
     } else {
       // Defensive: no entry came back — fall back to S-01's "navigate to the list" behavior.
       window.location.assign("/library");
@@ -271,7 +274,7 @@ export default function GameDialog({
 
   /** Re-fetch IGDB metadata into the form for review — never writes, never destroys typed data. */
   async function handleRefetch() {
-    setRefetchNoMatch(false);
+    setRefetchOutcome("none");
     setRefetchPending(true);
     try {
       const response = await fetch("/api/library/lookup", {
@@ -280,7 +283,9 @@ export default function GameDialog({
         body: JSON.stringify({ title: values.title.trim(), platform: values.platform.trim() }),
       });
       if (!response.ok) {
-        setRefetchNoMatch(true);
+        // 502 = the route couldn't reach IGDB (it logs the cause server-side); any other status is
+        // a bug on our side. Neither is an answer *about the game*, so don't claim "no match".
+        setRefetchOutcome("failed");
         return;
       }
       const data = (await response.json().catch(() => null)) as { result?: IgdbLookupResult } | null;
@@ -297,10 +302,12 @@ export default function GameDialog({
           metadata_status: "matched",
         });
       } else {
-        setRefetchNoMatch(true);
+        setRefetchOutcome("no_match");
       }
     } catch {
-      setRefetchNoMatch(true);
+      // Network-level failure (offline, aborted) — the request never reached the route, so this is
+      // the same class as a 502, not a statement about the game.
+      setRefetchOutcome("failed");
     } finally {
       setRefetchPending(false);
     }
@@ -393,7 +400,7 @@ export default function GameDialog({
               mode={isEdit ? "edit" : "add"}
               onRefetch={() => void handleRefetch()}
               refetchPending={refetchPending}
-              refetchNoMatch={refetchNoMatch}
+              refetchOutcome={refetchOutcome}
             />
             {serverError && <p className="text-destructive text-sm">{serverError}</p>}
             <DialogFooter>

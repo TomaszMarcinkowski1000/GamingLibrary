@@ -30,6 +30,15 @@ export interface GameFormValues {
   metadata_status: MetadataStatus | null;
 }
 
+/**
+ * Outcome of the last "Re-fetch metadata" attempt.
+ *
+ * `no_match` is a real answer about the game (IGDB was asked and has nothing); `failed` means IGDB
+ * was never successfully asked. Collapsing the two into one boolean told the user their game wasn't
+ * in IGDB during an outage, so they'd hand-fill fields a retry would have populated.
+ */
+export type RefetchOutcome = "none" | "no_match" | "failed";
+
 interface GameFormFieldsProps {
   values: GameFormValues;
   onChange: (patch: Partial<GameFormValues>) => void;
@@ -44,8 +53,8 @@ interface GameFormFieldsProps {
   onRefetch?: () => void;
   /** Re-fetch is in flight. */
   refetchPending?: boolean;
-  /** The last re-fetch returned no match — show inline, leave typed values intact. */
-  refetchNoMatch?: boolean;
+  /** Result of the last re-fetch — shown inline; typed values are left intact either way. */
+  refetchOutcome?: RefetchOutcome;
 }
 
 /** Parse a numeric `<input>` value, treating empty/invalid as `null`. */
@@ -74,7 +83,7 @@ export function GameFormFields({
   mode = "add",
   onRefetch,
   refetchPending,
-  refetchNoMatch,
+  refetchOutcome = "none",
 }: GameFormFieldsProps) {
   return (
     <div className="space-y-4">
@@ -234,7 +243,14 @@ export function GameFormFields({
               <RefreshCw className={refetchPending ? "animate-spin" : undefined} />
               {refetchPending ? "Re-fetching…" : "Re-fetch metadata"}
             </Button>
-            {refetchNoMatch && <p className="text-muted-foreground text-sm">No match found — your values were kept.</p>}
+            {refetchOutcome === "no_match" && (
+              <p className="text-muted-foreground text-sm">No match found — your values were kept.</p>
+            )}
+            {refetchOutcome === "failed" && (
+              <p className="text-destructive text-sm">
+                Couldn&rsquo;t reach the metadata service — your values were kept. Try again in a moment.
+              </p>
+            )}
           </div>
         </>
       )}
