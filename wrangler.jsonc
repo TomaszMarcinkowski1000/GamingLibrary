@@ -6,6 +6,9 @@
   "main": "./sentry.server.config.ts",
   "compatibility_date": "2026-05-08",
   "compatibility_flags": ["nodejs_compat"],
+  // Emit source maps for the deployed Worker bundle so Sentry stack traces point at real `src/`
+  // lines instead of minified output. The maps are uploaded to Cloudflare, not served to clients.
+  "upload_source_maps": true,
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",

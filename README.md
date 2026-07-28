@@ -152,17 +152,14 @@ Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_
 
 This project deploys to [Cloudflare Workers](https://workers.cloudflare.com/).
 
-1. Build the project:
-
 ```bash
-npm run build
+npm run deploy
 ```
 
-2. Deploy with Wrangler:
-
-```bash
-npx wrangler deploy
-```
+That runs `scripts/deploy-worker.mjs`, which builds, deploys with Wrangler, and uploads the Worker's
+source maps to Sentry so production stack traces point at real `src/` lines. Prefer it over a bare
+`npx wrangler deploy` — that still ships, but skips the source-map step. The Sentry credentials it
+needs are optional: without them the deploy proceeds and only the upload is skipped.
 
 Set `SUPABASE_URL` and `SUPABASE_KEY` as secrets in your Cloudflare dashboard or via `npx wrangler secret put`.
 

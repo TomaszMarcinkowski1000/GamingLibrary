@@ -464,34 +464,50 @@ independently revertible by restoring `wrangler.jsonc`'s `main`.
 
 #### Automated
 
-- [x] 2.1 New logger tests pass: `npm test`
-- [x] 2.2 Typecheck passes: `npm run typecheck`
-- [x] 2.3 Lint passes: `npm run lint`
-- [x] 2.4 Build succeeds: `npm run build`
-- [x] 2.5 Staging `src/lib/logger.ts` triggers the new test via the pre-commit hook
+- [x] 2.1 New logger tests pass: `npm test` — d3d41b7
+- [x] 2.2 Typecheck passes: `npm run typecheck` — d3d41b7
+- [x] 2.3 Lint passes: `npm run lint` — d3d41b7
+- [x] 2.4 Build succeeds: `npm run build` — d3d41b7
+- [x] 2.5 Staging `src/lib/logger.ts` triggers the new test via the pre-commit hook — d3d41b7
 
 #### Manual
 
-- [x] 2.6 Real handled failure appears in Sentry tagged with its event name — verified live on `library.create.enrichment_failed`
-- [x] 2.7 Issue carries the affected `userId` and the call site's structured fields — `extra` (`title`, `platform`) verified live; the `userId` half is not observable here, because none of the call sites an IGDB outage reaches passes one (`services/library.ts:72`, `api/library/lookup.ts:47`) — only the five DB-failure sites do. Covered instead by the three `src/lib/logger.test.ts` cases: present-string, absent, non-string
-- [x] 2.8 User-facing behavior unchanged — degraded-success path still returns the entry
+- [x] 2.6 Real handled failure appears in Sentry tagged with its event name — verified live on `library.create.enrichment_failed` — d3d41b7
+- [x] 2.7 Issue carries the affected `userId` and the call site's structured fields — `extra` (`title`, `platform`) verified live; the `userId` half is not observable here, because none of the call sites an IGDB outage reaches passes one (`services/library.ts:72`, `api/library/lookup.ts:47`) — only the five DB-failure sites do. Covered instead by the three `src/lib/logger.test.ts` cases: present-string, absent, non-string — d3d41b7
+- [x] 2.8 User-facing behavior unchanged — degraded-success path still returns the entry — d3d41b7
 
 ### Phase 3: Source maps + production verification
 
 #### Automated
 
-- [ ] 3.1 Build succeeds with no `SENTRY_AUTH_TOKEN` in the environment
-- [ ] 3.2 Build succeeds with the auth token present and uploads source maps
-- [ ] 3.3 No Sentry code in the built client bundle (grep `dist/_astro/`)
-- [ ] 3.4 Typecheck passes: `npm run typecheck`
-- [ ] 3.5 Lint passes: `npm run lint`
-- [ ] 3.6 Full test suite passes: `npm test`
-- [ ] 3.7 CI green on the branch with no Sentry credentials
+> **Phase 3 approach deviation (agreed before implementation).** The plan's §3.1 contract —
+> `@sentry/astro` as a pure build-time source-map uploader — does not hold against
+> `@sentry/astro@10.68.0`. Measured: built exactly as specified it ships the browser SDK
+> (`dist/client/_astro` 461.96 KB → 739.3 KB, a new 269 KB `page.*.js` carrying
+> `browserTracingIntegration`), because `autoInstrumentation.requestHandler: false` governs only
+> the SSR middleware. `enabled: { client: false }` fixes that, but `server: false` cannot also be
+> set: the integration derives `shouldUploadSourcemaps` from `sdkEnabled.client || sdkEnabled.server`,
+> so disabling both silently disables the upload. Separately, the maps it uploads describe Astro's
+> vite output, not the bundle wrangler deploys. Replaced with Sentry's documented Cloudflare path:
+> no Astro-level plugin, an SSR-scoped sourcemap vite plugin in `astro.config.mjs`, and
+> `npm run deploy` (`scripts/deploy-worker.mjs`) doing build → `sentry-cli sourcemaps inject
+> dist/server` → `wrangler deploy` → upload. `dist/server` is the right target because
+> `@astrojs/cloudflare` sets `no_bundle: true`, so wrangler ships those modules verbatim.
+> Consequence for the criteria below: source-map upload moved out of the build and into the deploy,
+> so 3.2 is no longer a build-time assertion and is folded into 3.8.
+
+- [x] 3.1 Build succeeds with no `SENTRY_AUTH_TOKEN` in the environment — exit 0; now structurally guaranteed, since nothing in the build path reads any Sentry credential
+- [ ] 3.2 Build succeeds with the auth token present and uploads source maps — not assertable as written: upload is a deploy step now, not a build step. Verified instead by 3.8
+- [x] 3.3 No Sentry code in the built client bundle — grep is over `dist/client/_astro/` (the adapter emits `dist/client` + `dist/server`, not `dist/_astro`). Repeat after dependency bumps with: `Get-ChildItem -Recurse dist/client -File | Where-Object { Select-String -Path $_.FullName -Pattern 'sentry' -SimpleMatch -List }` — expect no output. Also 0 `.map` files under `dist/client`, so sources are never served publicly
+- [x] 3.4 Typecheck passes: `npm run typecheck` — 0 errors, 0 warnings (98 files)
+- [x] 3.5 Lint passes: `npm run lint` — exit 0
+- [x] 3.6 Full test suite passes: `npm test` — 14 files, 254 tests
+- [ ] 3.7 CI green on the branch with no Sentry credentials — needs the branch pushed
 
 #### Manual
 
-- [ ] 3.8 `npx wrangler deploy` completes and uploads source maps
+- [ ] 3.8 `npm run deploy` completes and uploads source maps (was `npx wrangler deploy`; see the deviation note above). Subsumes 3.2
 - [ ] 3.9 Production error shows an unminified stack trace with real `src/` paths
 - [ ] 3.10 Issue's `event` tag and `userId` match the triggering call site
-- [ ] 3.11 No client JS payload regression on `/library`
+- [ ] 3.11 No client JS payload regression on `/library` — build-side evidence already gathered: an A/B build with and without `serverOnlySourcemaps()` yields a byte-identical `dist/client/_astro` (461.96 KB across the same 21 files), and no Sentry reference reaches the client at all. Awaiting your confirmation against the live page
 - [ ] 3.12 Sentry project shows zero events from local development or CI

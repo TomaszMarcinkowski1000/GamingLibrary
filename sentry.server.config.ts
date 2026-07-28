@@ -25,11 +25,15 @@ import * as Sentry from "@sentry/cloudflare";
  * `Env` comes from `worker-configuration.d.ts` (`npm run cf-typegen`), which types the declared
  * bindings; a secret set with `wrangler secret put` is not part of it, hence the widening.
  */
-type WorkerEnv = Env & { SENTRY_DSN?: string };
+type WorkerEnv = Env & { SENTRY_DSN?: string; SENTRY_RELEASE?: string };
 
 export default Sentry.withSentry<WorkerEnv>(
   (env) => ({
     dsn: env.SENTRY_DSN,
+    // The deployed commit, set as a plain Worker var by `npm run deploy` (scripts/deploy-worker.mjs)
+    // and matched against the source maps that deploy uploaded — this is what makes a production
+    // stack trace resolve to real `src/` lines. Unset in dev, which just means untagged events.
+    release: env.SENTRY_RELEASE,
     // Errors only. The free plan's span quota is far tighter than its error quota, and nothing
     // here needs latency data on the IGDB / OpenRouter calls.
     tracesSampleRate: 0,

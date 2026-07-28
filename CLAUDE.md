@@ -52,7 +52,11 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 - Env vars: `SUPABASE_URL`, `SUPABASE_KEY` (copy `.env.example` to `.env` for Node, or `.dev.vars` for Cloudflare local dev)
 - Local Supabase: `npx supabase start` (requires Docker)
 - Cloudflare local dev: secrets go in `.dev.vars` (gitignored)
-- Deploy: `npx wrangler deploy` (requires Cloudflare account + `wrangler` auth)
+- Deploy: `npm run deploy` (requires Cloudflare account + `wrangler` auth). This wraps
+  `scripts/deploy-worker.mjs` — build → `sentry-cli sourcemaps inject dist/server` → `wrangler deploy`
+  → upload those maps. Do **not** deploy with a bare `npx wrangler deploy`: it ships fine, but the
+  debug-ID injection is skipped and production stack traces stay minified. Sentry credentials are
+  optional (see `.env.example`); without them the script deploys and just skips the upload.
 
 ## CI
 
