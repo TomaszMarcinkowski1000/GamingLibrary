@@ -448,33 +448,33 @@ independently revertible by restoring `wrangler.jsonc`'s `main`.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run lint`
-- [x] 1.3 Build succeeds with no `SENTRY_DSN` present: `npm run build`
-- [x] 1.4 Unit tests still pass: `npm test`
-- [x] 1.5 Dev server boots and serves `/`: `npm run dev`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 0c277ee
+- [x] 1.2 Lint passes: `npm run lint` — 0c277ee
+- [x] 1.3 Build succeeds with no `SENTRY_DSN` present: `npm run build` — 0c277ee
+- [x] 1.4 Unit tests still pass: `npm test` — 0c277ee
+- [x] 1.5 Dev server boots and serves `/`: `npm run dev` — 0c277ee
 
 #### Manual
 
-- [x] 1.6 Thrown error with DSN in `.dev.vars` surfaces as a Sentry issue
-- [x] 1.7 Same error with DSN removed produces no event and identical app behavior
+- [x] 1.6 Thrown error with DSN in `.dev.vars` surfaces as a Sentry issue — 0c277ee
+- [x] 1.7 Same error with DSN removed produces no event and identical app behavior — 0c277ee
 - [ ] 1.8 `npx wrangler deploy` succeeds against the repointed `main` — deferred to Phase 3's deploy (3.8); `wrangler deploy --dry-run` bundles cleanly against the repointed `main`
 
 ### Phase 2: `logError` → `captureException`, with a contract test
 
 #### Automated
 
-- [ ] 2.1 New logger tests pass: `npm test`
-- [ ] 2.2 Typecheck passes: `npm run typecheck`
-- [ ] 2.3 Lint passes: `npm run lint`
-- [ ] 2.4 Build succeeds: `npm run build`
-- [ ] 2.5 Staging `src/lib/logger.ts` triggers the new test via the pre-commit hook
+- [x] 2.1 New logger tests pass: `npm test`
+- [x] 2.2 Typecheck passes: `npm run typecheck`
+- [x] 2.3 Lint passes: `npm run lint`
+- [x] 2.4 Build succeeds: `npm run build`
+- [x] 2.5 Staging `src/lib/logger.ts` triggers the new test via the pre-commit hook
 
 #### Manual
 
-- [ ] 2.6 Real handled failure appears in Sentry tagged with its event name
-- [ ] 2.7 Issue carries the affected `userId` and the call site's structured fields
-- [ ] 2.8 User-facing behavior unchanged — degraded-success path still returns the entry
+- [x] 2.6 Real handled failure appears in Sentry tagged with its event name — verified live on `library.create.enrichment_failed`
+- [x] 2.7 Issue carries the affected `userId` and the call site's structured fields — `extra` (`title`, `platform`) verified live; the `userId` half is not observable here, because none of the call sites an IGDB outage reaches passes one (`services/library.ts:72`, `api/library/lookup.ts:47`) — only the five DB-failure sites do. Covered instead by the three `src/lib/logger.test.ts` cases: present-string, absent, non-string
+- [x] 2.8 User-facing behavior unchanged — degraded-success path still returns the entry
 
 ### Phase 3: Source maps + production verification
 

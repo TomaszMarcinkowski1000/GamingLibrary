@@ -16,9 +16,22 @@
  *
  * Output is one JSON line per event on `console.error`/`console.warn`, which is what workerd hands
  * to Cloudflare Workers Logs (and to `wrangler tail`); JSON so the fields stay queryable instead of
- * being buried in a prose string. This is also the single seam a real error tracker (Sentry) hooks
- * into later — one `captureException` call here, not one per `catch`.
+ * being buried in a prose string.
+ *
+ * This is also the single seam Sentry hooks into — one `captureException` in `logError`, not one
+ * per `catch`. Three things about that wiring are decisions, not accidents:
+ *
+ * - **No DSN handling belongs here.** The SDK is initialized at the Worker entrypoint
+ *   (`sentry.server.config.ts`), which is the only place a DSN is read. Where no DSN was
+ *   configured — local dev, CI — the SDK never initializes and `captureException` no-ops, so this
+ *   module needs no environment access and no branch of its own.
+ * - **`logWarning` is deliberately not forwarded.** Warnings are degradations, not failures, and
+ *   `auth.signin.malformed_request` fires on any malformed POST — forwarding it would spend the
+ *   error quota on noise. Cloudflare Workers Logs still has every warning.
+ * - **The console line is the guarantee; Sentry is best-effort.** `console.error` runs first and
+ *   unconditionally, and the capture is wrapped so an SDK throw cannot reach the caller's `catch`.
  */
+import * as Sentry from "@sentry/cloudflare";
 
 /** Arbitrary structured context attached to an event. Keep it free of secrets and credentials. */
 export type LogFields = Record<string, unknown>;
@@ -51,6 +64,23 @@ function serializeError(error: unknown): unknown {
 export function logError(event: string, error: unknown, fields: LogFields = {}): void {
   // eslint-disable-next-line no-console -- deliberate server-side diagnostic; the sole log sink
   console.error(JSON.stringify({ level: "error", event, error: serializeError(error), ...fields }));
+
+  try {
+    Sentry.captureException(error, {
+      // A tag, not a nested context field: `event` is the grouping key, and only tags are
+      // filterable and searchable from the issue stream.
+      tags: { event },
+      extra: fields,
+      // Several call sites already thread `userId` through `fields`; promoting it to Sentry's
+      // first-class user field is what makes "one broken account" distinguishable from "an
+      // outage". Id only — no email, no IP.
+      ...(typeof fields.userId === "string" ? { user: { id: fields.userId } } : {}),
+    });
+  } catch {
+    // Best-effort by design. The console line above already landed, and a transport or
+    // serialization failure inside the SDK must not surface in the caller's `catch` as if the
+    // original operation had failed twice.
+  }
 }
 
 /**
