@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase";
+import { logError } from "@/lib/logger";
 import { createLibraryEntry } from "@/lib/services/library";
 
 export const prerender = false;
@@ -48,9 +49,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   try {
     const entry = await createLibraryEntry(supabase, env.IGDB_TOKENS, parsed.data);
     return Response.json({ entry }, { status: 201 });
-  } catch {
-    // Enrichment never reaches here (the service swallows it); only an unexpected DB
-    // failure does.
+  } catch (error) {
+    // Enrichment never reaches here (the service degrades it, and logs it); only an unexpected DB
+    // failure does. The client gets a status-only message — Postgres errors leak schema detail —
+    // so the thrown object has to be recorded here or it is gone for good.
+    logError("library.create.failed", error, { userId: locals.user.id });
     return Response.json({ error: "Failed to save the entry" }, { status: 500 });
   }
 };

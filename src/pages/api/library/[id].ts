@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
+import { logError } from "@/lib/logger";
 import { EntryNotFoundError, deleteLibraryEntry, updateLibraryEntry } from "@/lib/services/library";
 import { patchEntrySchema, updateEntrySchema } from "@/lib/validation/library";
 
@@ -42,9 +43,12 @@ export const PUT: APIRoute = async ({ request, params, cookies, locals }) => {
     const entry = await updateLibraryEntry(supabase, id, parsed.data);
     return Response.json({ entry }, { status: 200 });
   } catch (error) {
+    // A missing row is an expected client-side outcome (stale tab, wrong id), not an incident —
+    // it stays unlogged. Anything else is a real failure the 500's status-only body would erase.
     if (error instanceof EntryNotFoundError) {
       return Response.json({ error: "Entry not found" }, { status: 404 });
     }
+    logError("library.update.failed", error, { entryId: id, userId: locals.user.id });
     return Response.json({ error: "Failed to update the entry" }, { status: 500 });
   }
 };
@@ -88,9 +92,12 @@ export const PATCH: APIRoute = async ({ request, params, cookies, locals }) => {
     const entry = await updateLibraryEntry(supabase, id, parsed.data);
     return Response.json({ entry }, { status: 200 });
   } catch (error) {
+    // A missing row is an expected client-side outcome (stale tab, wrong id), not an incident —
+    // it stays unlogged. Anything else is a real failure the 500's status-only body would erase.
     if (error instanceof EntryNotFoundError) {
       return Response.json({ error: "Entry not found" }, { status: 404 });
     }
+    logError("library.update.failed", error, { entryId: id, userId: locals.user.id });
     return Response.json({ error: "Failed to update the entry" }, { status: 500 });
   }
 };
@@ -120,9 +127,11 @@ export const DELETE: APIRoute = async ({ request, params, cookies, locals }) => 
     await deleteLibraryEntry(supabase, id);
     return new Response(null, { status: 204 });
   } catch (error) {
+    // Same split as PUT/PATCH: a no-row delete is an expected 404, a thrown DB error is not.
     if (error instanceof EntryNotFoundError) {
       return Response.json({ error: "Entry not found" }, { status: 404 });
     }
+    logError("library.delete.failed", error, { entryId: id, userId: locals.user.id });
     return Response.json({ error: "Failed to delete the entry" }, { status: 500 });
   }
 };

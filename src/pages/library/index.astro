@@ -4,6 +4,7 @@ import { DEFAULT_LIBRARY_SORT, LIBRARY_SORTS, PLAY_STATUSES } from "@/types";
 import ThemedLayout from "@/layouts/ThemedLayout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
+import { logError } from "@/lib/logger";
 import { getLibraryFacets, listLibraryEntries, listUsedPlatforms } from "@/lib/services/library";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
 import GameDialog from "@/components/library/GameDialog";
@@ -55,16 +56,28 @@ if (supabase) {
   try {
     // Platform options and facets are degradable niceties, so they resolve to their empty
     // value on their own failure — only a true entries-query failure should blank the library.
+    // The empty value is indistinguishable from a genuinely empty result on screen, though: a
+    // failed `library_facets()` renders as "you own nothing to filter by". Log so the two cases
+    // stay distinguishable off-screen.
     const [list, platforms, libraryFacets] = await Promise.all([
       listLibraryEntries(supabase, { page, pageSize: PAGE_SIZE, ...filterArgs }),
-      listUsedPlatforms(supabase).catch(() => [] as string[]),
-      getLibraryFacets(supabase).catch(() => EMPTY_FACETS),
+      listUsedPlatforms(supabase).catch((error: unknown) => {
+        logError("library.page.used_platforms_failed", error);
+        return [] as string[];
+      }),
+      getLibraryFacets(supabase).catch((error: unknown) => {
+        logError("library.page.facets_failed", error);
+        return EMPTY_FACETS;
+      }),
     ]);
     entries = list.entries;
     total = list.total;
     usedPlatforms = platforms;
     facets = libraryFacets;
-  } catch {
+  } catch (error) {
+    // The entries query itself failed — the page renders its error state, which tells the user
+    // nothing about why. This is the only record of the cause.
+    logError("library.page.list_failed", error);
     loadError = true;
   }
 }

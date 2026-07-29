@@ -1,9 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "gaming-library",
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Not a stray file: the wrapper re-exports `@astrojs/cloudflare/entrypoints/server` (the former
+  // value of this field) wrapped in `Sentry.withSentry`, so unhandled throws reach Sentry.
+  "main": "./sentry.server.config.ts",
   "compatibility_date": "2026-05-08",
   "compatibility_flags": ["nodejs_compat"],
+  // Emit source maps for the deployed Worker bundle so Sentry stack traces point at real `src/`
+  // lines instead of minified output. The maps are uploaded to Cloudflare, not served to clients.
+  "upload_source_maps": true,
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",

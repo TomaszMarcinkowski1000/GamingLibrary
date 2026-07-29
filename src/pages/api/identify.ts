@@ -4,6 +4,7 @@ import { z } from "zod";
 import { lookupGameMetadata } from "@/lib/services/igdb";
 import { createLibraryEntryFromGrounding } from "@/lib/services/library";
 import { createClient } from "@/lib/supabase";
+import { logError } from "@/lib/logger";
 import { identifyGameFromPhoto, stubbedVisionRead } from "@/lib/services/vision";
 import type { IdentifyResponse, IgdbLookupResult, LibraryEntry, VisionIdentifyResult } from "@/types";
 
@@ -105,6 +106,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
   } catch (error) {
     // IGDB/Twitch transport, auth, or missing-KV failure — the harness needs to distinguish this
     // from a clean no-match, so surface it as a 502 rather than a null id.
+    logError("identify.truth_grounding_failed", error, { title: query.data.title, platform: query.data.platform });
     return Response.json({ error: error instanceof Error ? error.message : "IGDB grounding failed" }, { status: 502 });
   }
 
@@ -148,6 +150,9 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     try {
       vision = await identifyGameFromPhoto(dataUrl);
     } catch (error) {
+      // `vision.ts` already logs a non-2xx OpenRouter body; this also catches the cases it can't
+      // (missing OPENROUTER_API_KEY, envelope schema drift), which otherwise leave no trace at all.
+      logError("identify.vision_failed", error);
       return Response.json(
         { error: error instanceof Error ? error.message : "Vision identification failed" },
         { status: 502 },
@@ -164,8 +169,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
   let grounding: IgdbLookupResult | null = null;
   try {
     grounding = await lookupGameMetadata(vision.title, vision.platform, env.IGDB_TOKENS);
-  } catch {
-    // IGDB/Twitch transport, auth, or missing-KV failure — fall through to a null-id response.
+  } catch (error) {
+    // IGDB/Twitch transport, auth, or missing-KV failure — fall through to a null-id response, but
+    // record it: on the harness path this silently depresses the accuracy metric (a groundable read
+    // scores as an abstain), which would otherwise read as the *model* getting worse.
+    logError("identify.grounding_failed", error, { title: vision.title, platform: vision.platform });
   }
 
   // Persist path (S-03 UI): a confident vision read is auto-saved straight into the library from the
@@ -185,7 +193,10 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
         platform: vision.platform,
         grounding,
       });
-    } catch {
+    } catch (error) {
+      // The user just spent a photo upload and a vision call on this; if the save is what broke,
+      // the status-only 500 is all they see, so the cause has to be captured here.
+      logError("identify.persist_failed", error, { title: vision.title, userId: locals.user.id });
       return Response.json({ error: "Failed to save the entry" }, { status: 500 });
     }
 

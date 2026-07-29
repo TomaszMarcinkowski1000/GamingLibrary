@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase";
+import { logWarning } from "@/lib/logger";
 
 const credentialsSchema = z.object({
   email: z.email(),
@@ -16,6 +17,11 @@ export const POST: APIRoute = async (context) => {
       password: form.get("password"),
     }));
   } catch {
+    // A malformed body and a badly-shaped email are different faults, and neither is the "wrong
+    // password" this message implies — but the message stays deliberately vague, since a sign-in
+    // form must not confirm which half the caller got right. Recorded (without the error object,
+    // which can carry the submitted values) so a broken client isn't invisible behind that vagueness.
+    logWarning("auth.signin.malformed_request");
     return context.redirect(`/auth/signin?error=${encodeURIComponent("Invalid email or password")}`);
   }
 

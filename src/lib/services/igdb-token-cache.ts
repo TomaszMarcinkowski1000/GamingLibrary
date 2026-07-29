@@ -7,6 +7,13 @@
 //
 // KV is request-scoped, so this factory is built per request by `createIgdbClient`,
 // not as a module-level singleton.
+//
+// Every failure here is non-fatal by design — the token can always be re-minted — but "non-fatal"
+// is not "uninteresting": a persistently failing `kv.put` means we mint a fresh Twitch app token on
+// *every* request, which walks straight into the 25-active-token cap. That looks like a sudden
+// wave of auth failures with no cause, unless the cache failures were recorded when they happened.
+
+import { logError } from "@/lib/logger";
 
 /** Host+path fragment that identifies the Twitch app-token endpoint. */
 const TWITCH_TOKEN_URL = "id.twitch.tv/oauth2/token";
@@ -64,8 +71,9 @@ export function createTokenCachingFetch(kv: KVNamespace): typeof fetch {
     let cached: CachedToken | null = null;
     try {
       cached = await kv.get<CachedToken>(KV_KEY, "json");
-    } catch {
+    } catch (error) {
       // KV unavailable or value unparseable — fall through to a fresh token mint.
+      logError("igdb.token_cache.read_failed", error);
     }
 
     if (cached && cached.expires_at > nowSeconds) {
@@ -90,8 +98,9 @@ export function createTokenCachingFetch(kv: KVNamespace): typeof fetch {
     let data: TwitchTokenResponse;
     try {
       data = await response.clone().json<TwitchTokenResponse>();
-    } catch {
+    } catch (error) {
       // Unexpected/empty body — hand the untouched response back and skip caching.
+      logError("igdb.token_cache.malformed_token_response", error);
       return response;
     }
 
@@ -101,8 +110,10 @@ export function createTokenCachingFetch(kv: KVNamespace): typeof fetch {
     // A cache-write failure must not fail the request — the real token is already in hand.
     try {
       await kv.put(KV_KEY, JSON.stringify(toCache), { expirationTtl: ttl });
-    } catch {
-      // Write failed — the real token is already in hand, so don't fail the request.
+    } catch (error) {
+      // Write failed — the real token is already in hand, so don't fail the request. Logged
+      // because a *sustained* write failure silently degrades into per-request token minting.
+      logError("igdb.token_cache.write_failed", error, { ttl });
     }
 
     return response;
