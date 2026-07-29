@@ -11,7 +11,14 @@
   "upload_source_maps": true,
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist",
+    // `./dist/client`, never `./dist`. The build splits output into `dist/client` (public assets)
+    // and `dist/server` (the Worker) — and since `upload_source_maps` above, `dist/server` holds 47
+    // `.map` files carrying full `sourcesContent`, i.e. the app's TypeScript sources verbatim.
+    // Pointing this at `./dist` would publish them as static assets. In practice the deploy uses the
+    // build-generated `dist/server/wrangler.json`, which narrows this to `../client` on its own; the
+    // point of narrowing it here is that the checked-in config should be correct without relying on
+    // that redirect being generated.
+    "directory": "./dist/client",
     "not_found_handling": "404-page",
   },
   "observability": {

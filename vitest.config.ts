@@ -21,7 +21,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // Root-level `*.test.ts` is included for `sentry.server.config.test.ts`: the Worker entrypoint
+    // lives at the root because `wrangler.jsonc`'s `main` points there, so its test sits beside it
+    // rather than being exiled into `src/`.
+    include: ["src/**/*.test.ts", "*.test.ts"],
     setupFiles: [fileURLToPath(new URL("./test/setup/no-network.ts", import.meta.url))],
   },
 });

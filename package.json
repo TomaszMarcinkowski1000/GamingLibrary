@@ -21,7 +21,8 @@
     "seed:e2e-user": "node scripts/seed-e2e-user.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@api-wrappers/igdb-wrapper": "^1.0.1",

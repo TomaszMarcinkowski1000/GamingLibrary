@@ -38,9 +38,15 @@ preceding `error-propagation-observability` change (commit `f5b95e7`).
   deliberate convention here: builds and CI must proceed without the value.
 - **Secrets flow** — `.dev.vars` (Cloudflare local dev, gitignored), `.env` (Node-side tooling),
   `wrangler secret put` (production), documented in `.env.example`.
-- **Deploy is manual** — `npx wrangler deploy`. `.github/workflows/` holds only `ci.yml` and
-  `migrate.yml`; there is no deploy workflow. Source-map upload therefore runs on the deploying
-  developer's machine, not in CI.
+- **Deploy has two paths, and this bullet originally named only one.** ⚠️ **Corrected after the fact
+  — see the Phase 3 `cf16416` addendum.** As written during planning it said *"Deploy is manual —
+  `npx wrangler deploy` … there is no deploy workflow"*. The second clause is true of
+  `.github/workflows/` (which holds only `ci.yml` and `migrate.yml`) but false of the system:
+  **Cloudflare Workers Builds auto-deploys every push to `main`**, configured in the dashboard rather
+  than in the repo, recorded and verified 2026-06-02 in
+  `context/changes/deployment/deployment-plan.md:188-203`. A dashboard-configured deploy leaves no
+  file in the repo to grep for, which is how planning missed it. Consequence for this change: the
+  auto-deploy path is the one that matters most, and it needed wiring too.
 - **Tests** — vitest, `src/**/*.test.ts`, 9 suites exist. `vitest.config.ts` aliases `astro:env/server`
   to a stub and installs a deny-all `fetch` (`test/setup/no-network.ts`). There is **no**
   `src/lib/logger.test.ts` today. `lint-staged` runs `vitest related --run` on staged `*.ts`.
@@ -83,7 +89,11 @@ on a machine with no Sentry credentials whatsoever.
 - **No changes to any `catch` block.** The whole point of `logger.ts` is that this stays true.
 - **No removal of `console.error` / `console.warn`.** Cloudflare Workers Logs remains a parallel sink.
 - **No alerting/notification rules, dashboards, or release tracking.** Out of scope for this change.
-- **No CI deploy workflow.** Deploy stays manual.
+- **No CI deploy workflow.** Still honored in substance — `.github/workflows/` gains nothing, and it
+  still holds only `ci.yml` and `migrate.yml`. But the original wording, *"Deploy stays manual"*, was
+  false when written: Workers Builds already auto-deployed every push to `main` (see the corrected
+  Current State bullet). What this guardrail actually means here is "no new deploy automation" — and
+  `cf16416` added none; it repointed the existing dashboard deploy command at this change's script.
 - **No DSN in CI.** The e2e suite deliberately triggers errors; they must not reach the dashboard.
 
 ## Implementation Approach
@@ -495,6 +505,16 @@ independently revertible by restoring `wrangler.jsonc`'s `main`.
 > `@astrojs/cloudflare` sets `no_bundle: true`, so wrangler ships those modules verbatim.
 > Consequence for the criteria below: source-map upload moved out of the build and into the deploy,
 > so 3.2 is no longer a build-time assertion and is folded into 3.8.
+>
+> **Release tagging came with it, overriding one line of "What We're NOT Doing".** The deploy script
+> resolves the deployed commit (`resolveRelease()`), passes it as `wrangler deploy --var
+> SENTRY_RELEASE:<sha>`, tags the upload `--release <sha>`, and the entrypoint reads it back as
+> `release: env.SENTRY_RELEASE`. That is "release tracking", which §"What We're NOT Doing" excludes.
+> Recorded rather than reverted: once the deploy script exists, the release is one already-known
+> value threaded through three calls, and it is what makes an issue say *which* deploy introduced it.
+> To be precise about what it is not: it is **not** required for readable traces. `sentry-cli
+> sourcemaps inject` pairs events to artifacts by debug ID, which works with no release at all — so
+> if this ever needs removing, the source-map chain survives it intact.
 
 - [x] 3.1 Build succeeds with no `SENTRY_AUTH_TOKEN` in the environment — exit 0; now structurally guaranteed, since nothing in the build path reads any Sentry credential — 2f4f62a
 - [x] 3.2 Build succeeds with the auth token present and uploads source maps — satisfied by restatement: the upload is a deploy step now, not a build step, so this cannot be asserted against `npm run build`. Its intent — "with credentials present, maps actually reach Sentry" — is what 3.8 (94 files injected and uploaded) and 3.9 (frames resolving to real `src/` paths in production) prove together. The complementary "without credentials" half is still asserted at build time by 3.1 — 2f4f62a
@@ -512,3 +532,19 @@ independently revertible by restoring `wrangler.jsonc`'s `main`.
 - [x] 3.11 No client JS payload regression on `/library` — confirmed against the live page. Build-side evidence backs it: an A/B build with and without `serverOnlySourcemaps()` yields a byte-identical `dist/client/_astro` (461.96 KB across the same 21 files), and no Sentry reference reaches the client at all. Structural, not incidental — the SDK is server-only and the sourcemap plugin is scoped to `isSsrBuild` — 2f4f62a
 - [x] 3.12 Sentry project shows zero events from local development or CI — satisfied by restatement, because "zero from local development" was never literally true and could not be: 1.6 and 2.6 *deliberately* sent local events to verify the wiring, with the DSN temporarily in `.dev.vars`. What holds is the part that matters. **CI**: structurally impossible — no Sentry value is a repository secret and `ci.yml` consumes none, so both jobs run with `SENTRY_DSN` unset and the SDK no-ops (which is why the e2e suite's deliberate errors never reach the dashboard). **Local**: the temporary DSN has now been removed from `.dev.vars` and `.env` per the plan's closing note, so no further local events are possible; the only ones in the project are the Phase 1/2 verification events and the Phase 3 production triggers — 2f4f62a
 - [x] 3.13 `SENTRY_DSN` is set as a **production Worker secret** (added during Phase 3 — the plan asserted this nowhere, and its absence is what made a fully-wired change look broken). Phase 1's 1.6/1.7 only ever exercised the DSN via `.dev.vars` locally, so production was never armed: `wrangler secret list` showed five secrets and no `SENTRY_DSN`, `withSentry` initialized with `dsn: undefined`, and every `captureException` no-op'd — indistinguishable from "no errors happened". Fixed with `wrangler secret put SENTRY_DSN` + redeploy (the redeploy re-applies `SENTRY_RELEASE`, which `--var` sets per-deploy rather than persisting in `wrangler.jsonc`). Re-check with `npx wrangler secret list` after any secret rotation or Worker recreation — 2f4f62a
+- [x] 3.14 **Post-epilogue addendum — the auto-deploy path routes through the deploy script** — cf16416.
+      Landed *after* the close-out epilogue (`bb40599`) and so was originally recorded nowhere; added
+      here retroactively during impl review. What it fixed: Workers Builds auto-deploys every push to
+      `main` and its dashboard deploy command was `npx wrangler deploy`, which skips inject+upload
+      **and** drops `SENTRY_RELEASE` (a per-deploy `--var`, not a `wrangler.jsonc` binding). So every
+      auto-deployed version silently reverted production to minified traces — invisible, because
+      errors keep arriving, just unreadable. Everything Phase 3 verified by hand via `npm run deploy`
+      would have been undone by the next push to `main`. Fix: `--skip-build` so Workers Builds can
+      call the script as its deploy command without rebuilding; `WORKERS_CI_COMMIT_SHA` preferred over
+      `git rev-parse HEAD`, since that checkout can be shallow or detached; and strict rejection of
+      unrecognized arguments — found the hard way, `--skip-build --help` began a *real deploy* because
+      an unknown flag was silently ignored. **Human gate**: the dashboard deploy command must read
+      `node scripts/deploy-worker.mjs --skip-build`, with `SENTRY_ORG` / `SENTRY_PROJECT` /
+      `SENTRY_AUTH_TOKEN` in its build environment. Nothing in the repo enforces this; if it reverts,
+      production keeps working and keeps reporting errors, and the traces just quietly stop being
+      readable.
