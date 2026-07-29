@@ -37,7 +37,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import process from "node:process";
 
 const SERVER_OUTPUT = "dist/server";
@@ -60,7 +60,11 @@ function loadDotEnv() {
 function run(command, args) {
   console.log(`\n> ${command} ${args.join(" ")}`);
   // `shell: true` because wrangler/sentry-cli resolve to .cmd shims on Windows, which execFile
-  // cannot spawn directly. No argument here is user-supplied, so there is nothing to quote around.
+  // cannot spawn directly. That means every argument reaches a shell unquoted, so nothing
+  // shell-significant may be interpolated into one. Both call sites are held to that: the only
+  // dynamic value passed is `release`, which `resolveRelease()` validates as 40 hex characters.
+  // Config that *is* free-form — SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN — is handed to
+  // sentry-cli through the inherited environment instead of the command line. Keep it that way.
   const { status, error } = spawnSync(command, args, { stdio: "inherit", shell: true });
   if (error) fail(`${command} could not be started: ${error.message}`);
   if (status !== 0) fail(`${command} exited with code ${status}`);
@@ -91,6 +95,20 @@ function resolveRelease() {
   if (status !== 0) return undefined;
   const sha = stdout.trim();
   return /^[0-9a-f]{40}$/.test(sha) ? sha : undefined;
+}
+
+/**
+ * Guards the one thing neither `sentry-cli` step can detect: an empty input. Both `inject` and
+ * `upload` exit 0 over a directory with no maps in it, so without this the script would announce
+ * "source maps uploaded" after uploading nothing. That is the exact silent regression it exists to
+ * prevent — maps reach `dist/server` only because `serverOnlySourcemaps()` (astro.config.mjs)
+ * flips `build.sourcemap` on the SSR pass, and that hangs on Vite's `isSsrBuild` signal, plugin
+ * order, and the adapter's output layout. Any of the three can shift under a dependency bump.
+ *
+ * @returns {number}
+ */
+function countSourceMaps() {
+  return readdirSync(SERVER_OUTPUT, { recursive: true }).filter((entry) => String(entry).endsWith(".map")).length;
 }
 
 loadDotEnv();
@@ -131,6 +149,19 @@ if (!existsSync(SERVER_OUTPUT)) {
   );
 }
 
+// Hard-fail only on the path that would otherwise *claim* the maps went up. Without credentials the
+// script already says "upload skipped", and refusing to deploy would break the deliberate
+// "Sentry is optional" stance above — so that path warns instead.
+const sourceMapCount = countSourceMaps();
+if (sourceMapCount === 0) {
+  const detail =
+    `${SERVER_OUTPUT} contains no .map files — the SSR build stopped emitting source maps. ` +
+    `Check serverOnlySourcemaps() in astro.config.mjs.`;
+  if (uploadSourceMaps)
+    fail(`${detail}\n             Refusing to deploy: production traces would silently stay minified.`);
+  console.warn(`deploy-worker: ${detail}`);
+}
+
 // Stamps debug IDs into dist/server/**/*.mjs and their .map siblings. Must precede the deploy.
 if (uploadSourceMaps) {
   run("npx", ["sentry-cli", "sourcemaps", "inject", SERVER_OUTPUT]);
@@ -139,18 +170,12 @@ if (uploadSourceMaps) {
 run("npx", ["wrangler", "deploy", ...(release ? ["--var", `SENTRY_RELEASE:${release}`] : [])]);
 
 if (uploadSourceMaps) {
-  run("npx", [
-    "sentry-cli",
-    "sourcemaps",
-    "upload",
-    "--org",
-    process.env.SENTRY_ORG ?? "",
-    "--project",
-    process.env.SENTRY_PROJECT ?? "",
-    ...(release ? ["--release", release] : []),
-    SERVER_OUTPUT,
-  ]);
-  console.log("\ndeploy-worker: deployed, source maps uploaded.");
+  // No `--org` / `--project`: sentry-cli reads SENTRY_ORG and SENTRY_PROJECT from the environment
+  // itself (verified with `sentry-cli info`), the same way it already picks up SENTRY_AUTH_TOKEN,
+  // which was never passed as a flag either. Passing them would mean interpolating two `.env` values
+  // into a `shell: true` command line unquoted — see the note on `run()`.
+  run("npx", ["sentry-cli", "sourcemaps", "upload", ...(release ? ["--release", release] : []), SERVER_OUTPUT]);
+  console.log(`\ndeploy-worker: deployed, ${sourceMapCount} source maps uploaded.`);
 } else {
   console.log("\ndeploy-worker: deployed. Source-map upload skipped.");
 }

@@ -37,11 +37,41 @@ export default Sentry.withSentry<WorkerEnv>(
     // Errors only. The free plan's span quota is far tighter than its error quota, and nothing
     // here needs latency data on the IGDB / OpenRouter calls.
     tracesSampleRate: 0,
-    // Load-bearing, not cosmetic: `POST /api/identify` bodies carry base64 shelf photos, which
-    // automatic body collection would ship to a third party. The one piece of user data we do
-    // want — `userId` — gets attached explicitly by `logError`.
-    dataCollection: { userInfo: false, httpBodies: [] },
-    environment: "production",
+    // The only switch that actually stops incoming request bodies reaching Sentry.
+    // `dataCollection.httpBodies` does *not* do this on the Cloudflare path:
+    // `captureIncomingRequestBody` gates solely on `maxRequestBodySize === "none"`, and
+    // `requestDataIntegration` then attaches whatever landed on the scope unconditionally.
+    // Passing the integration by name here replaces the default instance.
+    //
+    // What this protects: `POST /api/auth/sign{in,up}` are native `<form method="POST">`, i.e.
+    // `application/x-www-form-urlencoded` — a textual content type — so without this, any event
+    // raised during a sign-in carries `email=…&password=<plaintext>`. `/api/library` JSON bodies
+    // are captured the same way. `POST /api/identify`'s base64 shelf photos are `multipart/form-data`
+    // and were already skipped by content type, not by this setting.
+    //
+    // The one piece of user data we do want — `userId` — gets attached explicitly by `logError`.
+    integrations: [Sentry.httpServerIntegration({ maxRequestBodySize: "none" })],
+    // Every field is named on purpose. `resolveDataCollectionOptions` picks its base as
+    // `dataCollection != null ? DEFAULTS : profileFor(sendDefaultPii)` — so supplying this object
+    // *at all* swaps the restrictive no-PII profile for the fully-permissive `DEFAULTS` on every
+    // field left unnamed. Omitting one here does not inherit "off"; it inherits "on".
+    //
+    // `httpBodies: []` is kept as a deny-by-default for any code path that does consult it; it is
+    // the integration above, not this line, that does the work on incoming requests.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+    },
+    // Derived, not hardcoded: `SENTRY_RELEASE` is set only by `scripts/deploy-worker.mjs`, so its
+    // presence *is* "this is a deployed Worker". A developer following `.dev.vars.example` and
+    // pasting a DSN in to verify the wiring therefore tags those events `development` instead of
+    // dropping them into the same stream as real production incidents.
+    environment: env.SENTRY_RELEASE ? "production" : "development",
   }),
   handler,
 );
