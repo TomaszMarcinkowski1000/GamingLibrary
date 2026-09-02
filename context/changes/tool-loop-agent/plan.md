@@ -556,29 +556,29 @@ phase. The README example is the other place that shape appears, also updated in
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
-- [x] 1.3 Build emits declarations: `npm run build`
-- [x] 1.4 Public export names are unchanged from before the phase
+- [x] 1.1 Typecheck passes: `npm run typecheck` — fd3506f
+- [x] 1.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0 — fd3506f
+- [x] 1.3 Build emits declarations: `npm run build` — fd3506f
+- [x] 1.4 Public export names are unchanged from before the phase — fd3506f
 
 #### Manual
 
-- [x] 1.5 `npm start -- src/config.ts` prints summary and findings exactly as before
-- [x] 1.6 No new dependency appears in `package.json`
+- [x] 1.5 `npm start -- src/config.ts` prints summary and findings exactly as before — fd3506f
+- [x] 1.6 No new dependency appears in `package.json` — fd3506f
 
 ### Phase 2: Read-Only Filesystem Tools
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
-- [ ] 2.3 Build succeeds: `npm run build`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
+- [x] 2.3 Build succeeds: `npm run build`
 
 #### Manual
 
-- [ ] 2.4 `tools/paths.ts` read end to end: segment-boundary comparison and symlink resolution both confirmed
-- [ ] 2.5 All three tools route through `resolveWithinRoot`, no direct `fs` call on a caller-supplied path
-- [ ] 2.6 Each tool's `description` reads as guidance to a model
+- [x] 2.4 `tools/paths.ts` read end to end: segment-boundary comparison and symlink resolution both confirmed
+- [x] 2.5 All three tools route through `resolveWithinRoot`, no direct `fs` call on a caller-supplied path
+- [x] 2.6 Each tool's `description` reads as guidance to a model
 
 ### Phase 3: Agent Module, New Entry Points, Cleanup
 
