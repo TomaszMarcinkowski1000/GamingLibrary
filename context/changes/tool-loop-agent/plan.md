@@ -584,16 +584,16 @@ phase. The README example is the other place that shape appears, also updated in
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `npm run typecheck`
-- [x] 3.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
-- [x] 3.3 Build succeeds and emits declarations: `npm run build`
-- [x] 3.4 Importing the barrel with no env set does not throw and does not read `.env`
-- [x] 3.5 `createReviewAgent` accepts `MockLanguageModelV4` with no OpenRouter credential
-- [x] 3.6 No file under `src/` still imports `./review.ts`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — 7a76d3c
+- [x] 3.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0 — 7a76d3c
+- [x] 3.3 Build succeeds and emits declarations: `npm run build` — 7a76d3c
+- [x] 3.4 Importing the barrel with no env set does not throw and does not read `.env` — 7a76d3c
+- [x] 3.5 `createReviewAgent` accepts `MockLanguageModelV4` with no OpenRouter credential — 7a76d3c
+- [x] 3.6 No file under `src/` still imports `./review.ts` — 7a76d3c
 
 #### Manual
 
-- [x] 3.7 `npm start -- <file>` produces findings citing real lines of that file
-- [x] 3.8 The run visibly makes tool calls rather than one round trip
-- [x] 3.9 A `paths` entry escaping the root is refused as a tool result, not a crash
-- [x] 3.10 Findings respect the standard: no style nitpicks, empty array on sound code
+- [x] 3.7 `npm start -- <file>` produces findings citing real lines of that file — 7a76d3c
+- [x] 3.8 The run visibly makes tool calls rather than one round trip — 7a76d3c
+- [x] 3.9 A `paths` entry escaping the root is refused as a tool result, not a crash — 7a76d3c
+- [x] 3.10 Findings respect the standard: no style nitpicks, empty array on sound code — 7a76d3c

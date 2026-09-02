@@ -1,7 +1,7 @@
 ---
 change_id: tool-loop-agent
 title: Make the code-reviewer package useful in the CI/CD code review pipeline
-status: implementing
+status: implemented
 created: 2026-09-02
 updated: 2026-09-02
 archived_at: null
