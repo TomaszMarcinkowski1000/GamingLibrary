@@ -99,6 +99,13 @@ export default tseslint.config(
   // `npm run db:types`; the Cloudflare runtime types are likewise re-emitted by
   // `npm run cf-typegen`. Linting/formatting either would only cause diff drift.
   { ignores: ["src/db/database.types.ts", "worker-configuration.d.ts"] },
+  // `packages/*` are standalone npm projects, not workspaces of this one: each carries its own
+  // lockfile, tsconfig, and `typecheck` script, and the root install never fetches their
+  // dependencies. Type-aware linting them from here resolves every third-party import to
+  // `error`/`any`, so the strict rules fire on code that is actually fine — invisibly on a dev
+  // machine, where the sub-package's `node_modules` happens to exist, and fatally in CI, where
+  // it does not. Each package lints and typechecks itself.
+  { ignores: ["packages/**"] },
   baseConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],

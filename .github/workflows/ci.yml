@@ -67,6 +67,32 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
+  # `packages/*` are standalone npm projects, not workspaces: the root `npm ci` does not install
+  # their dependencies, and the root lint/typecheck deliberately exclude them (see the ignore in
+  # eslint.config.js and the `exclude` in tsconfig.json — linting them from the root resolves
+  # every third-party import to `any` and fails on code that is fine). So each one gets its own
+  # install and its own gates here; without this the package would have no CI coverage at all.
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [code-reviewer]
+    defaults:
+      run:
+        working-directory: packages/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
   e2e:
     runs-on: ubuntu-latest
     # No `needs:` — this runs concurrently with `ci`, which stays the fast signal.
