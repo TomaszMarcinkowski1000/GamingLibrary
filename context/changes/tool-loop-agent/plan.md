@@ -570,30 +570,30 @@ phase. The README example is the other place that shape appears, also updated in
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
-- [x] 2.3 Build succeeds: `npm run build`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 5e8ca86
+- [x] 2.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0 — 5e8ca86
+- [x] 2.3 Build succeeds: `npm run build` — 5e8ca86
 
 #### Manual
 
-- [x] 2.4 `tools/paths.ts` read end to end: segment-boundary comparison and symlink resolution both confirmed
-- [x] 2.5 All three tools route through `resolveWithinRoot`, no direct `fs` call on a caller-supplied path
-- [x] 2.6 Each tool's `description` reads as guidance to a model
+- [x] 2.4 `tools/paths.ts` read end to end: segment-boundary comparison and symlink resolution both confirmed — 5e8ca86
+- [x] 2.5 All three tools route through `resolveWithinRoot`, no direct `fs` call on a caller-supplied path — 5e8ca86
+- [x] 2.6 Each tool's `description` reads as guidance to a model — 5e8ca86
 
 ### Phase 3: Agent Module, New Entry Points, Cleanup
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
-- [ ] 3.3 Build succeeds and emits declarations: `npm run build`
-- [ ] 3.4 Importing the barrel with no env set does not throw and does not read `.env`
-- [ ] 3.5 `createReviewAgent` accepts `MockLanguageModelV4` with no OpenRouter credential
-- [ ] 3.6 No file under `src/` still imports `./review.ts`
+- [x] 3.1 Typecheck passes: `npm run typecheck`
+- [x] 3.2 Root lint passes: `npx eslint packages/code-reviewer/src` exits 0
+- [x] 3.3 Build succeeds and emits declarations: `npm run build`
+- [x] 3.4 Importing the barrel with no env set does not throw and does not read `.env`
+- [x] 3.5 `createReviewAgent` accepts `MockLanguageModelV4` with no OpenRouter credential
+- [x] 3.6 No file under `src/` still imports `./review.ts`
 
 #### Manual
 
-- [ ] 3.7 `npm start -- <file>` produces findings citing real lines of that file
-- [ ] 3.8 The run visibly makes tool calls rather than one round trip
-- [ ] 3.9 A `paths` entry escaping the root is refused as a tool result, not a crash
-- [ ] 3.10 Findings respect the standard: no style nitpicks, empty array on sound code
+- [x] 3.7 `npm start -- <file>` produces findings citing real lines of that file
+- [x] 3.8 The run visibly makes tool calls rather than one round trip
+- [x] 3.9 A `paths` entry escaping the root is refused as a tool result, not a crash
+- [x] 3.10 Findings respect the standard: no style nitpicks, empty array on sound code
