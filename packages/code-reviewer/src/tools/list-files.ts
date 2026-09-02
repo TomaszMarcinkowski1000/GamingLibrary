@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
-import { nodeErrorCode } from "./fs-errors.ts";
+import { nodeErrorCode, opaqueFsError } from "./fs-errors.ts";
 import type { ResolveWithinRoot } from "./paths.ts";
 
 /** One listing cannot flood the context window, however large the directory. */
@@ -40,7 +40,7 @@ export function createListFilesTool(resolveWithinRoot: ResolveWithinRoot) {
         if (code === "ENOTDIR") {
           return { ok: false as const, error: `"${requested}" is a file, not a directory. Use read_file on it.` };
         }
-        throw error;
+        throw opaqueFsError(error, requested);
       }
 
       const entries = dirents

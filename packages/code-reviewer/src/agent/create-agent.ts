@@ -18,6 +18,20 @@ export const DEFAULT_STEP_BUDGET = 20;
 /** Stop conditions accepted by the review agent, typed against its tool set. */
 export type ReviewStopCondition = StopCondition<ReviewTools> | StopCondition<ReviewTools>[];
 
+/**
+ * How many steps a run may actually take, or `undefined` when that is unknown.
+ * A caller who overrides `stopWhen` without saying how many steps that allows
+ * leaves the loop's end unknowable, and both the safety net and the
+ * budget-exhausted diagnosis depend on knowing it — so they resolve it here,
+ * once, rather than each reaching their own conclusion.
+ */
+export function resolveStepBudget(
+  stepBudget: number | undefined,
+  stopWhen: ReviewStopCondition | undefined,
+): number | undefined {
+  return stepBudget ?? (stopWhen === undefined ? DEFAULT_STEP_BUDGET : undefined);
+}
+
 export interface CreateReviewAgentOptions {
   /**
    * Any AI SDK language model. Required rather than derived from `loadConfig()`,
@@ -58,10 +72,9 @@ export function createReviewAgent({
   temperature,
   maxOutputTokens,
 }: CreateReviewAgentOptions) {
-  // The net needs to know where the loop actually ends. A caller who overrides
-  // `stopWhen` without saying how many steps that allows gets no net rather than
-  // one that fires at the wrong step.
-  const budget = stepBudget ?? (stopWhen === undefined ? DEFAULT_STEP_BUDGET : undefined);
+  // The net needs to know where the loop actually ends; without that it gets no
+  // net rather than one that fires at the wrong step.
+  const budget = resolveStepBudget(stepBudget, stopWhen);
 
   return new ToolLoopAgent({
     model,

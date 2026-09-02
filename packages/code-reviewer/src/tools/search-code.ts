@@ -1,12 +1,18 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
-import { nodeErrorCode } from "./fs-errors.ts";
+import { nodeErrorCode, opaqueFsError } from "./fs-errors.ts";
 import type { ResolveWithinRoot } from "./paths.ts";
 
 const MAX_MATCHES = 50;
 const MAX_FILES_WALKED = 2_000;
+/**
+ * Directories are bounded separately from files: a tree can be deep and sparse,
+ * and `MAX_FILES_WALKED` never fires on one. Without this the walk has no
+ * ceiling at all, and nothing in the call chain times out.
+ */
+const MAX_DIRS_WALKED = 2_000;
 /** Files above this are almost certainly generated or binary; not worth scanning. */
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_LINE_LENGTH = 200;
@@ -36,7 +42,7 @@ export interface SearchMatch {
   text: string;
 }
 
-export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot) {
+export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot, root: string) {
   return tool({
     description: [
       "Search the codebase under review for a literal string, returning path, line number, and the matching line.",
@@ -54,24 +60,45 @@ export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot) {
       const matches: SearchMatch[] = [];
       const stack: string[] = [resolved.absolutePath];
       let filesWalked = 0;
+      let dirsWalked = 0;
       let truncated = false;
 
       while (stack.length > 0 && !truncated) {
         const dir = stack.pop();
         if (dir === undefined) break;
+        // The first directory off the stack is the caller's own path. A failure
+        // there is a bad request and has to be reported as one — an empty result
+        // would read to the model as "nothing matches" rather than "look again".
+        // The same failure deeper in the walk is just a subtree that moved.
+        const isRequestedPath = dir === resolved.absolutePath;
+
+        if (dirsWalked >= MAX_DIRS_WALKED) {
+          truncated = true;
+          break;
+        }
+        dirsWalked += 1;
 
         let dirents;
         try {
           dirents = await readdir(dir, { withFileTypes: true });
         } catch (error: unknown) {
           const code = nodeErrorCode(error);
-          // A subtree that vanished or is unreadable mid-walk is not worth
-          // failing the whole search over; anything else is a real bug.
-          if (code === "ENOENT" || code === "EACCES" || code === "EPERM") continue;
-          if (code === "ENOTDIR") {
-            return { ok: false as const, error: `"${requested}" is a file, not a directory. Use read_file on it.` };
+          if (isRequestedPath) {
+            if (code === "ENOENT") {
+              return { ok: false as const, error: `"${requested}" does not exist in the review root.` };
+            }
+            if (code === "ENOTDIR") {
+              return { ok: false as const, error: `"${requested}" is a file, not a directory. Use read_file on it.` };
+            }
+            if (code === "EACCES" || code === "EPERM") {
+              return { ok: false as const, error: `"${requested}" could not be read.` };
+            }
           }
-          throw error;
+          // A subtree that vanished, turned into a file, or is unreadable
+          // mid-walk is not worth failing the whole search over; anything else
+          // is a real bug.
+          if (code === "ENOENT" || code === "ENOTDIR" || code === "EACCES" || code === "EPERM") continue;
+          throw opaqueFsError(error, requested);
         }
 
         for (const dirent of dirents) {
@@ -94,11 +121,16 @@ export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot) {
 
           let contents: string;
           try {
+            // Size is checked before the read, not after it. The cap exists to
+            // bound memory, and a file only discarded once decoded has already
+            // cost what the cap was meant to prevent.
+            const stats = await stat(entryPath);
+            if (stats.size > MAX_FILE_BYTES) continue;
             contents = await readFile(entryPath, "utf8");
           } catch {
             continue;
           }
-          if (contents.length > MAX_FILE_BYTES || contents.includes(NUL)) continue;
+          if (contents.includes(NUL)) continue;
 
           const lines = contents.split(/\r?\n/);
           for (const [index, line] of lines.entries()) {
@@ -106,7 +138,7 @@ export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot) {
             if (!haystack.includes(needle)) continue;
 
             matches.push({
-              path: relative(resolved.absolutePath, entryPath).split(sep).join("/"),
+              path: relative(root, entryPath).split(sep).join("/"),
               line: index + 1,
               text: line.trim().slice(0, MAX_LINE_LENGTH),
             });
@@ -118,7 +150,15 @@ export function createSearchCodeTool(resolveWithinRoot: ResolveWithinRoot) {
         }
       }
 
-      return { ok: true as const, query, searchedPath: resolved.relativePath, filesWalked, truncated, matches };
+      return {
+        ok: true as const,
+        query,
+        searchedPath: resolved.relativePath,
+        filesWalked,
+        dirsWalked,
+        truncated,
+        matches,
+      };
     },
   });
 }

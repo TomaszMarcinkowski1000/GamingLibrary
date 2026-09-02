@@ -21,12 +21,12 @@ export interface CreateReviewToolsOptions {
  * than once per tool.
  */
 export function createReviewTools({ rootDir }: CreateReviewToolsOptions) {
-  const { resolveWithinRoot } = createPathGuard(rootDir);
+  const { root, resolveWithinRoot } = createPathGuard(rootDir);
 
   return {
     read_file: createReadFileTool(resolveWithinRoot),
     list_files: createListFilesTool(resolveWithinRoot),
-    search_code: createSearchCodeTool(resolveWithinRoot),
+    search_code: createSearchCodeTool(resolveWithinRoot, root),
   };
 }
 

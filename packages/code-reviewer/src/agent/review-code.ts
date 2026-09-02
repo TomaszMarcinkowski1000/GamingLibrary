@@ -3,7 +3,7 @@ import type { LanguageModel } from "ai";
 import { ReviewError } from "../errors.ts";
 import { buildReviewPrompt } from "../prompts/index.ts";
 import type { Review } from "../schemas/index.ts";
-import { createReviewAgent } from "./create-agent.ts";
+import { createReviewAgent, resolveStepBudget } from "./create-agent.ts";
 import type { ReviewStopCondition } from "./create-agent.ts";
 
 export interface ReviewOptions {
@@ -44,6 +44,7 @@ export async function reviewCode({
     ...(stepBudget === undefined ? {} : { stepBudget }),
   });
 
+  const budget = resolveStepBudget(stepBudget, stopWhen);
   const prompt = buildReviewPrompt({ paths, ...(context === undefined ? {} : { context }) });
 
   let result;
@@ -64,8 +65,10 @@ export async function reviewCode({
     if (!NoOutputGeneratedError.isInstance(error) && !NoObjectGeneratedError.isInstance(error)) throw error;
 
     // A run that still wanted to call tools when the loop stopped ran out of
-    // budget; anything else finished without ever producing the verdict.
-    if (result.finishReason === "tool-calls") {
+    // budget — and so did one that used every step it had. The second arm is the
+    // one that fires by default: the agent's own net takes the tools away on the
+    // last step, so `finishReason` is never "tool-calls" there.
+    if (result.finishReason === "tool-calls" || (budget !== undefined && result.steps.length >= budget)) {
       throw new ReviewError(
         "step-budget-exhausted",
         `The review used all ${String(result.steps.length)} of its steps without producing a verdict. Raise stopWhen or narrow the paths under review.`,
