@@ -49,7 +49,7 @@ For repeated runs, streaming, or lifecycle callbacks, build the agent once inste
 ```ts
 import { createReviewAgent } from "@gaminglibrary/code-reviewer";
 
-const agent = createReviewAgent({ model, rootDir, stopWhen: isStepCount(20) });
+const agent = createReviewAgent({ model, rootDir, stepBudget: 20 });
 const { output } = await agent.generate({ prompt });
 ```
 

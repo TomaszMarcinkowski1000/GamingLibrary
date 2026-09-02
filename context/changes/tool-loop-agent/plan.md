@@ -521,8 +521,8 @@ This puts real weight on two manual gates, both called out above:
 
 ## Performance Considerations
 
-Cost per review moves from one model call to up to ten steps. `isStepCount(10)` is the ceiling and
-is overridable per call. The tool-side bounds matter as much as the step cap: `read-file` caps file
+Cost per review moves from one model call to up to twenty steps. `isStepCount(20)` is the ceiling
+and is overridable per call (see Addendum A — the ceiling was raised from ten during Phase 3). The tool-side bounds matter as much as the step cap: `read-file` caps file
 size, `list-files` caps entry count, and `search-code` caps both matches and files walked, so a
 single tool call cannot flood the context window and inflate the token bill for every subsequent
 step in the loop.
@@ -547,6 +547,42 @@ phase. The README example is the other place that shape appears, also updated in
 - Tool error semantics: `packages/code-reviewer/node_modules/ai/docs/03-ai-sdk-core/15-tools-and-tool-calling.mdx:1143`
 - Mock models for future evals: `packages/code-reviewer/node_modules/ai/docs/03-ai-sdk-core/55-testing.mdx`
 - Code being replaced: `packages/code-reviewer/src/review.ts`, `packages/code-reviewer/src/index.ts`
+
+## Addenda
+
+Recorded after implementation, so the plan stays usable as ground truth for the work that follows.
+
+### Addendum A — default step budget raised from 10 to 20 (Phase 3, `7a76d3c`)
+
+`DEFAULT_STEP_BUDGET = 20` in `agent/create-agent.ts`, not the `isStepCount(10)` this plan specifies
+at the Critical Implementation Details, Phase 3, and Performance sections above.
+
+Real runs decided it: reviewing a single small file has been observed to take nine tool calls, so a
+ten-step ceiling left the budget — rather than the evidence — deciding when the verdict came. Weaker
+models (`claude-haiku-4.5`) kept calling tools until the budget ran out. Twenty steps leaves the
+model room to finish gathering evidence and still emit a verdict. Per-review cost ceiling is
+therefore 2x what the Performance section originally budgeted; the tool-side bounds that keep each
+individual step cheap are unchanged.
+
+### Addendum B — `prepareStep` net and widened option types (Phase 3, `7a76d3c`)
+
+"What We're NOT Doing" rules out lifecycle callbacks. `createReviewAgent` installs one anyway:
+`prepareStep` forces `toolChoice: "none"` on the last affordable step, so a model that keeps reading
+has to answer from the evidence it already has. Without it, `claude-haiku-4.5` kept calling tools
+until the budget ran out and the run returned no verdict at all. The guardrail was aimed at
+telemetry and cost accounting; this is a correctness net, and it stays.
+
+The option types are correspondingly wider than the plan's `{model, rootDir, paths, context?}`:
+
+- `ReviewOptions` also takes `stopWhen?` and `stepBudget?`.
+- `CreateReviewAgentOptions` also takes `stopWhen?`, `stepBudget?`, `temperature?`, and
+  `maxOutputTokens?`.
+
+Note the coupling: overriding `stopWhen` without also passing `stepBudget` leaves the budget
+unknown, and the net is then not installed at all rather than firing at the wrong step.
+
+Not verified: whether `toolChoice: "none"` reliably yields a schema-valid object on the final step
+across providers. Only Sonnet has been exercised.
 
 ## Progress
 
