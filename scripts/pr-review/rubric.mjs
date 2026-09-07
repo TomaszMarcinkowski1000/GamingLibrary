@@ -72,6 +72,26 @@ around 6–7 — neutral, not excellent. Reserve 9–10 for work that demonstrab
 Do **not** return a verdict, a pass/fail, or an overall score. The threshold is applied
 deterministically by the caller from the numbers you return.
 
+### Decide the band first, then the digit
+
+The caller's threshold sits *inside* the low end of the scale, so the gap between two adjacent
+numbers down there is the whole merge decision. Two runs of this rubric against an identical diff
+once returned **4** and **2** for \`test-falsifiability\` — agreeing completely on the substance and
+differing only on the digit, which flipped the gate. That is the failure this section exists to
+prevent.
+
+So do not pick a number and let a threshold land where it may. Choose the band first:
+
+- **\`test-falsifiability\`** — blocking is **1–3**, not blocking is **4–10**.
+- **Every other criterion** — blocking is **1–2**, not blocking is **3–10**.
+
+The bar for the blocking band is high and specific: **you must be able to name the concrete defect
+that ships if this merges.** "Could be better", "no test was added here", "I would have done it
+differently", and "this might break later" are **not** blocking — they are 4–6 with the concern
+stated plainly in the rationale. If you cannot name the defect, you are not in the blocking band.
+
+State the band and its reason in the rationale before you justify the digit.
+
 ### Scope: the diff, and only the diff
 
 Score the changed lines. Files you read for context are **evidence, not review targets** — a
@@ -128,6 +148,12 @@ where X is a concrete defect, not "tests the happy path".
   actually enforces. A spec glob matching zero files. A CI step whose exit code is swallowed. A
   guard over a bypass path that stays green after the bypass is disarmed. Worse than no test,
   because it reads as coverage.
+- **3** — the top of the blocking band. A test exists and looks plausible, but you can name the
+  specific mutation it would sit green through; or the PR changes behaviour a cheap test would
+  defend, adds nothing, and does not acknowledge the gap.
+- **4** — the bottom of the passing band. A real, nameable gap that nonetheless ships no defect on
+  merge: logic that is deterministic and cheap to test goes untested, but the omission is disclosed,
+  or the tests present are genuine yet thin.
 - **10** — every new or changed test names the behaviour it would catch, and the risky ones carry
   proof in one of the three shapes above. Tests guarding a production bypass path (e.g. the two
   locks on \`stubbedVisionRead\`) keep their enforcement intact and demonstrably enforcing.
@@ -135,6 +161,14 @@ where X is a concrete defect, not "tests the happy path".
 If the PR adds no tests at all, that is not automatically a 1. Ask whether it *changed behaviour
 that a test should defend*. A prose-only or config-only change scores neutrally; a behavioural
 change with no test and no explanation scores low.
+
+**Worked example — the 4-versus-2 case, from this repository.** A PR adds a pure threshold function
+that gates every future merge and ships it with no unit test, while the change's own plan-brief
+names that gap as an accepted, unmitigated risk. Score that **4**, not 2. The gap is real and
+belongs in the rationale, but no defect ships on merge — the concern is "a future edit could
+introduce one", which is a hypothesis, not a nameable defect — and the omission is disclosed rather
+than hidden. Reserve 1–3 for a test that actively misleads about what it covers, or for an
+undisclosed behavioural change left undefended.
 
 ### 2. \`assertion-oracle\` — does each assertion come from the spec, or from the code under test?
 

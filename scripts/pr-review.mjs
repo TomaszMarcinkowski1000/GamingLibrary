@@ -39,6 +39,20 @@ import { renderComment, renderIncompleteComment, renderProseOnlyComment } from "
 /** Resolved from this file, so the script works regardless of the caller's cwd. */
 const PACKAGE_ENTRY = new URL("../packages/code-reviewer/dist/index.js", import.meta.url);
 
+/*
+ * Pinned, because the caller thresholds the scores and the threshold sits inside the range where
+ * the model's own variance lives. Two runs against an identical diff returned 4 and 2 for
+ * `test-falsifiability` — same substance, different digit — and the gate is at 3, so the same
+ * commit both passed and failed (runs 34159218589 and 34159617713; see calibration.md).
+ *
+ * This does not buy determinism and should not be read as buying it: OpenRouter may route the same
+ * model id to a different provider between runs, which is its own source of drift. It removes the
+ * one source of variance that is ours to remove. The rubric's decision-band section is the more
+ * robust half of the fix — it narrows the range the model is choosing within, rather than only
+ * making the choice less random.
+ */
+const REVIEW_TEMPERATURE = 0;
+
 function parseArgs(argv) {
   const args = { out: undefined, dryRun: false };
 
@@ -159,13 +173,19 @@ async function main() {
       description: body,
       diff,
       extraInstructions: REVIEW_RUBRIC,
+      temperature: REVIEW_TEMPERATURE,
     });
   } catch (error) {
     const reason =
       error instanceof ReviewError && error.code === "step-budget-exhausted"
         ? "The agent used its entire step budget without producing a verdict."
         : "The review run failed before producing a verdict.";
-    emitComment(renderIncompleteComment({ headSha, reason, detail: String(error.message ?? error) }), args.out);
+    // stderr, never the comment. This is the raw error off the provider call, and the comment is
+    // posted publicly; the run log is the right place for it and masks repository secrets. stderr
+    // also keeps the `verdict=` line the last thing on STDOUT, which the composite action's
+    // anchored `tail -n 1` depends on.
+    console.error(`Review run failed:\n${String(error.stack ?? error.message ?? error)}`);
+    emitComment(renderIncompleteComment({ headSha, reason }), args.out);
     console.log("verdict=failed");
     return 1;
   }
@@ -177,11 +197,14 @@ async function main() {
   try {
     ({ verdict, reasons } = deriveVerdict(review.criteria));
   } catch (error) {
+    // Same rule as above. `deriveVerdict`'s messages are this repository's own prose, but they
+    // interpolate the criterion ids the MODEL returned, so the text is still partly model-authored
+    // and does not belong in a public comment.
+    console.error(`Verdict derivation failed:\n${String(error.stack ?? error.message ?? error)}`);
     emitComment(
       renderIncompleteComment({
         headSha,
         reason: "The review returned an incomplete or unrecognised set of criteria.",
-        detail: String(error.message ?? error),
       }),
       args.out,
     );

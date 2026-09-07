@@ -26,6 +26,13 @@ export interface ReviewOptions {
   stopWhen?: ReviewStopCondition;
   /** How many steps this run may take. See `createReviewAgent`. */
   stepBudget?: number;
+  /**
+   * Sampling temperature. `createReviewAgent` has always accepted one; forwarding it here is what
+   * lets a caller that never touches the agent directly — a CI script, an eval harness — pin it.
+   * Left unset the provider's default applies, and a scored review is then free to move between
+   * runs on an identical input, which matters when a caller thresholds the scores.
+   */
+  temperature?: number;
 }
 
 /**
@@ -48,6 +55,7 @@ export async function reviewCode({
   extraInstructions,
   stopWhen,
   stepBudget,
+  temperature,
 }: ReviewOptions): Promise<Review> {
   const agent = createReviewAgent({
     model,
@@ -55,6 +63,7 @@ export async function reviewCode({
     ...(extraInstructions === undefined ? {} : { extraInstructions }),
     ...(stopWhen === undefined ? {} : { stopWhen }),
     ...(stepBudget === undefined ? {} : { stepBudget }),
+    ...(temperature === undefined ? {} : { temperature }),
   });
 
   const budget = resolveStepBudget(stepBudget, stopWhen);

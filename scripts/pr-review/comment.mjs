@@ -125,17 +125,23 @@ export function renderComment({ headSha, verdict, reasons, review, paths, exclud
  * find out" and "we looked and it was fine" are different states, and only one of them should let a
  * merge through.
  */
-export function renderIncompleteComment({ headSha, reason, detail }) {
+/*
+ * Deliberately carries no `detail`. The underlying error on this path comes from the model provider
+ * or from text the model authored, and this comment is posted publicly on the PR — an upstream error
+ * body can carry account, quota, or routing internals that have no business there. The caller writes
+ * the full error to stderr instead, which lands in the workflow run's log, where GitHub's automatic
+ * masking of repository secrets applies and a PR comment's does not. `reason` is one of a fixed set
+ * of strings this repository writes; nothing model-derived reaches here.
+ */
+export function renderIncompleteComment({ headSha, reason }) {
   return [
     `## ${VERDICT_HEADINGS.failed}`,
     `Reviewed \`${headSha}\`.`,
     `**The review did not complete**, so it is reported as failed. An incomplete review is not a passing one.`,
     `**Reason:** ${reason}`,
-    detail ? `\`\`\`\n${detail}\n\`\`\`` : undefined,
+    "The underlying error is in this workflow run's own log, not reproduced here.",
     "Add the `ai-cr:retry` label to run it again.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  ].join("\n\n");
 }
 
 /**
