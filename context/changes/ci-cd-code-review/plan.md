@@ -630,22 +630,22 @@ an empty object."_
 
 #### Automated
 
-- [x] 3.1 Prettier check clean on .github/\*\*
-- [x] 3.2 The action YAML parses (verified by the first Phase 4 run)
+- [x] 3.1 Prettier check clean on .github/\*\* — 47c5883
+- [x] 3.2 The action YAML parses (verified by the first Phase 4 run) — 47c5883
 
 #### Manual
 
-- [x] 3.3 Every run: step declares shell:
-- [x] 3.4 No PR-derived value appears inside a run: body as a ${{ }} expression
-- [x] 3.5 outputs.verdict is wired to a step's $GITHUB_OUTPUT
-- [x] 3.6 The header comment states both the .env and the artifact constraint
+- [x] 3.3 Every run: step declares shell: — 47c5883
+- [x] 3.4 No PR-derived value appears inside a run: body as a ${{ }} expression — 47c5883
+- [x] 3.5 outputs.verdict is wired to a step's $GITHUB_OUTPUT — 47c5883
+- [x] 3.6 The header comment states both the .env and the artifact constraint — 47c5883
 
 ### Phase 4: Workflow and labels
 
 #### Automated
 
-- [ ] 4.1 All three ai-cr:\* labels exist
-- [ ] 4.2 Prettier check clean on .github/\*\*
+- [x] 4.1 All three ai-cr:\* labels exist
+- [x] 4.2 Prettier check clean on .github/\*\*
 - [ ] 4.3 The workflow runs to completion on a test PR
 
 #### Manual
