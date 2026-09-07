@@ -601,30 +601,30 @@ an empty object."_
 
 #### Automated
 
-- [x] 1.1 Package typecheck passes
-- [x] 1.2 Package build emits dist/
-- [x] 1.3 Root lint and typecheck unaffected
+- [x] 1.1 Package typecheck passes — 0fca305
+- [x] 1.2 Package build emits dist/ — 0fca305
+- [x] 1.3 Root lint and typecheck unaffected — 0fca305
 - [ ] 1.4 The packages matrix job in ci.yml is green
 
 #### Manual
 
-- [x] 1.5 reviewSchema.criteria[].id is a free string, no repo-specific enum in the package
-- [x] 1.6 buildReviewPrompt output reads sensibly with all three new sections populated
+- [x] 1.5 reviewSchema.criteria[].id is a free string, no repo-specific enum in the package — 0fca305
+- [x] 1.6 buildReviewPrompt output reads sensibly with all three new sections populated — 0fca305
 
 ### Phase 2: Rubric and review script
 
 #### Automated
 
-- [ ] 2.1 --dry-run prints prompt and a path list with no context/\*\* or \*.md entries, no network call
-- [ ] 2.2 The dry run works with OPENROUTER_API_KEY unset
-- [ ] 2.3 Root lint passes
-- [ ] 2.4 Prettier check clean on scripts/\*\*
+- [x] 2.1 --dry-run prints prompt and a path list with no context/\*\* or \*.md entries, no network call
+- [x] 2.2 The dry run works with OPENROUTER_API_KEY unset
+- [x] 2.3 Root lint passes
+- [x] 2.4 Prettier check clean on scripts/\*\*
 
 #### Manual
 
-- [ ] 2.5 A live run against a merged PR's SHA range returns all five criterion ids with plausible scores
-- [ ] 2.6 The rendered comment is readable and its printed verdict rule matches the scores
-- [ ] 2.7 Criterion 4 produces no finding about prerender = false or src/components/hooks/
+- [x] 2.5 A live run against a merged PR's SHA range returns all five criterion ids with plausible scores
+- [x] 2.6 The rendered comment is readable and its printed verdict rule matches the scores
+- [x] 2.7 Criterion 4 produces no finding about prerender = false or src/components/hooks/
 
 ### Phase 3: Composite action
 
