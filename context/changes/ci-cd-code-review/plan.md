@@ -615,30 +615,30 @@ an empty object."_
 
 #### Automated
 
-- [x] 2.1 --dry-run prints prompt and a path list with no context/\*\* or \*.md entries, no network call
-- [x] 2.2 The dry run works with OPENROUTER_API_KEY unset
-- [x] 2.3 Root lint passes
-- [x] 2.4 Prettier check clean on scripts/\*\*
+- [x] 2.1 --dry-run prints prompt and a path list with no context/\*\* or \*.md entries, no network call — 1b67991
+- [x] 2.2 The dry run works with OPENROUTER_API_KEY unset — 1b67991
+- [x] 2.3 Root lint passes — 1b67991
+- [x] 2.4 Prettier check clean on scripts/\*\* — 1b67991
 
 #### Manual
 
-- [x] 2.5 A live run against a merged PR's SHA range returns all five criterion ids with plausible scores
-- [x] 2.6 The rendered comment is readable and its printed verdict rule matches the scores
-- [x] 2.7 Criterion 4 produces no finding about prerender = false or src/components/hooks/
+- [x] 2.5 A live run against a merged PR's SHA range returns all five criterion ids with plausible scores — 1b67991
+- [x] 2.6 The rendered comment is readable and its printed verdict rule matches the scores — 1b67991
+- [x] 2.7 Criterion 4 produces no finding about prerender = false or src/components/hooks/ — 1b67991
 
 ### Phase 3: Composite action
 
 #### Automated
 
-- [ ] 3.1 Prettier check clean on .github/\*\*
-- [ ] 3.2 The action YAML parses (verified by the first Phase 4 run)
+- [x] 3.1 Prettier check clean on .github/\*\*
+- [x] 3.2 The action YAML parses (verified by the first Phase 4 run)
 
 #### Manual
 
-- [ ] 3.3 Every run: step declares shell:
-- [ ] 3.4 No PR-derived value appears inside a run: body as a ${{ }} expression
-- [ ] 3.5 outputs.verdict is wired to a step's $GITHUB_OUTPUT
-- [ ] 3.6 The header comment states both the .env and the artifact constraint
+- [x] 3.3 Every run: step declares shell:
+- [x] 3.4 No PR-derived value appears inside a run: body as a ${{ }} expression
+- [x] 3.5 outputs.verdict is wired to a step's $GITHUB_OUTPUT
+- [x] 3.6 The header comment states both the .env and the artifact constraint
 
 ### Phase 4: Workflow and labels
 
