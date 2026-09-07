@@ -83,13 +83,32 @@ function parsePrice(value) {
 function buildProviderOptions(env) {
   const prompt = parsePrice(env.MAX_PRICE_PROMPT);
   const completion = parsePrice(env.MAX_PRICE_COMPLETION);
-  if (prompt === undefined && completion === undefined) return undefined;
 
   return {
-    max_price: {
-      ...(prompt === undefined ? {} : { prompt }),
-      ...(completion === undefined ? {} : { completion }),
-    },
+    /*
+     * Load-bearing, and NOT merely a nicety. OpenRouter serves one model id from several
+     * independent endpoints, and they do not all support the same parameters. `z-ai/glm-4.7` has
+     * seven; three of them (Novita, Z.AI, Mancer 2) cannot do `structured_outputs` at all. This
+     * defaults to FALSE, so without it OpenRouter is free to route a request carrying a
+     * `response_format: json_schema` to an endpoint that will simply ignore it — and the AI SDK
+     * sends `response_format` and `tools` in the same request, so both have to be supported.
+     *
+     * That is not hypothetical: run 3 (see calibration.md) burned 160k output tokens over 9m41s
+     * and returned no object, because it landed on an endpoint that could not produce one.
+     *
+     * Note that the model-level `supported_parameters` in `GET /api/v1/models` is the UNION across
+     * a model's endpoints, not a guarantee about the one you get. Checking it tells you some
+     * endpoint can do the job; this flag is what makes sure yours does.
+     */
+    require_parameters: true,
+    ...(prompt === undefined && completion === undefined
+      ? {}
+      : {
+          max_price: {
+            ...(prompt === undefined ? {} : { prompt }),
+            ...(completion === undefined ? {} : { completion }),
+          },
+        }),
   };
 }
 
@@ -163,7 +182,9 @@ async function main() {
   try {
     const config = loadConfig(env);
     const provider = buildProviderOptions(env);
-    const model = createModel(config, provider ? { provider } : {});
+    // Always present now: `require_parameters` is unconditional, so there is no longer a case
+    // where this review wants no provider routing at all.
+    const model = createModel(config, { provider });
 
     review = await reviewCode({
       model,

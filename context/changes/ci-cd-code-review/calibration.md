@@ -16,6 +16,7 @@ that was right (agreed / false positive / false negative).
 |---|----|----------|-------|------|-------|-------|--------|---------|----------------|
 | 1 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34159218589) | `04055d95` | `anthropic/claude-sonnet-5` | unset | 14 | n/r | 4 / 6 / 6 / 7 / 4 | passed | agreed |
 | 2 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34159617713) | `04055d95` | `anthropic/claude-sonnet-5` | unset | 14 | n/r | 2 / 6 / 3 / 7 / 5 | failed | **false negative** |
+| 3 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34161583108) | `70a7dae2` | `z-ai/glm-4.7` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — the review genuinely did not complete |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -58,6 +59,49 @@ reviewer is worth its cost.
    between runs.
 
 Runs 3+ test whether that holds. Two runs on one unchanged SHA remain the check for plan item 5.4.
+
+## What run 3 established: provider routing, not the model
+
+Run 3 was the first on the cheaper model. It ran for **9m41s** and threw
+`ReviewError: The review finished without producing a verdict.` — `no-output-generated`, *not*
+`step-budget-exhausted`. It did not run out of steps and get cut off; it stopped on its own having
+produced no schema-valid object.
+
+**The first diagnosis was wrong.** It was recorded here as "glm-4.7 cannot do this job", by analogy
+with the `claude-haiku-4.5` note in the package README. The OpenRouter activity log contradicted
+that: 23,243 prompt tokens, **160,547 completion tokens**, cost **$0.00**, model reported as
+`Unknown`. At the observed 277 tok/s those 160k tokens account for 579s — the run's entire 9m41s.
+So the model generated enormously and never closed with the object.
+
+`GET /api/v1/models/z-ai/glm-4.7/endpoints` explains why. That model is served by **seven
+independent endpoints, and three of them — Novita, Z.AI, Mancer 2 — do not support
+`structured_outputs` at all.** Our `max_price` of 0.6/2.7 excluded only Mancer 2 on price, leaving
+two structurally incapable endpoints eligible. OpenRouter's `require_parameters` — *"only use
+providers that support all parameters in your request"* — **defaults to `false`**, so nothing
+stopped the request from landing on one.
+
+**The trap worth remembering:** the model-level `supported_parameters` array in `GET /api/v1/models`
+is the **union across a model's endpoints**, not a property of the endpoint you are served. It
+answers "can some endpoint do this?" when the question is "will mine?". The candidate shortlist for
+this swap was filtered on that union, which is why an incapable route was never ruled out.
+
+The fix is one flag, `require_parameters: true` in `buildProviderOptions` — not a model change. With
+it, the eligible set under the same price caps is DeepInfra ($0.40/$1.75), AtlasCloud, Venice, and
+Google: four endpoints, all `structured_outputs`-capable.
+
+Two designed behaviours were confirmed by the failure, which is worth as much as the diagnosis:
+
+- **It failed closed.** An incomplete review became `verdict=failed`, a red check and `ai-cr:failed`
+  — never a false green.
+- **The leak fix held.** The posted comment named the reason and pointed at the run log; the stack
+  trace went to stderr only. This was the first live exercise of that path.
+
+**Still confounded.** Run 3 changed model, `temperature: 0`, and the rubric together. Routing is now
+the strong explanation, but the temperature pin has still never been observed on a completing run.
+Run 4 keeps model, temperature and rubric fixed and adds only `require_parameters`, which tests the
+routing hypothesis directly.
+
+**It also cost nothing.** OpenRouter billed $0.00 for run 3, so this diagnosis was free.
 
 ## Open
 
