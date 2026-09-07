@@ -604,7 +604,7 @@ an empty object."_
 - [x] 1.1 Package typecheck passes — 0fca305
 - [x] 1.2 Package build emits dist/ — 0fca305
 - [x] 1.3 Root lint and typecheck unaffected — 0fca305
-- [ ] 1.4 The packages matrix job in ci.yml is green
+- [x] 1.4 The packages matrix job in ci.yml is green — 0fca305
 
 #### Manual
 
@@ -644,17 +644,17 @@ an empty object."_
 
 #### Automated
 
-- [x] 4.1 All three ai-cr:\* labels exist
-- [x] 4.2 Prettier check clean on .github/\*\*
-- [ ] 4.3 The workflow runs to completion on a test PR
+- [x] 4.1 All three ai-cr:\* labels exist — 04055d9
+- [x] 4.2 Prettier check clean on .github/\*\* — 04055d9
+- [x] 4.3 The workflow runs to completion on a test PR — 04055d9
 
 #### Manual
 
-- [ ] 4.4 A comment is posted with five scores and the verdict rule
-- [ ] 4.5 Exactly one verdict label applied, the opposite one absent
-- [ ] 4.6 ai-cr:retry triggers exactly one new run and is removed afterwards
-- [ ] 4.7 A failed verdict shows red in gh pr checks and tm-ship refuses to merge
-- [ ] 4.8 A second push cancels the in-flight run
+- [x] 4.4 A comment is posted with five scores and the verdict rule — 04055d9
+- [x] 4.5 Exactly one verdict label applied, the opposite one absent — 04055d9
+- [x] 4.6 ai-cr:retry triggers exactly one new run and is removed afterwards — 04055d9
+- [x] 4.7 A failed verdict shows red in gh pr checks and tm-ship refuses to merge — 04055d9
+- [x] 4.8 A second push cancels the in-flight run — 04055d9
 
 ### Phase 5: Calibration
 
