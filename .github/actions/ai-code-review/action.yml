@@ -48,31 +48,40 @@ inputs:
       claude-haiku-4.5 to save money — the package README records that it kept calling tools until
       the budget ran out, or returned an empty object.
 
-      Moved from anthropic/claude-sonnet-5 ($2/$10 per M) to z-ai/glm-4.7 ($0.40/$1.75) on
-      2026-09-07, after two live runs cost ~$1.50 each and calibration needs several more. A model
-      too weak for this loop fails CLOSED, not open — it exhausts the step budget or returns no
-      object, both of which the script maps to `verdict=failed` and a red check — so trying a
-      cheaper one risks a wasted run, never a false green.
+      Do not swap this as a config edit. Advertised `tools` + `structured_outputs` support does NOT
+      predict success here; what this workload actually demands is a schema-valid object at the end
+      of a 20-step tool loop, and that is where cheaper models have failed. z-ai/glm-4.7 was tried
+      on 2026-09-07 at a fifth of the price and returned `no-output-generated` twice, once with
+      provider routing corrected (calibration.md runs 3 and 4). Any future swap needs its own
+      calibration runs.
+
+      The failure mode is at least safe: a model that cannot close the loop exhausts the step budget
+      or returns no object, both of which the script maps to `verdict=failed` and a red check. A
+      wasted run, never a false green.
     required: false
-    default: z-ai/glm-4.7
+    default: anthropic/claude-sonnet-5
   max-price-prompt:
     description: >-
       OpenRouter `max_price` cap for prompt tokens, USD per million. One of three independent cost
       walls (the others being the agent's step budget and the job's timeout-minutes). Default is
-      1.5x the published price of the pinned model — $0.40/M prompt, $1.75/M completion for
-      z-ai/glm-4.7, read from GET /api/v1/models on 2026-09-07. The headroom is deliberate: a cap
-      set exactly at the published price leaves a routine price move with no eligible endpoint,
-      which fails the request rather than capping it.
+      1.5x the published price of the pinned model — $2/M prompt, $10/M completion for
+      anthropic/claude-sonnet-5, read from GET /api/v1/models on 2026-09-07. The headroom is
+      deliberate: a cap set exactly at the published price leaves a routine price move with no
+      eligible endpoint, which fails the request rather than capping it.
 
       These MUST be changed in the same diff as `model`. A cap sized for one model is not a cost
-      wall for a cheaper one — left at Sonnet's 3/15 against a $0.40 model it would silently permit
+      wall for another — left at Sonnet's 3/15 against a $0.40 model it would silently permit
       roughly a 4x overspend while still looking like a limit.
+
+      A cap alone does not make routing safe. `scripts/pr-review.mjs` also sends
+      `require_parameters: true`, without which a price filter can leave an endpoint eligible that
+      cannot honour the request's `response_format` at all. See calibration.md run 3.
     required: false
-    default: "0.6"
+    default: "3"
   max-price-completion:
     description: OpenRouter `max_price` cap for completion tokens, USD per million. See above.
     required: false
-    default: "2.7"
+    default: "15"
   base-sha:
     description: >-
       github.event.pull_request.base.sha. Both SHAs must be present in the checkout, so the caller

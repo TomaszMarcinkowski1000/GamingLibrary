@@ -17,6 +17,7 @@ that was right (agreed / false positive / false negative).
 | 1 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34159218589) | `04055d95` | `anthropic/claude-sonnet-5` | unset | 14 | n/r | 4 / 6 / 6 / 7 / 4 | passed | agreed |
 | 2 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34159617713) | `04055d95` | `anthropic/claude-sonnet-5` | unset | 14 | n/r | 2 / 6 / 3 / 7 / 5 | failed | **false negative** |
 | 3 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34161583108) | `70a7dae2` | `z-ai/glm-4.7` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — the review genuinely did not complete |
+| 4 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34162833528) | `e9cbff02` | `z-ai/glm-4.7` + `require_parameters` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — did not complete |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -102,6 +103,42 @@ Run 4 keeps model, temperature and rubric fixed and adds only `require_parameter
 routing hypothesis directly.
 
 **It also cost nothing.** OpenRouter billed $0.00 for run 3, so this diagnosis was free.
+
+## What run 4 established: the routing fix was necessary but not sufficient
+
+Run 4 added `require_parameters: true` and changed nothing else — same model, same temperature, same
+rubric, same SHA range. It failed **identically**: `no-output-generated`, this time after 5m11s
+rather than 9m41s.
+
+So the routing gap was real, and fixing it was right on its own merits — a request carrying
+`response_format` should never be eligible for an endpoint that ignores it, whatever model ships.
+But it was **not the cause**, and the run-3 correction above overstated the case by presenting it as
+the explanation rather than as one contributing defect.
+
+The evidence now points back at the model, and more precisely at one behaviour: `z-ai/glm-4.7` does
+not reliably emit a schema-valid object at the *end of a long tool loop*. Note what did **not**
+happen in either run — neither hit `step-budget-exhausted`, and neither had `finishReason:
+"tool-calls"`. The loop ended on the model's own terms, with the tools already withdrawn by the
+final-step net, and it still produced no object. That is a structured-output failure, not a
+budget one.
+
+Two runs is enough. The model is recorded here as a dead end for this workload rather than retried a
+third time.
+
+**If it is ever revisited**, the specific untried lever is `structuredOutputs: { strict: false }` on
+the model factory — the OpenRouter provider documents it as *"allow non-strict mode for less strict
+models"*, and strict `json_schema` at the end of a 20-step loop is exactly the demand these runs
+failed. That is a package change, not a config one, and it should be its own experiment with its own
+calibration rows — not folded into a phase that needs a working reviewer.
+
+### Standing conclusion on model choice
+
+Three models now have evidence against them at this job — `claude-haiku-4.5` (package README),
+and `z-ai/glm-4.7` (runs 3 and 4) — against one with evidence for it, `anthropic/claude-sonnet-5`
+(runs 1 and 2, both completing with all five criteria). The demanding part of this workload is
+emitting a valid structured object after a long tool loop, and it is not predicted by a model's
+advertised `tools` + `structured_outputs` support. **Treat any future model swap as an experiment
+requiring its own calibration runs, never a config edit.**
 
 ## Open
 
