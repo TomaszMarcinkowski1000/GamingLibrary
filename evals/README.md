@@ -27,6 +27,13 @@ defaults. `REVIEW_RUBRIC` is held constant; **the model is the only variable**.
 
 ```
 evals/
+  promptfooconfig.yaml       providers × tests × assertions — the entry point
+  providers/code-reviewer.ts one cell = one full run of the reviewer (default-exported class)
+  cases.ts                   test generator: `tests: file://cases.ts:generate`
+  assertions.ts              the deterministic gates, as `file://assertions.ts:<name>`
+  case.ts                    the answer key as a zod schema, plus `loadCase`
+  reviewer.ts                the system under test, loaded from the package's built dist/
+  paths.ts                   repo-root resolution
   cases/react-19-migration/
     before/       the pre-migration tree: React 16, hand-mounted via ReactDOM.render
     after/        the migrated tree — this is the agent's sandboxed rootDir
@@ -35,8 +42,24 @@ evals/
     case.json     the answer key: flaws[] and decoys[]
 ```
 
-Later phases of `context/changes/cr-evals/plan.md` add `promptfooconfig.yaml`, `cases.ts` and
-`providers/code-reviewer.ts` beside these.
+The LLM judge, the other two models and the calibrated threshold arrive in Phases 3 and 4 of
+`context/changes/cr-evals/plan.md`.
+
+### Two promptfoo behaviours the wiring is shaped by
+
+Both were found by running it, not by reading docs, and both fail in ways that do not look like
+what they are:
+
+- **An array-valued `var` is a test matrix, not a value.** Carrying `flaws` and `decoys` through
+  `vars` silently turned one case into three cells, each holding one flaw zipped against one decoy.
+- **String vars are rendered through nunjucks.** Inlining `case.diff` as a var failed the entire
+  run with `Template render error … expected variable end` at line 70 — the planted
+  `dangerouslySetInnerHTML={{ __html: entry.notes }}`, whose `{{` nunjucks tried to open as a
+  variable.
+
+So `vars` carries the case **id** and nothing else, and everything that needs the case reads it off
+disk through `loadCase`. Keep it that way: a future case whose diff happens to contain `{{` would
+otherwise take the whole sweep down.
 
 ## The case
 
@@ -80,12 +103,44 @@ Phase 1 review; both are worth remembering when the corpus grows:
 The rule the corpus follows: **a decoy's justification must be checkable from inside the sandbox or
 against the real repository — never asserted.**
 
+### The answer key must never reach the model
+
+`case.json` carries two prose fields and they are not interchangeable:
+
+| Field | Audience | Contains |
+|---|---|---|
+| `description` | humans reading this repo | what the case is for, including that flaws and decoys are planted |
+| `prDescription` | **the model** | the PR body as its author would have written it |
+
+The provider sends `title` + `prDescription` + `case.diff` and nothing else. Sending `description`
+hands the reviewer the answer key — and the first green run of this harness did precisely that. The
+model's summary opened:
+
+> "Three defects are planted per the PR description; all three are correctly identified in
+> findings."
+
+Three of four assertions passed and the cell looked healthy. **A leaked answer key does not fail —
+it flatters.** That is what makes it worth a section: nothing in the run said anything was wrong,
+and every recall number it produced was worthless. Any field added to `case.json` from here needs
+an explicit answer to "does this reach the model?"
+
 ## Commands
 
 ```bash
+npm run evals         # build the package under test, then run the sweep
+npm run evals:view    # open the last run's report in a browser
 npm run evals:diff    # regenerate case.diff from before/ + after/
 npm run evals:check   # validate every case.json against its fixture
 ```
+
+`npm run evals` is the only supported way to start a sweep. It runs `npm ci` and `npm run build`
+inside `packages/code-reviewer` first, because the provider imports that package's `dist/` — which
+is gitignored, and whose dependencies the root `npm ci` never fetches (`packages/*` are standalone
+projects, not workspaces; see the `packages` job in `.github/workflows/ci.yml`). A bare
+`promptfoo eval` on a clean checkout fails on a missing build rather than running.
+
+It needs `OPENROUTER_API_KEY` in `.env` — the same key `scripts/pr-review.mjs` uses. Every cell is
+a real OpenRouter call against real files; nothing here is mocked.
 
 `evals:diff` runs `git diff --no-index` over the two trees and rewrites the tree prefixes away so
 every path matches what the agent's `read_file` tool sees under `rootDir`. On an unchanged fixture
@@ -141,6 +196,54 @@ of the eight errors is auto-fixable. That is the property the whole fixture rest
 measured here rather than asserted. The `after/` tree also typechecks clean under its own
 `tsconfig.json` (`tsc --noEmit`, exit 0), which is what makes "typecheck does not catch these" a
 fact rather than a claim.
+
+## What the first runs showed — measured 2026-09-08
+
+The single-model smoke was specified against the cheapest model. It was moved to
+`anthropic/claude-sonnet-5` because the cheap models could not clear the deterministic gates, and a
+smoke test that fails tells you nothing about the harness it is supposed to be smoke-testing. What
+separated them was not reasoning quality:
+
+| Model | Steps | Tool calls | Outcome | Cost |
+|---|---|---|---|---|
+| `deepseek/deepseek-v4-flash` | 1 | 0 | Schema-valid, but `findings[]` **empty** — the whole review written as prose in `summary`. Found the XSS and scored `security-isolation` 2. | $0.001 |
+| `z-ai/glm-5.1` | 1 | 0 | Ran away to the output cap, `finishReason: length`, **no object at all**. | ~$0.05 |
+| `anthropic/claude-sonnet-5` | 4 / 11 | 6 / 14 | All four gates green, twice. **3/3 planted flaws, 0 decoys filed, both times.** | $0.218 / $0.518 |
+
+Three things worth carrying forward:
+
+- **Neither cheap model called a single tool.** Both answered from the diff text alone. This was
+  verified not to be a harness defect: the agent demonstrably carries `read_file`, `list_files` and
+  `search_code`, and Sonnet used all three — including `read_file(src/lib/services/shelf.ts)`, a
+  file the diff never touches and which the answer key names as where the teardown flaw's
+  consequence actually shows. Reading the sandbox is what the case was built to reward.
+- **The cheap failure mode is the output contract, not the analysis.** deepseek identified the XSS
+  correctly and then declined to put it in `findings[]`. A recall metric reading only `findings[]`
+  would score that 0/3 — which is arguably right, since `scripts/pr-review.mjs` renders the comment
+  from that array — but it is a different claim from "the model missed it", and Phase 3's judge
+  should be pointed at `findings[]` **or** `summary` deliberately rather than by accident.
+- **Cost is driven by tool use, and varies 2.4× run to run on identical input.** Two Sonnet runs of
+  the same case cost $0.218 (4 steps, 6 tool calls, 59k prompt tokens) and $0.518 (11 steps, 14 tool
+  calls, 207k prompt tokens). The prompt is not bigger — it is the same conversation plus
+  accumulated tool results resent on *every* step, so prompt tokens grow faster than linearly in
+  step count and the cheap-model cells are cheap partly because they read nothing.
+
+  Do not budget from one sample. The plan's ~$1.70 estimate for a three-model sweep is the right
+  order of magnitude; a single number is not. Phase 4's `--repeat 3` should report the spread, not
+  an average — and note that the two runs above found the same 3/3 flaws and filed no decoys
+  despite that spread, so cost variance here is not accuracy variance.
+
+### The output cap is a blast radius
+
+`DEFAULT_MAX_OUTPUT_TOKENS` (16k, in `providers/code-reviewer.ts`) exists because the first
+uncapped run of this harness had `deepseek-v4-flash` emit **88,045 output tokens** against a
+6,785-token prompt in a single request — twelve minutes at 122 tok/s, no review, killed by the
+cell timeout. `calibration.md` run 3 has the same shape on a different model: 160k output tokens
+over 9m41s, no object.
+
+Capped, that failure ends in minutes with `finishReason: "length"`, which is a diagnosis. Uncapped,
+it ends with `timeout`, which is not. Do not raise it to "give a model more room" — a review is a
+few thousand tokens, and anything approaching the cap is a runaway, not a thorough review.
 
 ## What this does not measure
 

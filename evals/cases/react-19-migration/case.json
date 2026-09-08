@@ -2,8 +2,13 @@
   "id": "react-19-migration",
   "title": "Migrate GameShelf from a React 16 class component to a React 19 Astro island",
   "description": "A single-PR migration of the library shelf: the class component becomes a function component with hooks, the card's forwardRef wrapper is unwrapped, and the hand-rolled ReactDOM.render entry point is deleted in favour of an Astro island hydrated with client:load. Three defects are planted and three correct-but-suspicious changes are included as decoys. None of the three defects is reported by this repository's configured lint rules or by the sandbox's own typecheck — both verified empirically, see evals/README.md — so a reviewer has to reason about React 19 semantics to find them.",
+  "prDescription": "Migrates the library shelf off React 16. The class component becomes a function component with hooks, the card's forwardRef wrapper is unwrapped now that React 19 passes ref as an ordinary prop, and the hand-rolled ReactDOM.render entry point is deleted in favour of an Astro island hydrated with client:load. No behaviour change intended.",
   "rootDir": "after",
-  "paths": ["package.json", "src/components/library/GameShelf.tsx", "src/pages/library.astro"],
+  "paths": [
+    "package.json",
+    "src/components/library/GameShelf.tsx",
+    "src/pages/library.astro"
+  ],
   "diffPath": "case.diff",
   "flaws": [
     {

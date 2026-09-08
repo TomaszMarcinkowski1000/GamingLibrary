@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# The eval that answers one question: does a 10-20x cheaper model review a React 16 -> React 19
+# migration as well as the `anthropic/claude-sonnet-5` that `scripts/pr-review.mjs` runs on every
+# PR today?
+#
+# Phase 2 of `context/changes/cr-evals/plan.md`: ONE model, deterministic assertions only. The
+# matrix and the LLM judge arrive in Phase 3 — introducing a grading provider and a new provider
+# file in the same run makes a failure ambiguous, and this way a provider bug surfaces for cents
+# rather than halfway through a full sweep.
+#
+# Run it with `npm run evals` (which builds `packages/code-reviewer` first), never bare
+# `promptfoo eval` — the provider imports the package's `dist/`, which is gitignored.
+description: code-reviewer on a React 16 -> React 19 migration
+
+# The real input is a `{ rootDir, paths, diff }` triple, which promptfoo's string `prompt` is a
+# poor fit for — so it degrades to a case descriptor and the provider loads the case itself. Only
+# the case ID travels through vars; see the header of `evals/cases.ts` for the two promptfoo var
+# behaviours (array vars expand into a matrix, string vars go through nunjucks) that decided that.
+prompts:
+  - "Review case {{caseId}} with this repository's rubric."
+
+#
+# The smoke model is `anthropic/claude-sonnet-5` — the one `scripts/pr-review.mjs` runs in CI —
+# rather than the cheapest of the three, which is what this phase originally specified.
+#
+# The reason is that the cheapest model cannot clear the gates, and a smoke test that fails tells
+# you nothing about the thing it is smoke-testing. Measured on 2026-09-08:
+#
+#   deepseek-v4-flash  1 step, 0 tool calls, valid schema, findings[] EMPTY — the whole review in
+#                      prose. Gate 4 red.
+#   z-ai/glm-5.1       1 step, 0 tool calls, ran away to the 16k output cap, no object at all.
+#                      Every gate red.
+#   claude-sonnet-5    4 steps, 6 tool calls, all four gates green, all three planted flaws found,
+#                      no decoy filed as a defect.
+#
+# Cost was the original argument for the cheap model and it does not survive contact: the Sonnet
+# cell measured $0.22 and $0.52 on two runs, against deepseek's $0.001. All are rounding errors,
+# and only one of the three models proves the loop works. The other two are the Phase 3 comparison,
+# where those failures are the result rather than a blocker.
+providers:
+  - id: file://providers/code-reviewer.ts
+    # The report's column name. Also how promptfoo tells repeated instances of one provider file
+    # apart, so every entry added in Phase 3 needs its own.
+    label: claude-sonnet-5
+    config:
+      model: anthropic/claude-sonnet-5
+      # USD per million tokens, read off https://openrouter.ai/models on 2026-09-08. The cost
+      # column is computed from these against the run's own token counts — see the `pricing`
+      # comment in providers/code-reviewer.ts for why it is not read back from OpenRouter.
+      pricing:
+        prompt: 2.0
+        completion: 10.0
+
+tests: file://cases.ts:generate
+
+# Deterministic gates only. Each hard-fails the cell and none of them needs a model; per-flaw
+# recall and decoy precision are judgement calls and are graded separately in Phase 3.
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://assertions.ts:assertSchemaValid
+    - type: javascript
+      value: file://assertions.ts:assertCriteriaContract
+    - type: javascript
+      value: file://assertions.ts:assertVerdictFailed
+    - type: javascript
+      value: file://assertions.ts:assertSeriousFindingOnFlawFile

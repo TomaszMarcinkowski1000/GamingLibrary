@@ -700,37 +700,37 @@ not depend on promptfoo.
 
 #### Automated
 
-- [x] 1.1 `npm run lint` passes with the fixture present
-- [x] 1.2 `npm run typecheck` (`astro check`) passes with the fixture present
-- [x] 1.3 `npm test` passes (fixture outside the vitest include set)
-- [x] 1.4 `npm run format` leaves `evals/cases/` byte-identical
-- [x] 1.5 `npm run evals:diff` on an unchanged fixture leaves the working tree clean
-- [x] 1.6 `case.json` parses and every flaw/decoy `file` resolves under `after/`
-- [x] 1.7 The husky pre-commit hook passes when the fixture is staged
+- [x] 1.1 `npm run lint` passes with the fixture present — 66b12f0
+- [x] 1.2 `npm run typecheck` (`astro check`) passes with the fixture present — 66b12f0
+- [x] 1.3 `npm test` passes (fixture outside the vitest include set) — 66b12f0
+- [x] 1.4 `npm run format` leaves `evals/cases/` byte-identical — 66b12f0
+- [x] 1.5 `npm run evals:diff` on an unchanged fixture leaves the working tree clean — 66b12f0
+- [x] 1.6 `case.json` parses and every flaw/decoy `file` resolves under `after/` — 66b12f0
+- [x] 1.7 The husky pre-commit hook passes when the fixture is staged — 66b12f0
 
 #### Manual
 
-- [x] 1.8 Each of the three decoys is genuinely correct under React 19
-- [x] 1.9 Each of the three flaws is genuinely broken and independently discoverable
-- [x] 1.10 `case.diff` reads as a plausible PR, not a puzzle
-- [x] 1.11 The `after/` tree looks like it belongs in this repo
+- [x] 1.8 Each of the three decoys is genuinely correct under React 19 — 66b12f0
+- [x] 1.9 Each of the three flaws is genuinely broken and independently discoverable — 66b12f0
+- [x] 1.10 `case.diff` reads as a plausible PR, not a puzzle — 66b12f0
+- [x] 1.11 The `after/` tree looks like it belongs in this repo — 66b12f0
 
 ### Phase 2: promptfoo Install, Custom Provider, Single-Model Smoke
 
 #### Automated
 
-- [ ] 2.1 `node -v` reports `>=22.22.0` after the `.nvmrc` bump
-- [ ] 2.2 `npm run lint` and `npm run typecheck` pass with the provider and generator typechecked
-- [ ] 2.3 `npm run evals` builds the package and exits 0 on a green run
-- [ ] 2.4 The run's `Review` satisfies all four deterministic assertions
-- [ ] 2.5 `metadata` carries steps, `finishReason`, and non-zero `tokenUsage` / `cost`
+- [x] 2.1 `node -v` reports `>=22.22.0` after the `.nvmrc` bump
+- [x] 2.2 `npm run lint` and `npm run typecheck` pass with the provider and generator typechecked
+- [x] 2.3 `npm run evals` builds the package and exits 0 on a green run
+- [x] 2.4 The run's `Review` satisfies all four deterministic assertions
+- [x] 2.5 `metadata` carries steps, `finishReason`, and non-zero `tokenUsage` / `cost`
 
 #### Manual
 
-- [ ] 2.6 Reported cost for the single cell is cents, not dollars
-- [ ] 2.7 `promptfoo view` renders the cell and the review JSON is readable
-- [ ] 2.8 A forced failure produces a legible red with an `errorCode`
-- [ ] 2.9 Step count shows the agent actually used its tools
+- [x] 2.6 Reported cost for the single cell is cents, not dollars
+- [x] 2.7 `promptfoo view` renders the cell and the review JSON is readable
+- [x] 2.8 A forced failure produces a legible red with an `errorCode`
+- [x] 2.9 Step count shows the agent actually used its tools
 
 ### Phase 3: Three-Model Matrix, LLM Judge, and Precision Penalty
 
