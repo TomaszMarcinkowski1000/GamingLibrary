@@ -516,7 +516,19 @@ touching the budget.
 
 - Criterion 1 scores ≤3 on a PR carrying a deliberately unfalsifiable test
 - No criterion-4 finding penalises a pattern the existing codebase uses
-- Scores are stable across two runs on the same unchanged SHA (no wild swing)
+- Every run's verdict survives human review — no false positive, no false negative — across at
+  least two runs on one unchanged SHA
+
+  _Revised during implementation._ This read "scores are stable across two runs on the same
+  unchanged SHA (no wild swing)". Score stability was a **proxy** for trustworthy verdicts, and the
+  proxy broke for a legitimate reason: an agent exploring a 14-file diff on a 20-step budget finds a
+  varying subset each run, and a run that discovers a real blocking defect *should* score lower than
+  one that misses it. Runs 7 and 8 scored the same SHA 4 and 3 — and run 8 was right, having found
+  the deletion-only bypass. Demanding identical scores would mean demanding the reviewer stop
+  discovering. The property actually wanted is verdict correctness, which this now measures
+  directly. See `calibration.md` § "What runs 7 and 8 established" for the full reasoning, including
+  why simply moving the threshold was considered and rejected.
+
 - `calibration.md` records at least three runs, one of them ≥19 changed files
 
 ---
@@ -665,6 +677,6 @@ an empty object."_
 #### Manual
 
 - [ ] 5.2 Criterion 1 scores <=3 on a PR carrying a deliberately unfalsifiable test
-- [ ] 5.3 No criterion-4 finding penalises a pattern the existing codebase uses
-- [ ] 5.4 Scores are stable across two runs on the same unchanged SHA
-- [ ] 5.5 calibration.md records at least three runs, one of them >=19 changed files
+- [x] 5.3 No criterion-4 finding penalises a pattern the existing codebase uses
+- [ ] 5.4 Every run's verdict survives human review (no false positive or negative) across two runs on one unchanged SHA
+- [x] 5.5 calibration.md records at least three runs, one of them >=19 changed files
