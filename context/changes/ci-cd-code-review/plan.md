@@ -660,7 +660,7 @@ an empty object."_
 
 #### Automated
 
-- [ ] 5.1 Three consecutive real-PR runs complete without step-budget-exhausted or no-output-generated
+- [x] 5.1 Three consecutive real-PR runs complete without step-budget-exhausted or no-output-generated
 
 #### Manual
 

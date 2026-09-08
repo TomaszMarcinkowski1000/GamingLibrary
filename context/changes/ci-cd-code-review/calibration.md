@@ -22,6 +22,7 @@ that was right (agreed / false positive / false negative).
 | 6 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34251866385) | `0b073e09` | `claude-sonnet-5` + `require_parameters` + `temperature: 0` | 0 | 14 | — | — | failed (no eligible endpoint, 14s) | agreed — config error, no provider reached |
 | 7 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34252276345) | `0dc4e88e` | `claude-sonnet-5` | unset | 14 | n/r | 4 / 6 / 6 / 7 / 8 | passed | agreed |
 | 8 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34252928489) | `0dc4e88e` | `claude-sonnet-5` | unset | 14 | n/r | 3 / 6 / 5 / 7 / 7 | failed | **agreed — it found a real bug runs 1 and 7 missed** |
+| 9 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34254356540) | `30203f6e` | `claude-sonnet-5` | unset | 16 | n/r | 4 / 6 / 6 / 8 / 8 | passed | agreed |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -286,6 +287,27 @@ The honest options for 5.4, none of which are rubric prose:
    Costs money per run and is unproven here.
 
 Recorded, not decided. Doing this properly is a change of its own, not a Phase 5 prose edit.
+
+## What run 9 established: the deletion fix holds, and criterion 1 recovers
+
+Run 9 is the first run after the deletion-bypass fix, and the third consecutive completion
+(runs 7, 8, 9) — closing plan item 5.1.
+
+Scores `4 / 6 / 6 / 8 / 8`, passed. Two movements worth noting:
+
+- **`test-falsifiability` back to 4** from run 8's 3. The blocking defect run 8 named is gone, so
+  the band it justified is gone with it. That is the rubric behaving correctly rather than drifting:
+  the score tracked a real change in the code, not the weather.
+- **`stack-conventions` 7→8 and `security-isolation` 7→8**, on a diff that added the `deleted`
+  guard and the run-6/8 commentary. Both rises are attributable to work done in response to earlier
+  runs.
+
+The scored path list also grew 14 → 16, which is the fix's own diff.
+
+Across runs 1, 7, 8 and 9 the reviewer has now found **three real defects in its own
+implementation** — the raw-error leak (runs 1 and 2, independently), and the deletion-only bypass
+(run 8). None was a false alarm. Whatever remains unsettled about score stability, the finding
+quality is not in doubt.
 
 ### Standing conclusion on model choice
 
