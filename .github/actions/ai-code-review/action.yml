@@ -53,17 +53,19 @@ inputs:
       of a 20-step tool loop, and that is where cheaper models have failed. Any swap needs its own
       calibration runs.
 
-      Currently on trial: z-ai/glm-4.7 at ~a fifth of Sonnet's price, third attempt. Runs 3 and 4
-      returned `no-output-generated` under strict json_schema enforcement; this attempt pairs it
-      with `structured-output-strict: false`, the one untried lever. If it fails, revert model,
-      both max-price caps, and that input together — and treat glm-4.7 as settled.
-      anthropic/claude-sonnet-5 ($2/$10, caps 3/15, strict true) is the known-good fallback.
+      z-ai/glm-4.7 is settled as a dead end, at ~a fifth of the price: three attempts, three
+      non-completions (calibration.md runs 3-5), across strict and non-strict json_schema
+      enforcement and with provider routing corrected. Do not retry it without a new hypothesis.
 
-      The failure mode is at least safe: a model that cannot close the loop exhausts the step budget
-      or returns no object, both of which the script maps to `verdict=failed` and a red check. A
-      wasted run, never a false green.
+      A model that cannot close the loop wastes a run rather than passing a bad merge — the script
+      maps both `step-budget-exhausted` and `no-output-generated` to `verdict=failed`. Note the one
+      case where that is NOT enough on its own: if the model runs long enough for the calling job's
+      `timeout-minutes` to fire, the job is CANCELLED, the verdict steps never run, and the check
+      lands in `bucket=cancel`, which `gh pr checks` does not count as a failure. The `timeout` on
+      the review step below is what prevents that; it must stay well under the caller's
+      `timeout-minutes`. See calibration.md run 5, which hit it live.
     required: false
-    default: z-ai/glm-4.7
+    default: anthropic/claude-sonnet-5
   structured-output-strict:
     description: >-
       Whether to demand `response_format.json_schema.strict` from the provider. "true" matches the
@@ -74,13 +76,13 @@ inputs:
       inside the package, so a malformed one fails there rather than reaching the PR comment. Set
       alongside `model` — it is part of a model's calibrated configuration, not an independent knob.
     required: false
-    default: "false"
+    default: "true"
   max-price-prompt:
     description: >-
       OpenRouter `max_price` cap for prompt tokens, USD per million. One of three independent cost
       walls (the others being the agent's step budget and the job's timeout-minutes). Default is
-      1.5x the published price of the pinned model — $0.40/M prompt, $1.75/M completion for
-      z-ai/glm-4.7, read from GET /api/v1/models on 2026-09-07. The headroom is
+      1.5x the published price of the pinned model — $2/M prompt, $10/M completion for
+      anthropic/claude-sonnet-5, read from GET /api/v1/models on 2026-09-07. The headroom is
       deliberate: a cap set exactly at the published price leaves a routine price move with no
       eligible endpoint, which fails the request rather than capping it.
 
@@ -92,11 +94,11 @@ inputs:
       `require_parameters: true`, without which a price filter can leave an endpoint eligible that
       cannot honour the request's `response_format` at all. See calibration.md run 3.
     required: false
-    default: "0.6"
+    default: "3"
   max-price-completion:
     description: OpenRouter `max_price` cap for completion tokens, USD per million. See above.
     required: false
-    default: "2.7"
+    default: "15"
   base-sha:
     description: >-
       github.event.pull_request.base.sha. Both SHAs must be present in the checkout, so the caller
@@ -128,6 +130,13 @@ outputs:
       "passed" or "failed". Always one of the two: an incomplete review, an unreadable verdict, and
       a wiring error all resolve to "failed", because "we did not find out" must never read as "we
       looked and it was fine".
+
+      That guarantee covers every failure this action can OBSERVE, and stops at the edge of the
+      process: if the calling job is cancelled — by `timeout-minutes`, or by anyone pressing cancel —
+      this output is never written at all, and the caller's steps that read it never run. The
+      consumer sees a check in `bucket=cancel`, which `gh pr checks` treats as neither pass nor fail
+      and exits 0 on. Keeping the review bounded below the job's timeout is what keeps that edge
+      unreachable in practice; see the `timeout` on the review step and calibration.md run 5.
     value: ${{ steps.review.outputs.verdict }}
 
 runs:
@@ -181,7 +190,18 @@ runs:
         # Load-bearing on `pipefail`, which GitHub's `shell: bash` supplies
         # (`bash --noprofile --norc -eo pipefail`). Without it this captures tee's exit code —
         # always 0 — and the script's whole 0/1/2 contract is silently discarded.
-        node scripts/pr-review.mjs --out "$COMMENT_PATH" | tee "$log" || status=$?
+        #
+        # The `timeout` is what keeps an over-running review a FAILURE rather than a hole. Letting
+        # the calling job's `timeout-minutes` fire instead is not equivalent, and the difference is
+        # the whole gate: a job killed by its own timeout is CANCELLED, every remaining step is
+        # skipped — so no comment, no label, no `exit 1` — and the resulting check lands in
+        # `bucket=cancel`, which `gh pr checks` does NOT count as failing. It exits 0, and `tm-ship`
+        # merges. Observed live on run 5 (calibration.md), which timed out at 20m20s and left the
+        # PR green. Bounded here the step just fails, which is `bucket=fail` and a red check.
+        #
+        # Keep this comfortably BELOW the caller's `timeout-minutes` so this bound is the one that
+        # fires; the job's remains the backstop for a hang somewhere other than the script.
+        timeout 900 node scripts/pr-review.mjs --out "$COMMENT_PATH" | tee "$log" || status=$?
 
         # `errexit` is on too, and from here every line has to run: an abort between this point and
         # the $GITHUB_OUTPUT write below would leave `outputs.verdict` EMPTY rather than `failed`,

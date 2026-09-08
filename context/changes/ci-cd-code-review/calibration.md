@@ -18,6 +18,7 @@ that was right (agreed / false positive / false negative).
 | 2 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34159617713) | `04055d95` | `anthropic/claude-sonnet-5` | unset | 14 | n/r | 2 / 6 / 3 / 7 / 5 | failed | **false negative** |
 | 3 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34161583108) | `70a7dae2` | `z-ai/glm-4.7` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — the review genuinely did not complete |
 | 4 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34162833528) | `e9cbff02` | `z-ai/glm-4.7` + `require_parameters` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — did not complete |
+| 5 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34245777802) | `24f59b04` | `z-ai/glm-4.7` + `strict: false` | 0 | 14 | — | — | **cancelled** — job timeout at 20m20s | **wrong, and it left the PR green** |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -131,14 +132,70 @@ models"*, and strict `json_schema` at the end of a 20-step loop is exactly the d
 failed. That is a package change, not a config one, and it should be its own experiment with its own
 calibration rows — not folded into a phase that needs a working reviewer.
 
+## What run 5 established: a job timeout silently un-gates the merge
+
+Run 5 was glm-4.7's third and last attempt, adding `structuredOutputs: { strict: false }` — the
+provider's documented allowance for "less strict models", and the one lever runs 3 and 4 never
+touched. It did not return a verdict either. It ran until the job's `timeout-minutes: 20` killed it
+at **20m20s**.
+
+**The far more important finding is what the timeout did to the gate.** A job killed by
+`timeout-minutes` is **cancelled**, and every remaining step is skipped:
+
+```
+3 Run ./.github/actions/ai-code-review -> cancelled
+4 Post the review comment              -> skipped
+5 Apply the verdict label              -> skipped
+6 Fail the check when the verdict...   -> skipped
+```
+
+No comment. No label (the `ai-cr:failed` on the PR was stale, left over from run 4). No `exit 1`.
+And the resulting check:
+
+```
+review: state=CANCELLED bucket=cancel
+gh pr checks 37           → exit 0
+gh pr checks 37 --watch   → exit 0
+```
+
+`bucket=cancel` is neither pass nor fail, and `gh pr checks` only exits non-zero on `fail`.
+**`tm-ship` reads exactly that exit code and, on 0, proceeds to merge.** A review that never ran to
+completion would have let the merge through — the precise failure the whole design exists to
+prevent, and the opposite of what Phase 4 recorded.
+
+The Phase 4 claim that an incomplete review always resolves to `failed` was **wrong**. It holds for
+every failure the *script* can observe, and the script's 0/1/2 contract is sound. It does not hold
+when the *job* is cancelled out from under it, because the steps that carry the verdict never run.
+`continue-on-error` cannot help: it handles a failing step, not a cancelled job.
+
+### The fix
+
+**A step-level `timeout 900` around the script**, in the composite action. Bounded there, an
+over-running review is an ordinary *step* failure — `bucket=fail`, red check, `gh pr checks` exits
+1, `tm-ship` stops. The job's `timeout-minutes: 20` goes back to being a genuine backstop for a hang
+somewhere other than the script.
+
+`if: always()` was also added to the workflow's comment, label, and fail steps. That is defence in
+depth, **not** the fix: a job cancelled by GitHub reports `bucket=cancel` no matter what those steps
+do. Only keeping the cancellation from happening keeps the gate honest.
+
+**Generalisable lesson.** "The check goes red on failure" is not one property. A CI gate has at
+least three non-success shapes — failed, cancelled, and skipped — and a consumer that branches on
+an exit code may treat only one of them as blocking. Any gate whose value is *stopping* something
+needs testing against a timeout and a cancellation, not just against a failing assertion.
+
 ### Standing conclusion on model choice
 
-Three models now have evidence against them at this job — `claude-haiku-4.5` (package README),
-and `z-ai/glm-4.7` (runs 3 and 4) — against one with evidence for it, `anthropic/claude-sonnet-5`
+Two models now have evidence against them at this job — `claude-haiku-4.5` (package README) and
+`z-ai/glm-4.7` (runs 3, 4 and 5) — against one with evidence for it, `anthropic/claude-sonnet-5`
 (runs 1 and 2, both completing with all five criteria). The demanding part of this workload is
 emitting a valid structured object after a long tool loop, and it is not predicted by a model's
 advertised `tools` + `structured_outputs` support. **Treat any future model swap as an experiment
 requiring its own calibration runs, never a config edit.**
+
+`z-ai/glm-4.7` is settled: three attempts, three non-completions, across strict and non-strict
+enforcement and with provider routing corrected. Every lever identified as plausible has been
+pulled. Do not try it again without a new hypothesis.
 
 ## Open
 

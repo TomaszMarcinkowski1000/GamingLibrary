@@ -90,7 +90,15 @@ jobs:
           # and nothing that leaves this job should be sweepable by an artifact glob added later.
           comment-path: ${{ runner.temp }}/pr-review-comment.md
 
+      # `always()` on all three of the steps below, so they still run when the action step was
+      # cancelled rather than merely failing — a job killed by `timeout-minutes` skips every plain
+      # step, which on run 5 meant no comment, no label, and no `exit 1`. The composite action now
+      # bounds the script itself so that path should not be reached; this is the belt to that
+      # braces. Note it does not fully close the hole on its own: a job cancelled by GitHub still
+      # reports `bucket=cancel` whatever these steps do, and `gh pr checks` does not count that as
+      # a failure. The step-level `timeout` in the action is what actually keeps the gate honest.
       - name: Post the review comment
+        if: always()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -107,6 +115,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@"$comment" --silent
 
       - name: Apply the verdict label
+        if: always()
         env:
           VERDICT: ${{ steps.review.outputs.verdict }}
         run: |
@@ -143,6 +152,7 @@ jobs:
           gh pr edit "$PR_NUMBER" "${args[@]}"
 
       - name: Fail the check when the verdict is failed
+        if: always()
         env:
           VERDICT: ${{ steps.review.outputs.verdict }}
         run: |
