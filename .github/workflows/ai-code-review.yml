@@ -16,6 +16,35 @@ name: AI code review
 #   PRs therefore become reachable — the migration is the two-stage `workflow_run` pattern, never
 #   `pull_request_target`.
 #
+# INTENDED DIRECTION: replace the OpenRouter agent with anthropics/claude-code-action@v1.
+#
+#   Built this way for the 10xChampion exercise, which wanted a self-owned pipeline. The intent is
+#   to move to Claude Code in GHA, billed against the Claude subscription rather than per-token
+#   OpenRouter credit — this phase spent ~$8 on nine calibration runs at ~$1.50 each.
+#
+#   What survives that switch (roughly 70% of this file): the triggers and the `ai-cr:retry` gate,
+#   the concurrency group, the permissions block, the comment/label/exit-code steps, the
+#   `if: always()` handling, and the `pull_request`-not-`pull_request_target` reasoning above.
+#   `scripts/pr-review/` survives almost entirely — `rubric.mjs` becomes the prompt, `verdict.mjs`
+#   still derives the verdict in code (keep that: `structured_output` is model-authored too), and
+#   `comment.mjs` is unchanged.
+#
+#   What does NOT survive: `packages/code-reviewer` is the agent, and the action brings its own —
+#   the ToolLoopAgent, the step budget, the path-guarded tools, and all the OpenRouter machinery
+#   (`max_price`, `require_parameters`, `structuredOutputs`) go away. Keep the zod schema as the
+#   source of truth and emit it as JSON Schema for the action's `--json-schema`, which validates
+#   the result before returning it as `structured_output` — that is exactly the step every failed
+#   run in calibration.md failed at.
+#
+#   The one real regression risk: our tools are read-only and path-guarded BY CONSTRUCTION, which
+#   is why the `.env` note in the composite action is a warning and not a hole. Claude Code has
+#   Bash and Write, and most published examples enable them. Preserving the threat model means a
+#   deliberately tight `--allowedTools "Read,Glob,Grep"` plus `--disallowedTools`. Easy to get
+#   right, easy to forget.
+#
+#   This is a new change, not an edit — it deletes Phases 1-3 of
+#   context/changes/ci-cd-code-review/plan.md and orphans packages/code-reviewer.
+#
 # What actually stops a merge. Nothing at the GitHub level: branch protection and rulesets both
 # return 403 ("Upgrade to GitHub Pro or make this repository public") on this plan, so a red check
 # does not grey out the merge button. The gate is the `tm-ship` skill, which runs
