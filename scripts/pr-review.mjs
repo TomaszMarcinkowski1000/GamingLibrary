@@ -40,18 +40,30 @@ import { renderComment, renderIncompleteComment, renderProseOnlyComment } from "
 const PACKAGE_ENTRY = new URL("../packages/code-reviewer/dist/index.js", import.meta.url);
 
 /*
- * Pinned, because the caller thresholds the scores and the threshold sits inside the range where
- * the model's own variance lives. Two runs against an identical diff returned 4 and 2 for
- * `test-falsifiability` — same substance, different digit — and the gate is at 3, so the same
- * commit both passed and failed (runs 34159218589 and 34159617713; see calibration.md).
+ * Sampling temperature, and by default UNSET — which is not the obvious choice, so here is why.
  *
- * This does not buy determinism and should not be read as buying it: OpenRouter may route the same
- * model id to a different provider between runs, which is its own source of drift. It removes the
- * one source of variance that is ours to remove. The rubric's decision-band section is the more
- * robust half of the fix — it narrows the range the model is choosing within, rather than only
- * making the choice less random.
+ * It was briefly pinned to 0 to fight the scoring instability that motivated this phase (runs 1 and
+ * 2 returned 4 and 2 for `test-falsifiability` on an identical diff, either side of the gate at 3).
+ * On `anthropic/claude-sonnet-5` that cannot work: **not one of its nine OpenRouter endpoints
+ * declares `temperature` support.** Sending it is therefore either silently dropped, or — together
+ * with `require_parameters: true` below — excludes every endpoint and fails the request outright
+ * with "No endpoints found that can handle the requested parameters". Run 6 did exactly that, in 14
+ * seconds.
+ *
+ * So the rubric's decision-band section is not merely the more robust half of the stability fix on
+ * this model; it is the whole of it. Do not reintroduce a temperature pin here expecting it to
+ * help — check `GET /api/v1/models/<id>/endpoints` for `temperature` in `supported_parameters`
+ * first. The plumbing stays because it is real and a different model may honour it.
  */
-const REVIEW_TEMPERATURE = 0;
+function parseTemperature(env) {
+  const raw = env.REVIEW_TEMPERATURE;
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Expected a number for REVIEW_TEMPERATURE, got ${JSON.stringify(raw)}.`);
+  }
+  return parsed;
+}
 
 function parseArgs(argv) {
   const args = { out: undefined, dryRun: false };
@@ -113,6 +125,13 @@ function buildProviderOptions(env) {
      * Note that the model-level `supported_parameters` in `GET /api/v1/models` is the UNION across
      * a model's endpoints, not a guarantee about the one you get. Checking it tells you some
      * endpoint can do the job; this flag is what makes sure yours does.
+     *
+     * The cost of this flag: it filters on EVERY parameter in the request, not only the ones you
+     * care about, so adding an innocuous option can empty the eligible set and fail the request
+     * with "No endpoints found that can handle the requested parameters". That is what a
+     * `temperature` pin did to Sonnet in run 6 — none of its nine endpoints declares `temperature`
+     * — in 14 seconds, before a single token. Before adding any option to this request, check it
+     * against `GET /api/v1/models/<id>/endpoints`.
      */
     require_parameters: true,
     ...(prompt === undefined && completion === undefined
@@ -196,6 +215,7 @@ async function main() {
   try {
     const config = loadConfig(env);
     const provider = buildProviderOptions(env);
+    const temperature = parseTemperature(env);
     // Always present now: `require_parameters` is unconditional, so there is no longer a case
     // where this review wants no provider routing at all.
     const model = createModel(config, { provider, structuredOutputs: { strict: parseStrict(env) } });
@@ -208,7 +228,7 @@ async function main() {
       description: body,
       diff,
       extraInstructions: REVIEW_RUBRIC,
-      temperature: REVIEW_TEMPERATURE,
+      ...(temperature === undefined ? {} : { temperature }),
     });
   } catch (error) {
     const reason =

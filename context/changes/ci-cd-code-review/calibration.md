@@ -19,6 +19,7 @@ that was right (agreed / false positive / false negative).
 | 3 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34161583108) | `70a7dae2` | `z-ai/glm-4.7` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — the review genuinely did not complete |
 | 4 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34162833528) | `e9cbff02` | `z-ai/glm-4.7` + `require_parameters` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — did not complete |
 | 5 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34245777802) | `24f59b04` | `z-ai/glm-4.7` + `strict: false` | 0 | 14 | — | — | **cancelled** — job timeout at 20m20s | **wrong, and it left the PR green** |
+| 6 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34251866385) | `0b073e09` | `claude-sonnet-5` + `require_parameters` + `temperature: 0` | 0 | 14 | — | — | failed (no eligible endpoint, 14s) | agreed — config error, no provider reached |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -54,13 +55,16 @@ reviewer is worth its cost.
    bar for entering it — you must be able to name the concrete defect that ships on merge.
 2. **Criterion 1 gained explicit 3 and 4 anchors**, plus this exact case as a worked example, so the
    4-versus-2 judgement is resolved by the rubric rather than re-litigated per run.
-3. **Sampling temperature is pinned to 0** (`pr-review.mjs`). The seam existed on
-   `createReviewAgent` all along — its docstring says "pin it low for reproducible eval runs" — but
-   `reviewCode` never forwarded it, so no caller could reach it. This is the smaller half of the
-   fix and buys no determinism on its own: OpenRouter can route one model id to different providers
-   between runs.
+3. ~~**Sampling temperature is pinned to 0**~~ — **withdrawn, see run 6.** This was recorded as the
+   mechanical half of the stability fix. It is inert on `anthropic/claude-sonnet-5`: none of that
+   model's nine OpenRouter endpoints declares `temperature` support, so the pin is either silently
+   dropped or (with `require_parameters: true`) fails the request outright. The plumbing through
+   `reviewCode` was a real gap and stays, unset by default; the claim that it stabilises scores here
+   was wrong.
 
-Runs 3+ test whether that holds. Two runs on one unchanged SHA remain the check for plan item 5.4.
+So changes 1 and 2 — the rubric's decision bands and criterion 1's boundary anchors — are the
+**entire** fix for item 5.4, not the senior partner in a pair. Two runs on one unchanged SHA remain
+the check.
 
 ## What run 3 established: provider routing, not the model
 
@@ -183,6 +187,37 @@ do. Only keeping the cancellation from happening keeps the gate honest.
 least three non-success shapes — failed, cancelled, and skipped — and a consumer that branches on
 an exit code may treat only one of them as blocking. Any gate whose value is *stopping* something
 needs testing against a timeout and a cancellation, not just against a failing assertion.
+
+## What run 6 established: the two Phase 5 fixes were mutually exclusive
+
+Run 6 was the return to `anthropic/claude-sonnet-5` — the model that completed runs 1 and 2. It
+failed in **14 seconds**, before a single token, with:
+
+```
+AI_APICallError: No endpoints found that can handle the requested parameters.
+```
+
+`require_parameters: true` filters on **every** parameter in the request, not only the interesting
+ones. And `GET /api/v1/models/anthropic/claude-sonnet-5/endpoints` shows that **not one of its nine
+endpoints declares `temperature` support** — all nine report `temperature=false`. So the two fixes
+this phase introduced were mutually exclusive on the shipping model: `require_parameters: true`
+(routing safety) and `temperature: 0` (scoring stability) together left zero eligible endpoints.
+
+**The larger correction: the temperature pin never could have worked here.** Not "it worked and we
+traded it away" — on Sonnet it is inert by construction. Without `require_parameters` OpenRouter
+silently drops it; with it, the request fails. Every claim made in this phase about pinning
+temperature to stabilise scores was wrong for the model that actually ships.
+
+So the stability fix for item 5.4 is **the rubric's decision-band section alone**, not a pair of
+levers with prose as the junior partner. That raises what rides on runs 7+: they are now the only
+evidence that the band anchors work.
+
+Resolution: keep `require_parameters: true`, drop the temperature pin. Three of Sonnet's nine
+endpoints report `structured_outputs=false` (the Google ones), so the routing protection is worth
+real money here and is not glm-specific. The temperature plumbing stays in place, unset by default
+and env-driven, because it is genuine and another model may honour it.
+
+**Cost: $0.** The request never reached a provider.
 
 ### Standing conclusion on model choice
 
