@@ -1,0 +1,12 @@
+---
+change_id: cr-evals
+title: Introduce promptfoo for AI agent evaluations
+status: implementing
+created: 2026-09-08
+updated: 2026-09-08
+archived_at: null
+---
+
+## Notes
+
+introducing promptfoo for ai agent evaluations

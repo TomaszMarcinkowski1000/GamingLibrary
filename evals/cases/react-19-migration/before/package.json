@@ -1,0 +1,16 @@
+{
+  "name": "@gaminglibrary/shelf",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^16.14.62",
+    "@types/react-dom": "^16.9.24",
+    "typescript": "^5.9.3"
+  }
+}
