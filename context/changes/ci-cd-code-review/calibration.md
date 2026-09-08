@@ -20,6 +20,8 @@ that was right (agreed / false positive / false negative).
 | 4 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34162833528) | `e9cbff02` | `z-ai/glm-4.7` + `require_parameters` | 0 | 14 | — | — | failed (`no-output-generated`) | agreed — did not complete |
 | 5 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34245777802) | `24f59b04` | `z-ai/glm-4.7` + `strict: false` | 0 | 14 | — | — | **cancelled** — job timeout at 20m20s | **wrong, and it left the PR green** |
 | 6 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34251866385) | `0b073e09` | `claude-sonnet-5` + `require_parameters` + `temperature: 0` | 0 | 14 | — | — | failed (no eligible endpoint, 14s) | agreed — config error, no provider reached |
+| 7 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34252276345) | `0dc4e88e` | `claude-sonnet-5` | unset | 14 | n/r | 4 / 6 / 6 / 7 / 8 | passed | agreed |
+| 8 | [#37](https://github.com/TomaszMarcinkowski1000/GamingLibrary/actions/runs/34252928489) | `0dc4e88e` | `claude-sonnet-5` | unset | 14 | n/r | 3 / 6 / 5 / 7 / 7 | failed | **agreed — it found a real bug runs 1 and 7 missed** |
 
 `n/r` = not recorded. The step count is not currently surfaced anywhere the workflow captures; runs
 from here on should note it from the job log.
@@ -218,6 +220,67 @@ real money here and is not glm-specific. The temperature plumbing stays in place
 and env-driven, because it is genuine and another model may honour it.
 
 **Cost: $0.** The request never reached a provider.
+
+## What runs 7 and 8 established: the rubric works; the instability is discovery, not scoring
+
+These are the first two completing runs under the rewritten rubric, on the same SHA (`0dc4e88e`),
+run 8 triggered by `ai-cr:retry` with nothing changed between them.
+
+**The band discipline works, and both runs show it in their own words.** Run 7 on criterion 1:
+
+> *"this is precisely the 'accepted, unmitigated risk on a pure deterministic function' shape the
+> rubric's own worked example scores as 4, not 1–3. That is not a blocking state per the criterion's
+> band definition (1–3 blocking, 4–10 not)."*
+
+Run 8, same criterion, opening words: *"Blocking band (1-3), because a concrete, nameable defect
+ships silently and undisclosed…"*. Both chose a band explicitly and justified the digit from it.
+That is exactly the behaviour the rewrite was meant to install, and the earlier prose never produced.
+
+**And yet the verdict flipped again: 4 → 3, across the gate at ≤3.** The important part is *why*,
+because it is not what happened in runs 1 and 2.
+
+Run 8 was not scoring the same facts differently. **It found a real bug that runs 1 and 7 both
+missed** — `paths.length === 0` used as the test for "nothing to review", while `paths` drops
+deletions. A PR that only deletes code (a test file, an RLS migration, a route handler) leaves
+`paths` empty, so the review was skipped, `ai-cr:passed` applied with no model call, and the comment
+asserted every changed path was documentation. Reproduced against a synthetic deletion-only range
+before fixing:
+
+```
+changedCount = 1     <- a deleted test file
+paths.length = 0
+excluded     = []    <- not excluded; it is source
+diff chars   = 182   <- the deletion IS in the diff
+prose-only branch taken: true
+```
+
+Having found that, scoring it in the blocking band is a **correct** application of the rubric — the
+bar is "you can name the concrete defect that ships", and run 8 named one. So run 8's `3` was right,
+run 7's `4` was right on the evidence run 7 had, and the gate did the right thing both times.
+
+**This reframes plan item 5.4.** "Scores are stable across two runs on the same unchanged SHA"
+assumes the runs see the same thing. An agent with a 20-step budget exploring a 14-file diff does
+not: it finds a varying subset, and a run that discovers a blocking defect *should* score lower than
+one that misses it. Demanding score stability from such a reviewer is close to demanding it stop
+discovering.
+
+What the rubric fix did deliver is a **narrower and better-reasoned** spread: 4→2 with matching
+rationales became 4→3 with genuinely different evidence. What it cannot deliver is agreement between
+a run that found a bug and a run that did not.
+
+The honest options for 5.4, none of which are rubric prose:
+
+1. **Accept discovery variance and move the threshold** so the gate sits outside the band where
+   correct-but-different runs land. `test-falsifiability` failing at ≤2 rather than ≤3 would have
+   passed run 8's `3` — but it would also have passed run 2's… no: run 2 scored 2. It would have
+   held. This is a `verdict.mjs` change and needs its own justification.
+2. **Accept the flip as correct behaviour** and restate 5.4 as "no run produces a verdict a human
+   disagrees with", which is the property actually wanted. By that measure runs 1, 7 and 8 all pass
+   and only run 2 fails.
+3. **Reduce discovery variance** by narrowing what the agent must cover per run — smaller scored
+   path sets, or more steps. Costs money per run and is unproven.
+
+Recorded, not decided. Doing this properly is a change of its own, not a Phase 5 prose edit.
 
 ### Standing conclusion on model choice
 

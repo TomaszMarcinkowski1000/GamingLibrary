@@ -186,7 +186,7 @@ async function main() {
 
   const title = env.PR_TITLE ?? "";
   const body = env.PR_BODY ?? "";
-  const { paths, diff, excluded, changedCount, truncated } = collectInputs({ baseSha, headSha });
+  const { paths, deleted, diff, excluded, changedCount, truncated } = collectInputs({ baseSha, headSha });
 
   if (args.dryRun) {
     printDryRun({ title, body, paths, diff, excluded, changedCount, truncated });
@@ -194,7 +194,17 @@ async function main() {
   }
 
   // Nothing scoreable in the diff: no model, no cost, and no verdict to argue about.
-  if (paths.length === 0) {
+  //
+  // `deleted` is load-bearing here, not decoration. `paths` drops deletions because the agent
+  // cannot open a file that is gone — so a PR that ONLY deletes code leaves `paths` empty while
+  // having changed plenty. Testing `paths.length` alone auto-passed exactly that PR: no model call,
+  // `ai-cr:passed`, and a comment asserting every changed path was documentation. Deleting a test
+  // file, an RLS migration, or a route handler sailed through the gate. Found by the reviewer
+  // reviewing itself (calibration.md run 8) and reproduced against a synthetic deletion-only range.
+  //
+  // A deletion-only change still gets a real review: `paths` is empty, but the diff carries the
+  // removal and that is what the agent scores.
+  if (paths.length === 0 && deleted.length === 0) {
     emitComment(renderProseOnlyComment({ headSha, changedCount }), args.out);
     console.log("verdict=passed");
     return 0;

@@ -97,6 +97,7 @@ function parseNameStatus(output) {
  * @param {{ baseSha: string, headSha: string, cwd?: string }} options
  * @returns {{
  *   paths: string[],
+ *   deleted: string[],
  *   diff: string,
  *   excluded: string[],
  *   changedCount: number,
@@ -116,6 +117,14 @@ export function collectInputs({ baseSha, headSha, cwd = process.cwd() }) {
   // is handed. The deletion still reaches it through the diff text.
   const paths = kept.filter((entry) => entry.status !== "D").map((entry) => entry.path);
 
+  // Returned separately because `paths.length === 0` is NOT the same question as "this PR changed no
+  // code". A change that only deletes code — a test file, an RLS migration, a route handler — leaves
+  // `kept` non-empty and `paths` empty, and a caller that conflates the two skips the review and
+  // calls it prose-only. That was live: a deletion-only PR auto-passed with no model call and a
+  // comment claiming every changed path was documentation. Ask `kept.length`, via this, for
+  // "was there code here"; ask `paths.length` only for "what can the agent open".
+  const deleted = kept.filter((entry) => entry.status === "D").map((entry) => entry.path);
+
   // Renames only render as renames when both sides are in the pathspec; without the old path git
   // shows the new file as a wholesale addition.
   const diffPathspec = [
@@ -123,7 +132,7 @@ export function collectInputs({ baseSha, headSha, cwd = process.cwd() }) {
   ];
 
   if (diffPathspec.length === 0) {
-    return { paths, diff: "", excluded, changedCount: entries.length, truncated: false };
+    return { paths, deleted, diff: "", excluded, changedCount: entries.length, truncated: false };
   }
 
   const raw = git(["diff", "--no-color", baseSha, headSha, "--", ...diffPathspec], cwd);
@@ -132,5 +141,5 @@ export function collectInputs({ baseSha, headSha, cwd = process.cwd() }) {
     ? `${raw.slice(0, MAX_DIFF_CHARS)}\n\n[diff truncated at ${String(MAX_DIFF_CHARS)} characters — the change is larger than shown]`
     : raw;
 
-  return { paths, diff, excluded, changedCount: entries.length, truncated };
+  return { paths, deleted, diff, excluded, changedCount: entries.length, truncated };
 }
