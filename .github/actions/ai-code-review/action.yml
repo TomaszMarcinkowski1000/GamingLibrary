@@ -1,0 +1,233 @@
+name: AI code review
+description: >-
+  Builds packages/code-reviewer, reviews a pull request's diff against this repository's rubric,
+  and writes a markdown comment plus a passed/failed verdict.
+
+# The review mechanics — install, build, invoke — so the calling workflow is left with only
+# triggers, permissions, and what to do with the verdict.
+#
+# Two constraints that the steps below do not make visible, and that a later edit would break
+# quietly rather than loudly:
+#
+#   1. NEVER create `.env` or `.dev.vars` in this job. A plain checkout has neither (both are
+#      gitignored), and it must stay that way: the agent's `read_file` / `search_code` tools are
+#      path-guarded but NOT gitignore-aware, so anything on disk is readable, and a
+#      prompt-injected model can carry what it read into a finding's `detail` — which the calling
+#      workflow then posts as a public PR comment. The reviewer needs no application secrets; the
+#      only secret here is `openrouter-api-key`, and it reaches the script through `env:`.
+#   2. NEVER upload the agent's raw trace as an artifact. `::add-mask::` redacts log OUTPUT only —
+#      it does not touch uploaded files (see the same note in ci.yml:23-30). Unlike the e2e job's
+#      credentials, which are generated per run and die with their container, OPENROUTER_API_KEY is
+#      a durable repository secret. For the same reason the script's stdout is teed to
+#      $RUNNER_TEMP rather than into the workspace, where an artifact glob could sweep it up.
+#   3. Only ever invoke this from a `pull_request`-triggered workflow, NEVER
+#      `pull_request_target`. All three steps below run code out of the checkout — `npm ci`
+#      lifecycle scripts, the package's own `build` script, then `scripts/pr-review.mjs` — and the
+#      checkout has to be the PR head, because that is what is under review. Under
+#      `pull_request_target` that head is attacker-authored code executing in a job that holds
+#      OPENROUTER_API_KEY, which is a strictly larger hole than either constraint above.
+#      `pull_request_target` exists to keep untrusted content away from secrets, and untrusted
+#      content is this job's whole input.
+#
+# Every pull-request-derived value (title, body, SHAs) reaches the script through a step `env:`
+# block and is read as a shell variable. Interpolating `${{ github.event.pull_request.title }}`
+# into a `run:` body is the canonical GitHub Actions script-injection hole, and a title is
+# attacker-controlled text even when the author is a collaborator. The script completes the other
+# half of that defence by reading these from the environment and never from argv.
+
+inputs:
+  openrouter-api-key:
+    description: OpenRouter API key. Use a dedicated CI key with its own spend cap.
+    required: true
+  model:
+    description: >-
+      OpenRouter model id. Pinned here rather than left to the package default so a change of model
+      is a visible diff. Whatever it names must declare BOTH `tools` and `structured_outputs` in
+      GET /api/v1/models: this is a 20-step tool loop that has to end in a schema-valid object, and
+      a model missing either capability cannot do the job at any price. Do not substitute
+      claude-haiku-4.5 to save money — the package README records that it kept calling tools until
+      the budget ran out, or returned an empty object.
+
+      Do not swap this as a config edit. Advertised `tools` + `structured_outputs` support does NOT
+      predict success here; what this workload actually demands is a schema-valid object at the end
+      of a 20-step tool loop, and that is where cheaper models have failed. Any swap needs its own
+      calibration runs.
+
+      z-ai/glm-4.7 is settled as a dead end, at ~a fifth of the price: three attempts, three
+      non-completions (calibration.md runs 3-5), across strict and non-strict json_schema
+      enforcement and with provider routing corrected. Do not retry it without a new hypothesis.
+
+      A model that cannot close the loop wastes a run rather than passing a bad merge — the script
+      maps both `step-budget-exhausted` and `no-output-generated` to `verdict=failed`. Note the one
+      case where that is NOT enough on its own: if the model runs long enough for the calling job's
+      `timeout-minutes` to fire, the job is CANCELLED, the verdict steps never run, and the check
+      lands in `bucket=cancel`, which `gh pr checks` does not count as a failure. The `timeout` on
+      the review step below is what prevents that; it must stay well under the caller's
+      `timeout-minutes`. See calibration.md run 5, which hit it live.
+    required: false
+    default: anthropic/claude-sonnet-5
+  structured-output-strict:
+    description: >-
+      Whether to demand `response_format.json_schema.strict` from the provider. "true" matches the
+      provider's own default and the configuration runs 1 and 2 completed under; "false" is the
+      documented allowance for "less strict models".
+
+      Relaxing it does not weaken the review: the object is still validated against `reviewSchema`
+      inside the package, so a malformed one fails there rather than reaching the PR comment. Set
+      alongside `model` — it is part of a model's calibrated configuration, not an independent knob.
+    required: false
+    default: "true"
+  max-price-prompt:
+    description: >-
+      OpenRouter `max_price` cap for prompt tokens, USD per million. One of three independent cost
+      walls (the others being the agent's step budget and the job's timeout-minutes). Default is
+      1.5x the published price of the pinned model — $2/M prompt, $10/M completion for
+      anthropic/claude-sonnet-5, read from GET /api/v1/models on 2026-09-07. The headroom is
+      deliberate: a cap set exactly at the published price leaves a routine price move with no
+      eligible endpoint, which fails the request rather than capping it.
+
+      These MUST be changed in the same diff as `model`. A cap sized for one model is not a cost
+      wall for another — left at Sonnet's 3/15 against a $0.40 model it would silently permit
+      roughly a 4x overspend while still looking like a limit.
+
+      A cap alone does not make routing safe. `scripts/pr-review.mjs` also sends
+      `require_parameters: true`, without which a price filter can leave an endpoint eligible that
+      cannot honour the request's `response_format` at all. See calibration.md run 3.
+    required: false
+    default: "3"
+  max-price-completion:
+    description: OpenRouter `max_price` cap for completion tokens, USD per million. See above.
+    required: false
+    default: "15"
+  base-sha:
+    description: >-
+      github.event.pull_request.base.sha. Both SHAs must be present in the checkout, so the caller
+      needs `fetch-depth: 0` — the default depth-1 merge-commit checkout has neither.
+    required: true
+  head-sha:
+    description: >-
+      github.event.pull_request.head.sha. Taken from the event rather than from HEAD so the review
+      still describes a coherent range if the branch is force-pushed mid-run.
+    required: true
+  pr-title:
+    description: The pull request title, as the author wrote it. Untrusted text.
+    required: false
+    default: ""
+  pr-body:
+    description: The pull request description, as the author wrote it. Untrusted text.
+    required: false
+    default: ""
+  comment-path:
+    description: >-
+      Where to write the rendered markdown comment. Workspace-relative by default; point it at the
+      runner temp directory if the calling workflow ever grows an artifact upload.
+    required: false
+    default: pr-review-comment.md
+
+outputs:
+  verdict:
+    description: >-
+      "passed" or "failed". Always one of the two: an incomplete review, an unreadable verdict, and
+      a wiring error all resolve to "failed", because "we did not find out" must never read as "we
+      looked and it was fine".
+
+      That guarantee covers every failure this action can OBSERVE, and stops at the edge of the
+      process: if the calling job is cancelled — by `timeout-minutes`, or by anyone pressing cancel —
+      this output is never written at all, and the caller's steps that read it never run. The
+      consumer sees a check in `bucket=cancel`, which `gh pr checks` treats as neither pass nor fail
+      and exits 0 on. Keeping the review bounded below the job's timeout is what keeps that edge
+      unreachable in practice; see the `timeout` on the review step and calibration.md run 5.
+    value: ${{ steps.review.outputs.verdict }}
+
+runs:
+  using: composite
+  steps:
+    # `packages/*` are standalone npm projects, not root workspaces (see the `packages` job in
+    # ci.yml): the root `npm ci` installs none of their dependencies, and `dist/` is gitignored. So
+    # this action installs and builds the reviewer itself and may never assume a prebuilt package.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: packages/code-reviewer/package-lock.json
+
+    - name: Install the reviewer's dependencies
+      shell: bash
+      working-directory: packages/code-reviewer
+      run: npm ci
+
+    - name: Build the reviewer
+      shell: bash
+      working-directory: packages/code-reviewer
+      run: npm run build
+
+    # Runs from $GITHUB_WORKSPACE, which the script needs: it shells out to `git diff` and hands
+    # the agent `process.cwd()` as its path-guard root.
+    - name: Review the pull request
+      id: review
+      shell: bash
+      # Belt and braces. This is honoured for composite steps, and it is what lets the caller post
+      # the comment before failing the job. If it ever stops being honoured, the calling workflow's
+      # `uses:` step needs its own `continue-on-error: true` — the verdict output is still written
+      # before this step exits non-zero, so the caller loses nothing either way.
+      continue-on-error: true
+      env:
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        OPENROUTER_MODEL: ${{ inputs.model }}
+        STRUCTURED_OUTPUT_STRICT: ${{ inputs.structured-output-strict }}
+        MAX_PRICE_PROMPT: ${{ inputs.max-price-prompt }}
+        MAX_PRICE_COMPLETION: ${{ inputs.max-price-completion }}
+        COMMENT_PATH: ${{ inputs.comment-path }}
+      run: |
+        # Outside the workspace on purpose — see constraint 2 in this file's header.
+        log="$RUNNER_TEMP/pr-review.log"
+
+        status=0
+        # Load-bearing on `pipefail`, which GitHub's `shell: bash` supplies
+        # (`bash --noprofile --norc -eo pipefail`). Without it this captures tee's exit code —
+        # always 0 — and the script's whole 0/1/2 contract is silently discarded.
+        #
+        # The `timeout` is what keeps an over-running review a FAILURE rather than a hole. Letting
+        # the calling job's `timeout-minutes` fire instead is not equivalent, and the difference is
+        # the whole gate: a job killed by its own timeout is CANCELLED, every remaining step is
+        # skipped — so no comment, no label, no `exit 1` — and the resulting check lands in
+        # `bucket=cancel`, which `gh pr checks` does NOT count as failing. It exits 0, and `tm-ship`
+        # merges. Observed live on run 5 (calibration.md), which timed out at 20m20s and left the
+        # PR green. Bounded here the step just fails, which is `bucket=fail` and a red check.
+        #
+        # Keep this comfortably BELOW the caller's `timeout-minutes` so this bound is the one that
+        # fires; the job's remains the backstop for a hang somewhere other than the script.
+        timeout 900 node scripts/pr-review.mjs --out "$COMMENT_PATH" | tee "$log" || status=$?
+
+        # `errexit` is on too, and from here every line has to run: an abort between this point and
+        # the $GITHUB_OUTPUT write below would leave `outputs.verdict` EMPTY rather than `failed`,
+        # which reads as neither verdict and silently un-gates the caller. Reachable case: a
+        # `comment-path` naming a directory that does not exist makes the redirect below fail.
+        # Failures are handled explicitly from here rather than by aborting the step.
+        set +e
+
+        # Exit 2 is a wiring error: the script stopped before rendering anything. The caller posts
+        # a comment unconditionally, so hand it one rather than a missing-file failure that says
+        # nothing about what went wrong.
+        if [ ! -f "$COMMENT_PATH" ]; then
+          printf '### Agentic code review\n\nThe review did not run (exit %s) and produced no comment. See this run'"'"'s logs.\n' "$status" > "$COMMENT_PATH"
+        fi
+
+        # Read the verdict back from the script's own output rather than inferring it from the exit
+        # code: `failed` and `did not complete` are both non-zero, and only the script knows which.
+        # An absent or unparseable verdict falls to `failed` — see the output's description.
+        #
+        # `tail -n 1` is what makes a model-influenced diff unable to forge a verdict: the pattern
+        # is anchored, and the script's `verdict=` line is its LAST stdout write on every branch
+        # (pr-review.mjs:133,169,188,196). Anything printed after that line would break this.
+        verdict="$(grep -E '^verdict=(passed|failed)$' "$log" | tail -n 1 | cut -d= -f2)"
+        if [ -z "$verdict" ]; then
+          verdict=failed
+        fi
+
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+        exit "$status"

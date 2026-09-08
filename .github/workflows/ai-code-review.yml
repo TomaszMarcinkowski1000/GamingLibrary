@@ -1,0 +1,194 @@
+name: AI code review
+
+# Runs packages/code-reviewer over every pull request to `main` and turns its verdict into three
+# things: a comment, exactly one of the two `ai-cr:*` verdict labels, and the job's exit code.
+#
+# Why the trigger is plain `pull_request` and must stay that way:
+#
+#   The repository is private and has no forks, so every PR head is written by someone who already
+#   has push access — `pull_request` runs it with the secrets it needs and that is proportionate.
+#   `pull_request_target` would be actively WRONG here, not merely unnecessary: it exists to keep
+#   untrusted content away from secrets, and untrusted content is this job's entire input. The
+#   composite action runs three things out of the checkout (`npm ci` lifecycle scripts, the
+#   package's `build`, then scripts/pr-review.mjs), and that checkout has to be the PR head because
+#   the head is what is under review. Under `pull_request_target` those would be attacker-authored
+#   code executing in a job holding OPENROUTER_API_KEY. If this repo ever goes public — and fork
+#   PRs therefore become reachable — the migration is the two-stage `workflow_run` pattern, never
+#   `pull_request_target`.
+#
+# INTENDED DIRECTION: replace the OpenRouter agent with anthropics/claude-code-action@v1.
+#
+#   Built this way for the 10xChampion exercise, which wanted a self-owned pipeline. The intent is
+#   to move to Claude Code in GHA, billed against the Claude subscription rather than per-token
+#   OpenRouter credit — this phase spent ~$8 on nine calibration runs at ~$1.50 each.
+#
+#   What survives that switch (roughly 70% of this file): the triggers and the `ai-cr:retry` gate,
+#   the concurrency group, the permissions block, the comment/label/exit-code steps, the
+#   `if: always()` handling, and the `pull_request`-not-`pull_request_target` reasoning above.
+#   `scripts/pr-review/` survives almost entirely — `rubric.mjs` becomes the prompt, `verdict.mjs`
+#   still derives the verdict in code (keep that: `structured_output` is model-authored too), and
+#   `comment.mjs` is unchanged.
+#
+#   What does NOT survive: `packages/code-reviewer` is the agent, and the action brings its own —
+#   the ToolLoopAgent, the step budget, the path-guarded tools, and all the OpenRouter machinery
+#   (`max_price`, `require_parameters`, `structuredOutputs`) go away. Keep the zod schema as the
+#   source of truth and emit it as JSON Schema for the action's `--json-schema`, which validates
+#   the result before returning it as `structured_output` — that is exactly the step every failed
+#   run in calibration.md failed at.
+#
+#   The one real regression risk: our tools are read-only and path-guarded BY CONSTRUCTION, which
+#   is why the `.env` note in the composite action is a warning and not a hole. Claude Code has
+#   Bash and Write, and most published examples enable them. Preserving the threat model means a
+#   deliberately tight `--allowedTools "Read,Glob,Grep"` plus `--disallowedTools`. Easy to get
+#   right, easy to forget.
+#
+#   This is a new change, not an edit — it deletes Phases 1-3 of
+#   context/changes/ci-cd-code-review/plan.md and orphans packages/code-reviewer.
+#
+# What actually stops a merge. Nothing at the GitHub level: branch protection and rulesets both
+# return 403 ("Upgrade to GitHub Pro or make this repository public") on this plan, so a red check
+# does not grey out the merge button. The gate is the `tm-ship` skill, which runs
+# `gh pr checks <n> --watch` and refuses to merge on ANY failing check — name-agnostic, so this
+# job's `exit 1` blocks it exactly as a red `ci` does.
+
+on:
+  pull_request:
+    branches: [main]
+    # `labeled` is the retry hook — see the `if:` on the job, which throws away every labeling
+    # event except `ai-cr:retry`. The workflow removes that label at the end, so a retry is
+    # one-shot and cannot loop. Removing a label emits `unlabeled`, which is deliberately not in
+    # this list.
+    types: [opened, synchronize, reopened, labeled]
+
+# Explicit, so the single job below is the only place any scope is granted and a job added later
+# starts from nothing rather than inheriting this one's write access.
+permissions: {}
+
+jobs:
+  review:
+    if: github.event.action != 'labeled' || github.event.label.name == 'ai-cr:retry'
+    runs-on: ubuntu-latest
+    # Provisional. `npm ci` + `npm run build` for the package is ~40s; the agent's 20-step budget
+    # dominates the rest and is itself bounded (create-agent.ts forces an answer on the last step).
+    # This is the outermost of three independent cost walls — the others are that step budget and
+    # the OpenRouter `max_price` caps in the action. Tighten it to ~2-3x the measured run once
+    # calibration (plan Phase 5) has a few real numbers.
+    timeout-minutes: 20
+    # Keyed on the PR number rather than the ref so it survives a force-push: a second push to the
+    # same PR cancels the review still running against the SHA it just replaced, instead of racing
+    # it to post the older verdict last.
+    concurrency:
+      group: ai-code-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      # `issues: write` is what governs BOTH the comment and the labels: a pull request is an issue
+      # in GitHub's data model, and both go through
+      # POST /repos/{o}/{r}/issues/{n}/{comments,labels}. `pull-requests: write` is what `gh pr
+      # edit` needs to resolve and update the PR itself.
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `git diff <base.sha> <head.sha>` needs both commits present. The default depth-1
+          # checkout of the merge ref has neither.
+          fetch-depth: 0
+
+      - id: review
+        uses: ./.github/actions/ai-code-review
+        # The action's own review step already carries this, but `continue-on-error` inside a
+        # composite action is not honoured by the runner — so it has to be here too, or a failed
+        # verdict aborts the job before the comment is posted. A failed step's `outputs` are still
+        # readable, and the action writes `verdict` to $GITHUB_OUTPUT before it exits non-zero.
+        continue-on-error: true
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          # Both from the event payload, not from HEAD: the review then still describes a coherent
+          # range if the branch is force-pushed mid-run.
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          # Untrusted text. It reaches the script through the action's step `env:` and is read as a
+          # shell variable there — never interpolated into a `run:` body, here or in the action.
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-body: ${{ github.event.pull_request.body }}
+          # Outside $GITHUB_WORKSPACE on purpose: the rendered comment quotes model-authored text,
+          # and nothing that leaves this job should be sweepable by an artifact glob added later.
+          comment-path: ${{ runner.temp }}/pr-review-comment.md
+
+      # `always()` on all three of the steps below, so they still run when the action step was
+      # cancelled rather than merely failing — a job killed by `timeout-minutes` skips every plain
+      # step, which on run 5 meant no comment, no label, and no `exit 1`. The composite action now
+      # bounds the script itself so that path should not be reached; this is the belt to that
+      # braces. Note it does not fully close the hole on its own: a job cancelled by GitHub still
+      # reports `bucket=cancel` whatever these steps do, and `gh pr checks` does not count that as
+      # a failure. The step-level `timeout` in the action is what actually keeps the gate honest.
+      - name: Post the review comment
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          comment="$RUNNER_TEMP/pr-review-comment.md"
+
+          # The action renders its own comment for every outcome it can see, including "the review
+          # did not complete". This covers the one it cannot: a failure BEFORE the review step ran
+          # at all (a broken `npm ci`, say), which leaves no file. Post something either way — a
+          # silent PR is the one outcome that reads as "no review was needed".
+          if [ ! -f "$comment" ]; then
+            printf '### AI code review\n\nThe review job failed before producing a comment — see [the run](%s). Treated as **failed**.\n' "$RUN_URL" > "$comment"
+          fi
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@"$comment" --silent
+
+      - name: Apply the verdict label
+        if: always()
+        env:
+          VERDICT: ${{ steps.review.outputs.verdict }}
+        run: |
+          # Empty means the action never reached its $GITHUB_OUTPUT write. "We did not find out" is
+          # not "we looked and it was fine", so it resolves to failed — the same rule the action
+          # itself applies to an unparseable verdict.
+          verdict="${VERDICT:-failed}"
+
+          if [ "$verdict" = "passed" ]; then
+            add="ai-cr:passed"
+            opposite="ai-cr:failed"
+          else
+            add="ai-cr:failed"
+            opposite="ai-cr:passed"
+          fi
+
+          # The two verdict labels are mutually exclusive, so the opposite one always comes off.
+          # `ai-cr:retry` comes off unconditionally: it is a one-shot escape hatch, and leaving it
+          # on would make every later push arrive at a PR that is already primed to re-run.
+          #
+          # Both removals are filtered against the labels the PR actually carries. `gh pr edit`
+          # validates label names client-side, and this step is the first thing that would notice a
+          # label renamed or deleted out from under the workflow — failing it over a no-op removal
+          # would report that as a review failure.
+          current="$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name')"
+
+          args=(--add-label "$add")
+          for label in "$opposite" "ai-cr:retry"; do
+            if printf '%s\n' "$current" | grep -Fxq "$label"; then
+              args+=(--remove-label "$label")
+            fi
+          done
+
+          gh pr edit "$PR_NUMBER" "${args[@]}"
+
+      - name: Fail the check when the verdict is failed
+        if: always()
+        env:
+          VERDICT: ${{ steps.review.outputs.verdict }}
+        run: |
+          verdict="${VERDICT:-failed}"
+          echo "verdict=$verdict"
+
+          if [ "$verdict" != "passed" ]; then
+            echo "::error title=AI code review failed::The review scored this PR below the threshold, or did not complete. Read the comment on the PR; add the ai-cr:retry label to run it again."
+            exit 1
+          fi

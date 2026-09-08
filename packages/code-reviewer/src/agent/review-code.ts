@@ -14,10 +14,25 @@ export interface ReviewOptions {
   paths: readonly string[];
   /** Extra context: the change's intent, the surrounding conventions, a checklist. */
   context?: string;
+  /** One-line title of the change under review. */
+  title?: string;
+  /** The author's own description of the change. */
+  description?: string;
+  /** Unified diff of the change; the agent has no git tool, so the delta only reaches it here. */
+  diff?: string;
+  /** Appended to the standing instructions — a project checklist, say. See `createReviewAgent`. */
+  extraInstructions?: string;
   /** Overrides the default stop condition for this run. */
   stopWhen?: ReviewStopCondition;
   /** How many steps this run may take. See `createReviewAgent`. */
   stepBudget?: number;
+  /**
+   * Sampling temperature. `createReviewAgent` has always accepted one; forwarding it here is what
+   * lets a caller that never touches the agent directly — a CI script, an eval harness — pin it.
+   * Left unset the provider's default applies, and a scored review is then free to move between
+   * runs on an identical input, which matters when a caller thresholds the scores.
+   */
+  temperature?: number;
 }
 
 /**
@@ -34,18 +49,31 @@ export async function reviewCode({
   rootDir,
   paths,
   context,
+  title,
+  description,
+  diff,
+  extraInstructions,
   stopWhen,
   stepBudget,
+  temperature,
 }: ReviewOptions): Promise<Review> {
   const agent = createReviewAgent({
     model,
     rootDir,
+    ...(extraInstructions === undefined ? {} : { extraInstructions }),
     ...(stopWhen === undefined ? {} : { stopWhen }),
     ...(stepBudget === undefined ? {} : { stepBudget }),
+    ...(temperature === undefined ? {} : { temperature }),
   });
 
   const budget = resolveStepBudget(stepBudget, stopWhen);
-  const prompt = buildReviewPrompt({ paths, ...(context === undefined ? {} : { context }) });
+  const prompt = buildReviewPrompt({
+    paths,
+    ...(context === undefined ? {} : { context }),
+    ...(title === undefined ? {} : { title }),
+    ...(description === undefined ? {} : { description }),
+    ...(diff === undefined ? {} : { diff }),
+  });
 
   let result;
   try {
