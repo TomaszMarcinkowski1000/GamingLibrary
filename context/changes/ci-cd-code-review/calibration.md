@@ -270,15 +270,20 @@ a run that found a bug and a run that did not.
 
 The honest options for 5.4, none of which are rubric prose:
 
-1. **Accept discovery variance and move the threshold** so the gate sits outside the band where
-   correct-but-different runs land. `test-falsifiability` failing at ≤2 rather than ≤3 would have
-   passed run 8's `3` — but it would also have passed run 2's… no: run 2 scored 2. It would have
-   held. This is a `verdict.mjs` change and needs its own justification.
-2. **Accept the flip as correct behaviour** and restate 5.4 as "no run produces a verdict a human
-   disagrees with", which is the property actually wanted. By that measure runs 1, 7 and 8 all pass
-   and only run 2 fails.
-3. **Reduce discovery variance** by narrowing what the agent must cover per run — smaller scored
-   path sets, or more steps. Costs money per run and is unproven.
+1. ~~**Move the threshold** so the gate sits outside the band where correct-but-different runs
+   land~~ — **rejected, and worth writing down why.** Lowering `test-falsifiability` to fail at ≤2
+   looks like it buys stability, but check it against the four completing runs: run 1 (4) passes
+   ✓, run 7 (4) passes ✓, run 2 (2) still fails ✗ — so it does *not* fix the one verdict we judged
+   wrong — and run 8 (3) would now **pass**, letting through the run that found a real, shipping
+   bug. It fixes nothing and breaks the best result we have. Stability bought by moving a gate away
+   from where the model actually discriminates is not stability, it is a wider blind spot.
+2. **Accept the flip as correct behaviour** and restate 5.4 as *"no run produces a verdict a human
+   disagrees with"*, which is the property actually wanted — the plan asked for score stability as
+   a *proxy* for trustworthy verdicts. By that measure runs 1, 7 and 8 all pass and only run 2
+   fails, which is a far better record than "the scores moved" suggests.
+3. **Reduce discovery variance** by narrowing what each run must cover — smaller scored path sets,
+   or a larger step budget so a run is less likely to stop before finding what another found.
+   Costs money per run and is unproven here.
 
 Recorded, not decided. Doing this properly is a change of its own, not a Phase 5 prose edit.
 
