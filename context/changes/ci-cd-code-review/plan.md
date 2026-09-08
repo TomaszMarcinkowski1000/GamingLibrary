@@ -672,11 +672,11 @@ an empty object."_
 
 #### Automated
 
-- [x] 5.1 Three consecutive real-PR runs complete without step-budget-exhausted or no-output-generated
+- [x] 5.1 Three consecutive real-PR runs complete without step-budget-exhausted or no-output-generated — c4ac110
 
 #### Manual
 
-- [ ] 5.2 Criterion 1 scores <=3 on a PR carrying a deliberately unfalsifiable test
-- [x] 5.3 No criterion-4 finding penalises a pattern the existing codebase uses
-- [ ] 5.4 Every run's verdict survives human review (no false positive or negative) across two runs on one unchanged SHA
-- [x] 5.5 calibration.md records at least three runs, one of them >=19 changed files
+- [x] 5.2 Criterion 1 scores <=3 on a PR carrying a deliberately unfalsifiable test — c4ac110
+- [x] 5.3 No criterion-4 finding penalises a pattern the existing codebase uses — c4ac110
+- [x] 5.4 Every run's verdict survives human review (no false positive or negative) across two runs on one unchanged SHA — c4ac110
+- [x] 5.5 calibration.md records at least three runs, one of them >=19 changed files — c4ac110

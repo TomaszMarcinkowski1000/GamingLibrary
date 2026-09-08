@@ -326,8 +326,20 @@ pulled. Do not try it again without a new hypothesis.
 
 - **No run yet on a PR with ≥19 changed files.** The 20-step budget is untested at the size of this
   repository's average PR (19.4 changed files, though prose filtering removes most). Plan item 5.5.
-- **No run yet on a deliberately unfalsifiable test.** Criterion 1's floor is unexercised — nothing
-  has yet driven it into the 1–3 band on purpose. Plan item 5.2.
+- **No run yet on a deliberately unfalsifiable test — and plan item 5.2 was closed anyway.** Marked
+  done on the user's decision, not on evidence. Recorded here so the row is not later mistaken for
+  a result.
+
+  What that leaves untested is specific and worth naming: **5.2 is the only criterion that checks
+  the gate stops something bad.** Runs 1, 7, 8 and 9 all demonstrate it lets good work through, and
+  run 8 shows it blocking on a defect the agent *found* — but nothing has yet driven criterion 1
+  into the 1–3 band with the case it was designed for: a test that cannot go red, which reads as
+  coverage while guarding nothing. That is the failure mode the whole criterion exists for, and the
+  reason it is the hard blocker.
+
+  The check is cheap if it is ever wanted: open a PR adding a test named for cross-user isolation
+  that asserts against a stub instead of the database (the rubric's own "1" example), and confirm
+  criterion 1 lands ≤3 with a red check. One run, ~$1.50.
 - **Cost.** Runs 1 and 2 cost ~$1.50 each on `anthropic/claude-sonnet-5`. Run 3 onwards is on
   `z-ai/glm-4.7` at roughly a fifth of that; whether the cheaper model holds the scoring quality is
   itself an open calibration question, and the first thing rows 3+ should answer.
