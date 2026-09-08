@@ -80,6 +80,20 @@ function parsePrice(value) {
   return parsed;
 }
 
+/*
+ * Whether the request demands strict `json_schema` enforcement from the provider. Defaults to true,
+ * matching both the provider's own default and the configuration under which runs 1 and 2 completed
+ * — so leaving this unset changes nothing.
+ *
+ * It exists because strict enforcement at the END of a 20-step tool loop is the specific thing
+ * cheaper models have failed here (calibration.md runs 3 and 4). Relaxing it does not relax the
+ * result: the object is still validated against `reviewSchema` inside the package, so a malformed
+ * review fails there rather than reaching the comment.
+ */
+function parseStrict(env) {
+  return env.STRUCTURED_OUTPUT_STRICT !== "false";
+}
+
 function buildProviderOptions(env) {
   const prompt = parsePrice(env.MAX_PRICE_PROMPT);
   const completion = parsePrice(env.MAX_PRICE_COMPLETION);
@@ -184,7 +198,7 @@ async function main() {
     const provider = buildProviderOptions(env);
     // Always present now: `require_parameters` is unconditional, so there is no longer a case
     // where this review wants no provider routing at all.
-    const model = createModel(config, { provider });
+    const model = createModel(config, { provider, structuredOutputs: { strict: parseStrict(env) } });
 
     review = await reviewCode({
       model,

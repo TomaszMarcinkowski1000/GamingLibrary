@@ -50,22 +50,37 @@ inputs:
 
       Do not swap this as a config edit. Advertised `tools` + `structured_outputs` support does NOT
       predict success here; what this workload actually demands is a schema-valid object at the end
-      of a 20-step tool loop, and that is where cheaper models have failed. z-ai/glm-4.7 was tried
-      on 2026-09-07 at a fifth of the price and returned `no-output-generated` twice, once with
-      provider routing corrected (calibration.md runs 3 and 4). Any future swap needs its own
+      of a 20-step tool loop, and that is where cheaper models have failed. Any swap needs its own
       calibration runs.
+
+      Currently on trial: z-ai/glm-4.7 at ~a fifth of Sonnet's price, third attempt. Runs 3 and 4
+      returned `no-output-generated` under strict json_schema enforcement; this attempt pairs it
+      with `structured-output-strict: false`, the one untried lever. If it fails, revert model,
+      both max-price caps, and that input together — and treat glm-4.7 as settled.
+      anthropic/claude-sonnet-5 ($2/$10, caps 3/15, strict true) is the known-good fallback.
 
       The failure mode is at least safe: a model that cannot close the loop exhausts the step budget
       or returns no object, both of which the script maps to `verdict=failed` and a red check. A
       wasted run, never a false green.
     required: false
-    default: anthropic/claude-sonnet-5
+    default: z-ai/glm-4.7
+  structured-output-strict:
+    description: >-
+      Whether to demand `response_format.json_schema.strict` from the provider. "true" matches the
+      provider's own default and the configuration runs 1 and 2 completed under; "false" is the
+      documented allowance for "less strict models".
+
+      Relaxing it does not weaken the review: the object is still validated against `reviewSchema`
+      inside the package, so a malformed one fails there rather than reaching the PR comment. Set
+      alongside `model` — it is part of a model's calibrated configuration, not an independent knob.
+    required: false
+    default: "false"
   max-price-prompt:
     description: >-
       OpenRouter `max_price` cap for prompt tokens, USD per million. One of three independent cost
       walls (the others being the agent's step budget and the job's timeout-minutes). Default is
-      1.5x the published price of the pinned model — $2/M prompt, $10/M completion for
-      anthropic/claude-sonnet-5, read from GET /api/v1/models on 2026-09-07. The headroom is
+      1.5x the published price of the pinned model — $0.40/M prompt, $1.75/M completion for
+      z-ai/glm-4.7, read from GET /api/v1/models on 2026-09-07. The headroom is
       deliberate: a cap set exactly at the published price leaves a routine price move with no
       eligible endpoint, which fails the request rather than capping it.
 
@@ -77,11 +92,11 @@ inputs:
       `require_parameters: true`, without which a price filter can leave an endpoint eligible that
       cannot honour the request's `response_format` at all. See calibration.md run 3.
     required: false
-    default: "3"
+    default: "0.6"
   max-price-completion:
     description: OpenRouter `max_price` cap for completion tokens, USD per million. See above.
     required: false
-    default: "15"
+    default: "2.7"
   base-sha:
     description: >-
       github.event.pull_request.base.sha. Both SHAs must be present in the checkout, so the caller
@@ -154,6 +169,7 @@ runs:
         PR_BODY: ${{ inputs.pr-body }}
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         OPENROUTER_MODEL: ${{ inputs.model }}
+        STRUCTURED_OUTPUT_STRICT: ${{ inputs.structured-output-strict }}
         MAX_PRICE_PROMPT: ${{ inputs.max-price-prompt }}
         MAX_PRICE_COMPLETION: ${{ inputs.max-price-completion }}
         COMMENT_PATH: ${{ inputs.comment-path }}

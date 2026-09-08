@@ -11,6 +11,18 @@ export interface CreateModelOptions {
    * OpenRouter owns.
    */
   provider?: OpenRouterChatSettings["provider"];
+  /**
+   * Whether the outbound request sets `response_format.json_schema.strict`.
+   * The provider defaults it to `true`, which not every model honours well at
+   * the end of a long tool loop — relaxing it is the documented lever for
+   * "less strict models". Exposed because the choice belongs to the caller
+   * that picked the model, not to this package.
+   *
+   * Relaxing provider-side enforcement does not weaken the result: the review
+   * is still parsed and validated against `reviewSchema` before it is
+   * returned, so a malformed object fails here rather than reaching a caller.
+   */
+  structuredOutputs?: OpenRouterChatSettings["structuredOutputs"];
 }
 
 /**
@@ -29,5 +41,8 @@ export function createModel(config: Config, options: CreateModelOptions = {}): L
     ...(config.OPENROUTER_APP_URL ? { appUrl: config.OPENROUTER_APP_URL } : {}),
   });
 
-  return openrouter(config.OPENROUTER_MODEL, options.provider ? { provider: options.provider } : {});
+  return openrouter(config.OPENROUTER_MODEL, {
+    ...(options.provider ? { provider: options.provider } : {}),
+    ...(options.structuredOutputs ? { structuredOutputs: options.structuredOutputs } : {}),
+  });
 }
