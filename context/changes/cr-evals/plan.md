@@ -754,15 +754,15 @@ not depend on promptfoo.
 
 #### Automated
 
-- [x] 4.1 `--repeat 3` completes 9 cells without a crash or a hung cell
-- [x] 4.2 `results.json` is written with per-repeat cost and latency
-- [x] 4.3 The calibrated threshold produces a mixed result, not a uniform sweep
-- [x] 4.4 `results.json` is gitignored; `git status` clean after a run
-- [x] 4.5 `npm run lint`, `npm run typecheck`, `npm test` pass
+- [x] 4.1 `--repeat 3` completes 9 cells without a crash or a hung cell — 28682ab
+- [x] 4.2 `results.json` is written with per-repeat cost and latency — 28682ab
+- [x] 4.3 The calibrated threshold produces a mixed result, not a uniform sweep — 28682ab
+- [x] 4.4 `results.json` is gitignored; `git status` clean after a run — 28682ab
+- [x] 4.5 `npm run lint`, `npm run typecheck`, `npm test` pass — 28682ab
 
 #### Manual
 
-- [x] 4.6 `baseline.md` is reconstructable by a reader who was not present
-- [x] 4.7 The three models are genuinely separated by the numbers
-- [x] 4.8 Run-to-run variance is visible and discussed, not averaged away
-- [x] 4.9 The caching finding is stated with its evidence
+- [x] 4.6 `baseline.md` is reconstructable by a reader who was not present — 28682ab
+- [x] 4.7 The three models are genuinely separated by the numbers — 28682ab
+- [x] 4.8 Run-to-run variance is visible and discussed, not averaged away — 28682ab
+- [x] 4.9 The caching finding is stated with its evidence — 28682ab
