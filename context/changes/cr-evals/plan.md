@@ -736,33 +736,33 @@ not depend on promptfoo.
 
 #### Automated
 
-- [x] 3.1 `npm run evals` completes all three cells and exits 0 or 100
-- [x] 3.2 The report shows three distinctly labelled columns
-- [x] 3.3 All four named metrics are populated for every cell
-- [x] 3.4 `flaw-recall` is derived and present per cell
-- [x] 3.5 No `RangeError` from grader/SUT id collision
-- [x] 3.6 `npm run lint` and `npm run typecheck` still pass
+- [x] 3.1 `npm run evals` completes all three cells and exits 0 or 100 — ac5ec6f
+- [x] 3.2 The report shows three distinctly labelled columns — ac5ec6f
+- [x] 3.3 All four named metrics are populated for every cell — ac5ec6f
+- [x] 3.4 `flaw-recall` is derived and present per cell — ac5ec6f
+- [x] 3.5 No `RangeError` from grader/SUT id collision — ac5ec6f
+- [x] 3.6 `npm run lint` and `npm run typecheck` still pass — ac5ec6f
 
 #### Manual
 
-- [x] 3.7 Total sweep cost is in the expected range (~$1.75)
-- [x] 3.8 Spot-checked judge verdicts are credible, not rubber-stamping
-- [x] 3.9 The three models produce visibly different reviews
-- [x] 3.10 No cell fails a deterministic gate because of a provider bug
+- [x] 3.7 Total sweep cost is in the expected range (~$1.75) — ac5ec6f
+- [x] 3.8 Spot-checked judge verdicts are credible, not rubber-stamping — ac5ec6f
+- [x] 3.9 The three models produce visibly different reviews — ac5ec6f
+- [x] 3.10 No cell fails a deterministic gate because of a provider bug — ac5ec6f
 
 ### Phase 4: Calibrate Thresholds and Record the Baseline
 
 #### Automated
 
-- [ ] 4.1 `--repeat 3` completes 9 cells without a crash or a hung cell
-- [ ] 4.2 `results.json` is written with per-repeat cost and latency
-- [ ] 4.3 The calibrated threshold produces a mixed result, not a uniform sweep
-- [ ] 4.4 `results.json` is gitignored; `git status` clean after a run
-- [ ] 4.5 `npm run lint`, `npm run typecheck`, `npm test` pass
+- [x] 4.1 `--repeat 3` completes 9 cells without a crash or a hung cell
+- [x] 4.2 `results.json` is written with per-repeat cost and latency
+- [x] 4.3 The calibrated threshold produces a mixed result, not a uniform sweep
+- [x] 4.4 `results.json` is gitignored; `git status` clean after a run
+- [x] 4.5 `npm run lint`, `npm run typecheck`, `npm test` pass
 
 #### Manual
 
-- [ ] 4.6 `baseline.md` is reconstructable by a reader who was not present
-- [ ] 4.7 The three models are genuinely separated by the numbers
-- [ ] 4.8 Run-to-run variance is visible and discussed, not averaged away
-- [ ] 4.9 The caching finding is stated with its evidence
+- [x] 4.6 `baseline.md` is reconstructable by a reader who was not present
+- [x] 4.7 The three models are genuinely separated by the numbers
+- [x] 4.8 Run-to-run variance is visible and discussed, not averaged away
+- [x] 4.9 The caching finding is stated with its evidence

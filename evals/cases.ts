@@ -46,6 +46,31 @@ const RECALL_METRIC = "flaw-recall";
 const PRECISION_METRIC = "precision";
 
 /**
+ * The recall bar a cell must clear: **two of the three planted defects**, diagnosed.
+ *
+ * Empirical, from the `--repeat 3` sweep of 2026-09-09 (`context/changes/cr-evals/baseline.md`).
+ * Nine cells produced exactly three distinct recall values, and they are not close together:
+ *
+ *   deepseek-v4-flash   0.33  0.33  0.33
+ *   glm-5.1             0.00  0.33  0.00
+ *   claude-sonnet-5     1.00  1.00  1.00
+ *
+ * So the observed data has one wide empty band, 0.33 → 1.00, and this number sits in the middle of
+ * it. That placement is the point: a bar inside a gap is robust to run-to-run drift on either side,
+ * where one pinned just above 0.33 would flip on the first cheap-model lucky guess and one pinned
+ * at 1.00 would fail Sonnet the first time it misses anything.
+ *
+ * It is also a policy statement and not only a fitted number: a reviewer that misses more than one
+ * of three planted defects has not reviewed the change, whatever else it got right. Two of the
+ * three cheap-model cells that clear the deterministic gates find exactly one defect and argue at
+ * least one other away — that is the outcome this bar is drawn to reject.
+ *
+ * 0.66 rather than 0.67 so an exact two-of-three (0.666…) passes rather than failing by float.
+ * Re-derive it when the corpus grows: a bar calibrated against one case is a bar about that case.
+ */
+const RECALL_BAR = 0.66;
+
+/**
  * Wraps rubric prose so nunjucks hands it to the judge verbatim.
  *
  * promptfoo renders every string assertion `value` through nunjucks before grading
@@ -165,24 +190,22 @@ in your reason.
 }
 
 /**
- * The three flaw rubrics, grouped so they are **scored but not gating**.
+ * The three flaw rubrics, grouped so the cell is judged on their **mean** rather than on each one
+ * individually.
  *
  * `weight: 0` is the obvious way to make an assertion non-gating and it is the wrong one:
  * promptfoo normalises a named score by its accumulated weight, so a zero-weighted assertion
  * reports its metric as 0 no matter what the judge said. An assert-set with an explicit
- * `threshold` passes on `score >= threshold` instead of on "no child failed", so at 0 it never
- * gates while its children's metrics still reach the report.
+ * `threshold` passes on `score >= threshold` instead of on "no child failed", which is what lets
+ * one number decide the cell while every child metric still reaches the report.
  *
- * Phase 4 raises this number to the calibrated bar. Until then the flaw metrics are data, not a
- * verdict — a threshold guessed before the first sweep either passes everything or fails
- * everything, and stops discriminating either way.
+ * The threshold below is calibrated from observed data, not chosen a priori — see `RECALL_BAR`.
  */
 function flawRecallAssertionSet(flaws: readonly Flaw[]): AssertionSet {
   return {
     type: "assert-set",
     metric: RECALL_METRIC,
-    // Calibrated in Phase 4 from the first sweep. 0 = report, do not judge.
-    threshold: 0,
+    threshold: RECALL_BAR,
     assert: flaws.map(flawRecallAssertion),
   };
 }

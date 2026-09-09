@@ -43,8 +43,9 @@ evals/
     case.json     the answer key: flaws[] and decoys[]
 ```
 
-The calibrated recall threshold arrives in Phase 4 of `context/changes/cr-evals/plan.md`. Until
-then the flaw metrics are reported, not enforced.
+The recall threshold is calibrated: `flaw-recall` gates at **0.66** — two of the three planted
+defects — derived from the `--repeat 3` sweep of 2026-09-09 and recorded in
+`context/changes/cr-evals/baseline.md`.
 
 ## How a cell is scored
 
@@ -54,7 +55,7 @@ is measured.**
 | | Where | Gates? |
 |---|---|---|
 | Schema validity, the five-criterion contract, the derived verdict, a serious finding on the flaw file | `assertions.ts`, wired in `defaultTest.assert` | yes, hard-fails the cell |
-| One recall rubric per planted flaw (`flaw-<id>`), rolled up as `flaw-recall` | generated in `cases.ts` | no — `threshold: 0` until Phase 4 calibrates it |
+| One recall rubric per planted flaw (`flaw-<id>`), rolled up as `flaw-recall` | generated in `cases.ts` | **yes**, on the rollup — the set's `threshold` is `RECALL_BAR` (0.66); the individual rubrics are reported, not gating |
 | One precision rubric over all three decoys (`precision`) | generated in `cases.ts` | **yes** |
 
 The judge is `openrouter:google/gemini-3.8-flash`, set once in `defaultTest.options.provider`. It is
@@ -186,6 +187,17 @@ a real OpenRouter call against real files; nothing here is mocked.
 `evals:diff` runs `git diff --no-index` over the two trees and rewrites the tree prefixes away so
 every path matches what the agent's `read_file` tool sees under `rootDir`. On an unchanged fixture
 **it must leave the working tree clean** — that is this layer's gate.
+
+To reproduce the calibration sweep — nine cells, ~$1.35, about five minutes — build the package
+first and then drive promptfoo directly, because the run scripts do not pass `--repeat`:
+
+```bash
+npm --prefix packages/code-reviewer ci && npm --prefix packages/code-reviewer run build
+npx promptfoo eval -c evals/promptfooconfig.yaml --repeat 3 -o results.json
+```
+
+`results.json` is a run artifact and is gitignored; what a sweep *meant* is written up by hand in
+`context/changes/cr-evals/baseline.md`. Repeats are **not** cached — see the caching answer below.
 
 `evals:check` re-verifies the answer key's structural claims: `rootDir` and `diffPath` exist, every
 `paths[]` entry resolves, ids are unique, severities are known, and every flaw/decoy `line` both
@@ -365,6 +377,92 @@ Capped, that failure ends in minutes with `finishReason: "length"`, which is a d
 it ends with `timeout`, which is not. Do not raise it to "give a model more room" — a review is a
 few thousand tokens, and anything approaching the cap is a runaway, not a thorough review.
 
+## The repeated sweep — measured 2026-09-09
+
+`--repeat 3`, nine cells, **0 errors**, 5m05s. The full record with per-cell reviews, the judge's
+per-flaw verdicts and the reasoning behind the calibrated bar is
+**`context/changes/cr-evals/baseline.md`**; this is the summary.
+
+| Model | recall, 3 repeats | tool calls | cost / cell | cells clearing all 4 gates |
+|---|---|---|---|---|
+| `deepseek/deepseek-v4-flash` | 0.33, 0.33, 0.33 | 0, 0, 0 | $0.0008–$0.0009 | 2 / 3 |
+| `z-ai/glm-5.1` | 0.00, 0.33, 0.00 | 0, 0, 0 | $0.0075–$0.0124 | 1 / 3 |
+| `anthropic/claude-sonnet-5` | 1.00, 1.00, 1.00 | 9, 12, 15 | $0.3082–$0.4731 | 3 / 3 |
+
+**The answer to the question this harness was built for is no.** Neither cheap model can replace
+`anthropic/claude-sonnet-5` here. The observed recall values are 0.00, 0.33 and 1.00, with nothing
+between 0.33 and 1.00 — the gap is the finding, and the threshold is only where it is written down.
+
+Four things are worth carrying, all of them in full in `baseline.md`:
+
+- **Across all six cheap-model cells, zero tool calls.** Third sweep running, never varied — and it
+  is a model behaviour, not a harness gap: the same provider code hands every model the identical
+  three tools. Sonnet used all three every repeat and reached `src/lib/services/shelf.ts`,
+  `astro.config.mjs` and `src/lib/format.ts`, files `case.diff` never touches. (Tool *arguments* are
+  not in `results.json`; those filenames come from the run's stderr step log.) Tool use is what
+  reliably separates the models here — not that the flaws are unreachable without it: deepseek scored
+  the teardown flaw with zero tool calls on the Phase 3 sweep.
+- **A stable recall number can hide an unstable model.** deepseek scored 0.33 on all six of its
+  recorded runs and did not find the same flaw each time — the teardown on the Phase 3 sweep, the XSS
+  on all three repeats here. The mean was the stable part and the least informative part, which is
+  why the three flaw metrics are reported separately.
+- **`glm-5.1` returned an *empty* review in two of three repeats** — schema-valid, `findings: []`,
+  `summary` of `""` and `"."`, rationales empty or the literal `"..."`. Its Phase 2 runaway to the
+  output cap did **not** reproduce here or on the Phase 3 sweep, so that is now recorded as
+  run-to-run variance rather than a deterministic structured-output failure; the
+  `structuredOutputs: { strict: false }` lever has still never been needed or used, and every cell in
+  every sweep has run identically configured. Keep it that way.
+- **A false green, and it nearly happened twice.** Two cells returned `verdict: passed` on a diff
+  shipping a stored XSS; deepseek repeat 2 is the only one that filed a real finding and still passed
+  (glm repeat 1 passed on an empty review). It wrote `Band: 1–2 (blocking)` in its own rationale and
+  then scored the criterion **4** — "Score 4 because the defect is nameable and concrete, placing it
+  in the blocking band (1–2)". `deriveVerdict` reads the digit, so the change passed. deepseek repeat
+  3 made the same band/digit contradiction and escaped only because unrelated criteria happened to
+  land blocking — so it is two of three repeats, not one of nine. Separately, the criterion digits
+  swing hard on identical input (`test-falsifiability` 2 → 7 → 1), which is the variance that actually
+  decides the merge. See `baseline.md`.
+
+`precision` was 1.0 in all nine cells; no model filed any decoy as a defect. Weaker than it looks —
+two cells filed *no* findings, and an empty review scores precision 1.0 trivially. The decoys did no
+work on this case.
+
+### Cost, and the caching answer
+
+**$1.35 for nine cells** — $1.2369 of reviewing plus $0.1145 of judging — so **~$0.45 per
+three-model sweep**. Sonnet's three cells are $1.2029: **89% of the all-in total, 97% of the
+reviewing line**. The two cheap models cost $0.034 across six cells. Checked against the bill for the
+second time: the harness computed $1.3514 and the OpenRouter balance moved $5.84 → $4.50, i.e. ~$1.34
+— agreement to about a cent.
+
+Sonnet's three repeats cost $0.308 / $0.422 / $0.473 on byte-identical input, rising with step count
+(6 / 8 / 10) — and all three scored 1.00. Five Sonnet runs now show cost varying by more than 2× with
+no variation in accuracy. Budget from the spread, not from a sample.
+
+**`--repeat N` costs N×.** Evidence: three real requests per provider (`numRequests: 1` per cell),
+full latency on repeats 2 and 3 (Sonnet 154s / 175s / 174s), full and *differing* cost per repeat,
+nine byte-distinct outputs — glm returned an empty review, then a real one, then an empty one, which
+a replayed cache cannot do — and `runtimeOptions.cache: true`, so none of that is just `--no-cache`.
+
+That does **not** by itself settle research open question #3 ("are custom `file://` providers
+cached?"), and an earlier draft claimed it did. promptfoo namespaces its cache **per repeat index**
+(`getRepeatCacheNamespace`, in its evaluator), so a fully cache-aware built-in provider under
+`--repeat 3` would produce every observation above. The general answer is still no, but **by
+construction**: promptfoo's cache lives in `fetchWithCache`, and this provider drives the AI SDK
+directly and never routes through it. That mechanism — not this sweep — is why a re-run without
+`--repeat` would also be full price. No `fetchWithCache` wrapper was built; at $0.45 a sweep it does
+not pay for itself.
+
+Do not confuse that with the second cache, which **is** visible: `tokenUsage.cached` is 0 on every
+repeat-1 cell and on all three Sonnet cells, but ~6 900 on the cheap models' repeats 2 and 3 against
+a ~6 900-token prompt. That is upstream **OpenRouter prompt caching**, warmed by repeat 1, mapped
+straight from the provider's own `cacheReadTokens`. It does not make a repeat free. Sonnet shows none
+of it, most likely because Anthropic caching needs explicit `cache_control` breakpoints — this
+codebase sends none (verified by grep), though that this is *the* reason is a vendor fact, not
+something measured here. One consequence for the cost column: it charges cache-read tokens at full
+prompt price, so it overstates those cells — invisible at three
+cents — but **41% of the $0.034 the cheap models cost**, so not invisible on a suite they dominate.
+It affects **four** cells, not six: every repeat-1 cell reports `cached: 0`.
+
 ## What this does not measure
 
 - **One case.** Three flaws on one diff is a narrow instrument; a model can get lucky.
@@ -376,13 +474,14 @@ few thousand tokens, and anything approaching the cap is a runaway, not a thorou
   `security-isolation` too.
 - **One judge, ungraded.** `google/gemini-3.8-flash` grades every rubric and nothing grades it. The
   spot-checks above are a human reading four verdicts, not a measurement of judge agreement.
-- **One sweep.** Every number above is n=1 per model. Phase 4's `--repeat 3` is what turns them
-  into a claim with a spread attached; until then, treat a 0.33 and a 1.00 as the same kind of
-  evidence the nine hand-driven calibration runs were.
+- **Three repeats of one case.** Enough to see that `glm-5.1` is unreliable and that the other two
+  are stable at their respective levels; not enough to put an interval on anything.
 - **No CI wiring.** This is an on-demand harness. No workflow, no repository secret, no PR gate.
 
 ## See also
 
+- **The baseline record**: `context/changes/cr-evals/baseline.md` — the nine-cell sweep run by
+  run, the calibrated bar and its derivation, and the caching evidence
 - Plan: `context/changes/cr-evals/plan.md`
 - Research: `context/changes/cr-evals/research.md`
 - The policy under test: `scripts/pr-review/rubric.mjs`, `scripts/pr-review/verdict.mjs`

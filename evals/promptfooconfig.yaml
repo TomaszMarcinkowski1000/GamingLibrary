@@ -110,12 +110,16 @@ defaultTest:
 # the answer key rendered as prose and `case.json` is the single place that says what is planted:
 #
 #   flaw-default-prop-ignored   \
-#   flaw-effect-teardown-lost    >  one llm-rubric per planted flaw, scored 0..1, NOT gating
+#   flaw-effect-teardown-lost    >  one llm-rubric per planted flaw, scored 0..1, reported per cell
 #   flaw-notes-rendered-as-markup/
-#   flaw-recall                 the mean of those three — the one comparable number per cell
-#   precision                   one llm-rubric over all three decoys. This one GATES: a review that
-#                               calls correct React 19 code a bug has failed at its job regardless
-#                               of what else it found.
+#   flaw-recall                 the mean of those three, and the cell's recall gate. Calibrated to
+#                               0.66 — two of the three planted defects — from the --repeat 3 sweep
+#                               of 2026-09-09, whose nine cells clustered at 0.00 / 0.33 / 1.00 and
+#                               left 0.33..1.00 empty. See `RECALL_BAR` in `evals/cases.ts` for the
+#                               reasoning, and `context/changes/cr-evals/baseline.md` for the data.
+#   precision                   one llm-rubric over all three decoys. This one GATES too: a review
+#                               that calls correct React 19 code a bug has failed at its job
+#                               regardless of what else it found.
 #
 # `flaw-recall` is the metric of an `assert-set` wrapping the three flaw rubrics, not a top-level
 # `derivedMetrics` entry as the plan first specified. `derivedMetrics` evaluates its expression with
@@ -124,6 +128,6 @@ defaultTest:
 # level — leaving the metric at 0, indistinguishable from a model that found nothing. Any future
 # derived metric here must use identifiers mathjs can parse.
 #
-# The assert-set's `threshold: 0` is what makes the flaw rubrics scored-but-not-gating; Phase 4
-# raises it to the calibrated bar. See `flawRecallAssertionSet` in `evals/cases.ts` for why
-# `weight: 0` is not the way to do that.
+# The assert-set's `threshold` is what makes the three flaw rubrics decide the cell on their mean
+# rather than one at a time. See `flawRecallAssertionSet` in `evals/cases.ts` for why `weight: 0`
+# is not the way to make an assertion non-gating — it zeroes the reported metric along with it.
