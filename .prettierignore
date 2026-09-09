@@ -8,3 +8,9 @@ worker-configuration.d.ts
 # `npm run format` is `prettier --write .` (repo-wide), so without this it silently rewrites every
 # *.md — including immutable context/archive/** docs — on any format run. Keep prose out of Prettier.
 *.md
+
+# Code-reviewer eval fixture (`evals/README.md`). `before/`, `after/`, the generated `case.diff`
+# and `case.json`'s line references are four artifacts that only agree byte-for-byte. `npm run
+# format` is `prettier --write .` (repo-wide), so reformatting either tree would desynchronise all
+# four at once — silently, since the eval keeps running and just grades against stale line numbers.
+evals/cases/

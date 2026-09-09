@@ -106,6 +106,21 @@ export default tseslint.config(
   // machine, where the sub-package's `node_modules` happens to exist, and fatally in CI, where
   // it does not. Each package lints and typechecks itself.
   { ignores: ["packages/**"] },
+  // `evals/cases/**` is fixture data for the code-reviewer eval harness (`evals/README.md`), not
+  // code this repo ships. Both trees are legacy-shaped on purpose and linting them fails. Measured
+  // with this entry removed, the twelve fixture files report eight errors:
+  // `@typescript-eslint/no-non-null-assertion` in both trees (an assertion carried over from the
+  // class, load-bearing for one of the planted defects), `no-unsafe-assignment` in both trees and
+  // again in `after/`'s Astro page, `no-unsafe-member-access` there too, and `react/no-deprecated`
+  // + `no-unsafe-call` on `before/`'s `ReactDOM.render`.
+  //
+  // Note what is *not* in that list: no `react-hooks` or `react-compiler` rule fires on any of the
+  // three planted defects. That is the property the whole fixture rests on, so `evals/README.md`
+  // records the measurement rather than asserting it. The tree is excluded from `tsconfig.json` and
+  // `.prettierignore` for related reasons — `.prettierignore` in particular keeps `lint-staged`
+  // from rewriting the trees and desynchronising them from the `case.diff` generated out of them.
+  // `evals/*.ts` and `evals/providers/**` are real code and stay linted.
+  { ignores: ["evals/cases/**"] },
   baseConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],

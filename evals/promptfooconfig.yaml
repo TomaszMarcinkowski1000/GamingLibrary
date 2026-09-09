@@ -1,0 +1,133 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# The eval that answers one question: does a 10-20x cheaper model review a React 16 -> React 19
+# migration as well as the `anthropic/claude-sonnet-5` that `scripts/pr-review.mjs` runs on every
+# PR today?
+#
+# Phase 3 of `context/changes/cr-evals/plan.md`: three models, one case, one rubric. The
+# deterministic gates below hard-fail a cell; per-flaw recall and decoy precision are judgement
+# calls, graded by an independent model and generated from the answer key in `evals/cases.ts`.
+#
+# Run it with `npm run evals` (which builds `packages/code-reviewer` first), never bare
+# `promptfoo eval` — the provider imports the package's `dist/`, which is gitignored.
+description: code-reviewer on a React 16 -> React 19 migration
+
+# The real input is a `{ rootDir, paths, diff }` triple, which promptfoo's string `prompt` is a
+# poor fit for — so it degrades to a case descriptor and the provider loads the case itself. Only
+# the case ID travels through vars; see the header of `evals/cases.ts` for the two promptfoo var
+# behaviours (array vars expand into a matrix, string vars go through nunjucks) that decided that.
+prompts:
+  - "Review case {{caseId}} with this repository's rubric."
+
+#
+# THE MATRIX — three cells, one prompt, one case. `REVIEW_RUBRIC` is held constant, so the model is
+# the only variable and a column is a claim about that model.
+#
+# All three entries point at the SAME provider file and are configured identically apart from
+# `config.model`. That uniformity is the measurement: `providers/code-reviewer.ts` exposes
+# `structuredOutputs` and `temperature` per instance, and reaching for either one to rescue a
+# failing cell would leave that column measuring a differently-configured system than its
+# neighbours. If a cheap model needs a knob to produce a review at all, that is a finding about the
+# model — record it in `evals/README.md`, do not spend it here.
+#
+# What Phase 2 measured on 2026-09-08, which is why the smoke ran on Sonnet rather than the cheapest
+# model, and why the other two are expected to be interesting rather than green:
+#
+#   deepseek-v4-flash  1 step, 0 tool calls, valid schema, findings[] EMPTY — the whole review in
+#                      prose. Gate 4 red, but the XSS correctly diagnosed in `summary`.
+#   z-ai/glm-5.1       1 step, 0 tool calls, ran away to the 16k output cap, no object at all.
+#                      Every gate red. A cell that errors never reaches an assertion, so it scores
+#                      no metrics either — that too is a result.
+#   claude-sonnet-5    4 steps, 6 tool calls, all four gates green, all three planted flaws found,
+#                      no decoy filed as a defect.
+#
+# Cost was the original argument for the cheap model and it does not survive contact: the Sonnet
+# cell measured $0.22 and $0.52 on two runs, against deepseek's $0.001. All are rounding errors at
+# this scale, and only one of the three proves the loop works.
+providers:
+  - id: file://providers/code-reviewer.ts
+    # The report's column name. Also how promptfoo tells repeated instances of one provider file
+    # apart, so every entry here needs its own.
+    label: deepseek-v4-flash
+    config:
+      model: deepseek/deepseek-v4-flash
+      # USD per million tokens, read off https://openrouter.ai/models on 2026-09-09. The cost
+      # column is computed from these against the run's own token counts — see the `pricing`
+      # comment in providers/code-reviewer.ts for why it is not read back from OpenRouter.
+      pricing:
+        prompt: 0.084
+        completion: 0.168
+
+  - id: file://providers/code-reviewer.ts
+    label: glm-5.1
+    config:
+      model: z-ai/glm-5.1
+      pricing:
+        prompt: 0.966
+        completion: 3.036
+
+  - id: file://providers/code-reviewer.ts
+    label: claude-sonnet-5
+    config:
+      model: anthropic/claude-sonnet-5
+      pricing:
+        prompt: 2.0
+        completion: 10.0
+
+tests: file://cases.ts:generate
+
+defaultTest:
+  # THE JUDGE. Grades every `llm-rubric` in this suite; the deterministic gates below never call it.
+  #
+  # `google/gemini-3.8-flash` is a FOURTH vendor, chosen so the grader is not a sibling of anything
+  # it grades — Anthropic, Z-AI and DeepSeek are all under test. Its provider id also cannot collide
+  # with the `file://` ids of the systems under test, which matters more than it sounds: promptfoo
+  # answers a grader/SUT id collision with `RangeError: Maximum call stack size exceeded` rather
+  # than an error message (promptfoo issue #10501).
+  #
+  # It reads `OPENROUTER_API_KEY` from the same `.env` the reviewer uses — promptfoo loads it
+  # itself, independently of the provider. Judging a full sweep is roughly $0.05 at
+  # $0.75/$3.75 per M tokens (2026-09-09).
+  options:
+    provider: openrouter:google/gemini-3.8-flash
+
+  # The deterministic half. Each hard-fails the cell and none of them needs a model. The judged
+  # half — three per-flaw recall metrics and one decoy-precision check — is generated per case from
+  # `case.json` in `evals/cases.ts` and appended after these.
+  assert:
+    - type: javascript
+      value: file://assertions.ts:assertSchemaValid
+    - type: javascript
+      value: file://assertions.ts:assertCriteriaContract
+    - type: javascript
+      value: file://assertions.ts:assertVerdictFailed
+    - type: javascript
+      value: file://assertions.ts:assertSeriousFindingOnFlawFile
+
+# THE NAMED METRICS, and where they are NOT configured.
+#
+# Five reach the report, all of them declared in `evals/cases.ts` rather than here, because they are
+# the answer key rendered as prose and `case.json` is the single place that says what is planted:
+#
+#   flaw-default-prop-ignored   \
+#   flaw-effect-teardown-lost    >  one llm-rubric per planted flaw, scored 0..1, reported per cell
+#   flaw-notes-rendered-as-markup/
+#   flaw-recall                 the mean of those three, and the cell's recall gate. Calibrated to
+#                               0.66 — two of the three planted defects — from the --repeat 3 sweep
+#                               of 2026-09-09, whose nine cells clustered at 0.00 / 0.33 / 1.00 and
+#                               left 0.33..1.00 empty. See `RECALL_BAR` in `evals/cases.ts` for the
+#                               reasoning, and `context/changes/cr-evals/baseline.md` for the data.
+#   precision                   one llm-rubric over all three decoys. This one GATES too: a review
+#                               that calls correct React 19 code a bug has failed at its job
+#                               regardless of what else it found.
+#
+# `flaw-recall` is the metric of an `assert-set` wrapping the three flaw rubrics, not a top-level
+# `derivedMetrics` entry as the plan first specified. `derivedMetrics` evaluates its expression with
+# mathjs, where `-` is subtraction: `flaw-default-prop-ignored + flaw-effect-teardown-lost` parses
+# as arithmetic on an undefined symbol `flaw`, throws, and promptfoo swallows the throw at debug
+# level — leaving the metric at 0, indistinguishable from a model that found nothing. Any future
+# derived metric here must use identifiers mathjs can parse.
+#
+# The assert-set's `threshold` is what makes the three flaw rubrics decide the cell on their mean
+# rather than one at a time. See `flawRecallAssertionSet` in `evals/cases.ts` for why `weight: 0`
+# is not the way to make an assertion non-gating — it zeroes the reported metric along with it.

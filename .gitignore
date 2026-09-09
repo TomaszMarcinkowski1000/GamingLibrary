@@ -62,3 +62,8 @@ test-results/
 blob-report/
 playwright/.cache/
 .playwright-cli/
+
+# evals: the promptfoo sweep's machine-readable output. A run artifact, not a record — what a
+# sweep MEANT is written up by hand in context/changes/cr-evals/baseline.md. `npm run evals`
+# writes it only when `-o results.json` is passed explicitly (see evals/README.md).
+results.json

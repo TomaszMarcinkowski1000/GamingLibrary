@@ -1,3 +1,7 @@
+/*
+ * Hand-mirrored in `evals/reviewer.ts` (see the header of `../index.ts`): nothing links the two at
+ * compile time, so a shape change here needs the same change there in the same commit.
+ */
 import { z } from "zod";
 
 export const severities = ["info", "minor", "major", "critical"] as const;

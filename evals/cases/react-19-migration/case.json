@@ -1,0 +1,68 @@
+{
+  "id": "react-19-migration",
+  "title": "Migrate GameShelf from a React 16 class component to a React 19 Astro island",
+  "description": "A single-PR migration of the library shelf: the class component becomes a function component with hooks, the card's forwardRef wrapper is unwrapped, and the hand-rolled ReactDOM.render entry point is deleted in favour of an Astro island hydrated with client:load. Three defects are planted and three correct-but-suspicious changes are included as decoys. None of the three defects is reported by this repository's configured lint rules or by the sandbox's own typecheck — both verified empirically, see evals/README.md — so a reviewer has to reason about React 19 semantics to find them.",
+  "prDescription": "Migrates the library shelf off React 16. The class component becomes a function component with hooks, the card's forwardRef wrapper is unwrapped now that React 19 passes ref as an ordinary prop, and the hand-rolled ReactDOM.render entry point is deleted in favour of an Astro island hydrated with client:load. No behaviour change intended.",
+  "rootDir": "after",
+  "paths": [
+    "package.json",
+    "src/components/library/GameShelf.tsx",
+    "src/pages/library.astro"
+  ],
+  "diffPath": "case.diff",
+  "flaws": [
+    {
+      "id": "flaw-default-prop-ignored",
+      "file": "src/components/library/GameShelf.tsx",
+      "line": 117,
+      "anchor": "GameShelf.defaultProps",
+      "severity": "critical",
+      "whatIsBroken": "The migration keeps the class's default-prop mechanism by assigning an object of fallback values onto the component function itself, after the function is defined. React 19 dropped support for that mechanism on function components — it survives only on classes — so the fallback silently never applies. (Precisely: the automatic JSX runtime this sandbox pins in its own tsconfig.json ignores the object entirely, and a reviewer who simply says React 19 removed the feature for function components has the defect right.) The only mount site is the island declaration in src/pages/library.astro, which does not pass the prop, so it arrives undefined at the destructure and is handed straight to the shelf request, where it is stringified into the query as an unparseable limit. The shelf loads whatever the API does with that rather than the intended screenful.",
+      "whyItMatters": "It is a silent behaviour change on the happy path of the component the PR exists to migrate. React 19 emits no deprecation warning for this — the message earlier versions printed is gone — so nothing announces it at runtime either. Typecheck is satisfied because the prop is declared optional and the non-null assertion at the call site suppresses the resulting undefined, and that assertion was carried over verbatim from the class, where the mechanism it stood in for actually worked. No rule in this repository's configured set covers the removed mechanism: react/no-deprecated, the only recommended rule in the area, does not track default props at all.",
+      "supportingEvidence": "The consequence is only fully visible outside the changed component: src/lib/services/shelf.ts, which this PR does not touch, stringifies the prop into the query, and the mount site this diff adds at src/pages/library.astro omits the prop entirely."
+    },
+    {
+      "id": "flaw-effect-teardown-lost",
+      "file": "src/components/library/GameShelf.tsx",
+      "line": 70,
+      "anchor": "useEffect(() => {",
+      "severity": "major",
+      "whatIsBroken": "The class's unmount teardown is dropped in the conversion. The effect creates an abort controller and opens a cross-tab subscription, but returns nothing, so neither is ever torn down: the in-flight request is never cancelled and resolves onto an unmounted component, and the unsubscribe handle returned by the subscribe call is discarded, so the channel stays open and keeps invoking the loader for the lifetime of the page. Because the effect returns no teardown, every re-run also leaks its predecessor — a dependency change opens a second channel without closing the first. A second regression rides along: the controller is now created once per effect run and shared by every call to the loader, so a broadcast-driven refetch no longer cancels the one already in flight, which the class's per-load abort did.",
+      "whyItMatters": "The subscription outlives the component and keeps firing the loader for the life of the page, and the docstring immediately above the component still promises exactly the cancellation that was just removed — so the code and its own documentation now disagree. Nothing mechanical catches it: the dependency-array rule validates the deps, which are correct here, not a missing cleanup return, and no other rule in the configured react-hooks set fires on this file either. Wrapping the tree in StrictMode would surface the leak immediately as a doubled subscription, but nothing in this change does that.",
+      "supportingEvidence": "src/lib/services/shelf.ts documents that the subscribe helper returns a handle and that the channel keeps firing until it is called."
+    },
+    {
+      "id": "flaw-notes-rendered-as-markup",
+      "file": "src/components/library/GameShelf.tsx",
+      "line": 44,
+      "anchor": "dangerouslySetInnerHTML",
+      "severity": "major",
+      "whatIsBroken": "The card stops rendering the entry's free-text notes as text and starts injecting them into the DOM as raw markup. That field is typed by the owner in the entry dialog and stored verbatim — the type declaring it says the API applies no sanitisation — so any markup it contains is parsed into the page. A script tag inserted this way will not run, but an event-handler attribute such as an image with an onerror handler executes immediately. The escaping the previous text rendering provided is removed with no sanitiser put in its place.",
+      "whyItMatters": "It converts a stored free-text field into a script-injection sink in a component that renders authenticated user data, and it is the one defect here that a reviewer should also reflect in the security criterion rather than only as a finding. Row-level security scopes the field to its owner, so the immediate exposure is self-inflicted; it becomes cross-user the moment notes reach any shared, exported, or admin view. A reviewer who identifies the sink and then correctly reasons the blast radius down on that basis has still found the defect. The relevant React rule is not enabled in the configuration this repository extends, and the Astro rule that would catch the equivalent directive is scoped to .astro files, so nothing mechanical reaches it here.",
+      "supportingEvidence": "src/types.ts documents the notes field as owner-authored, stored verbatim, with no sanitisation applied by the API."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "decoy-ref-as-plain-prop",
+      "file": "src/components/library/GameShelf.tsx",
+      "line": 20,
+      "anchor": "function ShelfCard(",
+      "whyItIsCorrect": "The card's forwardRef wrapper is removed and ref is declared as an ordinary prop on the props interface. This is the documented React 19 behaviour: function components receive ref as a normal prop and forwardRef is no longer required for them. The annotation used is exactly the type the underlying list element accepts, so both callback refs and ref objects still work; the ref is attached to the same element as before, and the component's name in devtools is unchanged. Reporting this as a broken, unsupported, or missing-forwardRef ref is a false positive."
+    },
+    {
+      "id": "decoy-usememo-dropped",
+      "file": "src/components/library/GameShelf.tsx",
+      "line": 23,
+      "anchor": "const label = formatEntryLabel(entry);",
+      "whyItIsCorrect": "The useMemo around the card's caption is dropped and the caption is computed inline. The helper it wrapped is a ternary plus two template concatenations over fields already in hand — cheaper than the useMemo that guarded it, whose dependency key changed identity on every refetch anyway, so the memo rarely hit. The result is a string primitive rendered straight into a span, so no downstream memoised child depends on its referential identity. There is no behavioural difference and no measurable performance difference. Reporting this as a performance regression is a false positive."
+    },
+    {
+      "id": "decoy-astro-island-mount",
+      "file": "src/pages/library.astro",
+      "line": 9,
+      "anchor": "client:load",
+      "whyItIsCorrect": "The hand-rolled entry point that called the removed ReactDOM.render into a getElementById container is deleted, and the component is instead declared as an Astro island hydrated with client:load. This is how this repository mounts every React component — it contains no createRoot, no ReactDOM and no getElementById anywhere in src/; hydration is always a client:* directive — so the migration moves the component onto the stack's own convention rather than porting the old mount forward. client:load matches the existing treatment of above-the-fold interactive components. Reporting the deleted entry point as a lost mount, or the island directive as the wrong hydration strategy, is a false positive."
+    }
+  ]
+}

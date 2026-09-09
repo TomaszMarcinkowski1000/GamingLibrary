@@ -3,7 +3,7 @@ name: CI
 # The enforced gate layer for the four suites in context/foundation/test-plan.md §5.
 # Two jobs, both blocking, both running in parallel on every push and PR to `main`:
 #
-#   ci   — npm test (unit + integration, hermetic) · lint · typecheck · build
+#   ci   — npm test (unit + integration, hermetic) · lint · typecheck · eval fixture gates · build
 #   e2e  — npm run test:db (pgTAP / RLS) · npm run test:e2e (Playwright)
 #
 # Two facts about the `e2e` job that are expensive to re-derive:
@@ -62,6 +62,18 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run typecheck
+      # The only automated check anywhere that touches evals/cases/**. That tree is deliberately
+      # excluded from tsconfig, eslint AND prettier (the fixture is intentionally flawed code), so
+      # without this step an `after/` edit that shifts a line number ships silently and the eval
+      # grades every model against a stale answer key. Needs no secrets and makes no model call:
+      # evals:check re-resolves each answer-key anchor against the fixture, evals:diff regenerates
+      # case.diff from before/ and after/, and the clean-tree assertion is what proves the three
+      # artifacts still agree.
+      - name: Eval fixture gates
+        run: |
+          npm run evals:check
+          npm run evals:diff
+          git diff --exit-code -- evals/cases
       - run: npm run build
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

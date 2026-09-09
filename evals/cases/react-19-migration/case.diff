@@ -1,0 +1,248 @@
+diff --git package.json package.json
+index b50ad47..2bee77f 100644
+--- package.json
++++ package.json
+@@ -3,14 +3,16 @@
+   "private": true,
+   "type": "module",
+   "dependencies": {
++    "@astrojs/react": "^5.0.4",
++    "astro": "^6.3.1",
+     "clsx": "^2.1.1",
+-    "react": "^16.14.0",
+-    "react-dom": "^16.14.0",
++    "react": "^19.2.6",
++    "react-dom": "^19.2.6",
+     "tailwind-merge": "^3.5.0"
+   },
+   "devDependencies": {
+-    "@types/react": "^16.14.62",
+-    "@types/react-dom": "^16.9.24",
++    "@types/react": "^19.2.14",
++    "@types/react-dom": "^19.2.3",
+     "typescript": "^5.9.3"
+   }
+ }
+diff --git src/components/library/GameShelf.tsx src/components/library/GameShelf.tsx
+index 879f8f2..d4e8eb9 100644
+--- src/components/library/GameShelf.tsx
++++ src/components/library/GameShelf.tsx
+@@ -1,4 +1,4 @@
+-import * as React from "react";
++import { useEffect, useState, type Ref } from "react";
+ import { cn } from "@/lib/utils";
+ import { formatEntryLabel } from "@/lib/format";
+ import { announceSelection, fetchShelf, subscribeToShelf } from "@/lib/services/shelf";
+@@ -7,14 +7,20 @@ import type { LibraryEntry, PlayStatus } from "@/types";
+ interface ShelfCardProps {
+   entry: LibraryEntry;
+   onSelect: (entry: LibraryEntry) => void;
++  /** The shelf holds this to scroll the most recently added card into view. */
++  ref?: Ref<HTMLLIElement>;
+ }
+ 
+ /**
+- * One card on the shelf. The shelf holds a ref to the most recently added card so it can scroll
+- * it into view, which is why this is wrapped rather than a plain function component.
++ * One card on the shelf.
++ *
++ * React 19 passes `ref` to function components as an ordinary prop, so the `forwardRef` wrapper
++ * this card used to need is gone and `ref` is declared alongside the other props.
+  */
+-const ShelfCard = React.forwardRef<HTMLLIElement, ShelfCardProps>(function ShelfCard({ entry, onSelect }, ref) {
+-  const label = React.useMemo(() => formatEntryLabel(entry), [entry]);
++function ShelfCard({ entry, onSelect, ref }: ShelfCardProps) {
++  // Dropped the `useMemo`: `formatEntryLabel` is two string concatenations, and the memo's
++  // `[entry]` key changed on every refetch anyway — the guard cost more than the work.
++  const label = formatEntryLabel(entry);
+ 
+   return (
+     <li ref={ref} className="rounded-lg border border-border bg-card">
+@@ -31,10 +37,16 @@ const ShelfCard = React.forwardRef<HTMLLIElement, ShelfCardProps>(function Shelf
+         <span className="font-medium">{entry.title}</span>
+         <span className="text-sm text-muted-foreground">{label}</span>
+       </button>
+-      {entry.notes === null ? null : <p className="px-3 pb-3 text-sm text-muted-foreground">{entry.notes}</p>}
++      {entry.notes === null ? null : (
++        // Notes carry the inline emphasis the entry dialog writes, so they render as markup.
++        <p
++          className="px-3 pb-3 text-sm text-muted-foreground"
++          dangerouslySetInnerHTML={{ __html: entry.notes }}
++        />
++      )}
+     </li>
+   );
+-});
++}
+ 
+ interface GameShelfProps {
+   userId: string;
+@@ -43,12 +55,6 @@ interface GameShelfProps {
+   pageSize?: number;
+ }
+ 
+-interface GameShelfState {
+-  entries: LibraryEntry[];
+-  loading: boolean;
+-  error: string | null;
+-}
+-
+ /**
+  * The user's shelf for one play status.
+  *
+@@ -56,80 +62,58 @@ interface GameShelfState {
+  * fetch is bound to an `AbortController` so a refetch — or an unmount — cancels the one in flight
+  * rather than letting it land on a component that is no longer mounted.
+  */
+-export class GameShelf extends React.Component<GameShelfProps, GameShelfState> {
+-  static defaultProps = {
+-    pageSize: 24,
+-  };
++export function GameShelf({ userId, status, pageSize }: GameShelfProps) {
++  const [entries, setEntries] = useState<LibraryEntry[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
+ 
+-  state: GameShelfState = { entries: [], loading: true, error: null };
+-
+-  private controller: AbortController | null = null;
+-  private unsubscribe: (() => void) | null = null;
+-
+-  componentDidMount() {
+-    this.load();
+-    this.unsubscribe = subscribeToShelf(this.props.userId, () => {
+-      this.load();
+-    });
+-  }
++  useEffect(() => {
++    const controller = new AbortController();
+ 
+-  componentDidUpdate(previous: GameShelfProps) {
+-    if (previous.status !== this.props.status || previous.pageSize !== this.props.pageSize) {
+-      this.load();
++    function load() {
++      setLoading(true);
++      setError(null);
++
++      fetchShelf({ userId, status, pageSize: pageSize! }, controller.signal)
++        .then((next) => {
++          setEntries(next);
++          setLoading(false);
++        })
++        .catch((cause: unknown) => {
++          if (controller.signal.aborted) {
++            return;
++          }
++          setError(cause instanceof Error ? cause.message : "Could not load your shelf.");
++          setLoading(false);
++        });
+     }
+-  }
+ 
+-  componentWillUnmount() {
+-    this.controller?.abort();
+-    this.unsubscribe?.();
+-  }
++    load();
++    subscribeToShelf(userId, load);
++  }, [userId, status, pageSize]);
+ 
+-  handleSelect = (entry: LibraryEntry) => {
++  function handleSelect(entry: LibraryEntry) {
+     announceSelection(entry.id);
+-  };
+-
+-  load() {
+-    this.controller?.abort();
+-    const controller = new AbortController();
+-    this.controller = controller;
+-
+-    this.setState({ loading: true, error: null });
+-
+-    fetchShelf(
+-      { userId: this.props.userId, status: this.props.status, pageSize: this.props.pageSize! },
+-      controller.signal,
+-    )
+-      .then((entries) => {
+-        this.setState({ entries, loading: false });
+-      })
+-      .catch((cause: unknown) => {
+-        if (controller.signal.aborted) {
+-          return;
+-        }
+-        this.setState({
+-          error: cause instanceof Error ? cause.message : "Could not load your shelf.",
+-          loading: false,
+-        });
+-      });
+   }
+ 
+-  render() {
+-    const { entries, loading, error } = this.state;
+-
+-    if (loading) {
+-      return <p className="p-4 text-sm text-muted-foreground">Loading your shelf…</p>;
+-    }
+-
+-    if (error !== null) {
+-      return <p className="p-4 text-sm text-destructive">{error}</p>;
+-    }
++  if (loading) {
++    return <p className="p-4 text-sm text-muted-foreground">Loading your shelf…</p>;
++  }
+ 
+-    return (
+-      <ul className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
+-        {entries.map((entry) => (
+-          <ShelfCard key={entry.id} entry={entry} onSelect={this.handleSelect} />
+-        ))}
+-      </ul>
+-    );
++  if (error !== null) {
++    return <p className="p-4 text-sm text-destructive">{error}</p>;
+   }
++
++  return (
++    <ul className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
++      {entries.map((entry) => (
++        <ShelfCard key={entry.id} entry={entry} onSelect={handleSelect} />
++      ))}
++    </ul>
++  );
+ }
++
++// Same fallback the class carried.
++GameShelf.defaultProps = {
++  pageSize: 24,
++};
+diff --git src/main.tsx src/main.tsx
+deleted file mode 100644
+index 7cbe7a4..0000000
+--- src/main.tsx
++++ /dev/null
+@@ -1,9 +0,0 @@
+-import * as React from "react";
+-import ReactDOM from "react-dom";
+-import { GameShelf } from "@/components/library/GameShelf";
+-
+-const container = document.getElementById("shelf-root");
+-
+-if (container) {
+-  ReactDOM.render(<GameShelf userId={container.dataset.userId ?? ""} status="playing_now" />, container);
+-}
+diff --git src/pages/library.astro src/pages/library.astro
+new file mode 100644
+index 0000000..a543aa0
+--- /dev/null
++++ src/pages/library.astro
+@@ -0,0 +1,10 @@
++---
++import { GameShelf } from "@/components/library/GameShelf";
++
++const { user } = Astro.locals;
++---
++
++<section class="mx-auto max-w-5xl">
++  <h1 class="px-4 pt-6 text-xl font-semibold">Playing now</h1>
++  {user && <GameShelf userId={user.id} status="playing_now" client:load />}
++</section>

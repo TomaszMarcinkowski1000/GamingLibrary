@@ -1,0 +1,10 @@
+---
+import { GameShelf } from "@/components/library/GameShelf";
+
+const { user } = Astro.locals;
+---
+
+<section class="mx-auto max-w-5xl">
+  <h1 class="px-4 pt-6 text-xl font-semibold">Playing now</h1>
+  {user && <GameShelf userId={user.id} status="playing_now" client:load />}
+</section>
