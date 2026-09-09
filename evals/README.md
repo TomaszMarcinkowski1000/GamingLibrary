@@ -29,7 +29,8 @@ defaults. `REVIEW_RUBRIC` is held constant; **the model is the only variable**.
 evals/
   promptfooconfig.yaml       providers × tests × assertions — the entry point
   providers/code-reviewer.ts one cell = one full run of the reviewer (default-exported class)
-  cases.ts                   test generator: `tests: file://cases.ts:generate`
+  cases.ts                   test generator (`tests: file://cases.ts:generate`), and the judged
+                             assertions — the answer key rendered as rubric prose
   assertions.ts              the deterministic gates, as `file://assertions.ts:<name>`
   case.ts                    the answer key as a zod schema, plus `loadCase`
   reviewer.ts                the system under test, loaded from the package's built dist/
@@ -42,13 +43,39 @@ evals/
     case.json     the answer key: flaws[] and decoys[]
 ```
 
-The LLM judge, the other two models and the calibrated threshold arrive in Phases 3 and 4 of
-`context/changes/cr-evals/plan.md`.
+The calibrated recall threshold arrives in Phase 4 of `context/changes/cr-evals/plan.md`. Until
+then the flaw metrics are reported, not enforced.
 
-### Two promptfoo behaviours the wiring is shaped by
+## How a cell is scored
 
-Both were found by running it, not by reading docs, and both fail in ways that do not look like
-what they are:
+Two halves, split on a single rule: **what is objectively checkable gates; what is a judgement call
+is measured.**
+
+| | Where | Gates? |
+|---|---|---|
+| Schema validity, the five-criterion contract, the derived verdict, a serious finding on the flaw file | `assertions.ts`, wired in `defaultTest.assert` | yes, hard-fails the cell |
+| One recall rubric per planted flaw (`flaw-<id>`), rolled up as `flaw-recall` | generated in `cases.ts` | no — `threshold: 0` until Phase 4 calibrates it |
+| One precision rubric over all three decoys (`precision`) | generated in `cases.ts` | **yes** |
+
+The judge is `openrouter:google/gemini-3.8-flash`, set once in `defaultTest.options.provider`. It is
+a fourth vendor on purpose — Anthropic, Z-AI and DeepSeek are all under test, so the grader is never
+a sibling of what it grades — and its id cannot collide with the `file://` ids of the systems under
+test, which promptfoo answers with `RangeError: Maximum call stack size exceeded` rather than an
+error message (promptfoo issue #10501). Judging a full sweep costs about $0.05.
+
+**Recall is graded on the whole review, not on `findings[]`.** That is deliberate. A model that
+diagnoses a defect correctly and writes it into prose instead of `findings[]` has failed the output
+contract — but that failure is already caught deterministically by `assertSeriousFindingOnFlawFile`,
+and production renders its PR comment from `findings[]`. Scoring recall on `findings[]` alone would
+make the two measurements say the same thing twice and throw away the interesting half: whether the
+model saw the bug at all. The gate asks "did it use the contract"; the metric asks "did it see the
+bug". Keeping them orthogonal is what lets the matrix separate a model that cannot analyse from a
+model that cannot format.
+
+### Four promptfoo behaviours the wiring is shaped by
+
+All four were found by running it, not by reading docs, and all four fail in ways that do not look
+like what they are:
 
 - **An array-valued `var` is a test matrix, not a value.** Carrying `flaws` and `decoys` through
   `vars` silently turned one case into three cells, each holding one flaw zipped against one decoy.
@@ -56,10 +83,24 @@ what they are:
   run with `Template render error … expected variable end` at line 70 — the planted
   `dangerouslySetInnerHTML={{ __html: entry.notes }}`, whose `{{` nunjucks tried to open as a
   variable.
+- **So is every string assertion `value`.** The judged rubrics are built by interpolating
+  `case.json` prose, which no one writes with a template engine in mind, so each rubric is wrapped
+  in `{% raw %}` before it is handed over. Same trap as above, one layer further in.
+- **`derivedMetrics` expressions are evaluated by mathjs, where `-` is subtraction.** The obvious
+  spelling of the recall rollup — `flaw-default-prop-ignored + flaw-effect-teardown-lost + …` —
+  parses as arithmetic on an undefined symbol `flaw`, throws, and is swallowed at debug level. The
+  metric then sits at 0, which is indistinguishable from a model that found nothing. `flaw-recall`
+  is therefore an `assert-set` metric (promptfoo scores a set as the mean of its children) rather
+  than a derived one; any future derived metric here needs identifiers mathjs can parse.
 
 So `vars` carries the case **id** and nothing else, and everything that needs the case reads it off
 disk through `loadCase`. Keep it that way: a future case whose diff happens to contain `{{` would
 otherwise take the whole sweep down.
+
+A fifth, on the way to the same place: **`weight: 0` does not make an assertion "scored but not
+gating".** It does stop the assertion failing the cell, but promptfoo normalises a named score by
+its accumulated weight, so a zero-weighted assertion reports its metric as 0 whatever the judge
+said. An `assert-set` with an explicit `threshold` is the mechanism that actually works.
 
 ## The case
 
@@ -197,7 +238,7 @@ measured here rather than asserted. The `after/` tree also typechecks clean unde
 `tsconfig.json` (`tsc --noEmit`, exit 0), which is what makes "typecheck does not catch these" a
 fact rather than a claim.
 
-## What the first runs showed — measured 2026-09-08
+## What the single-model smoke showed — measured 2026-09-08
 
 The single-model smoke was specified against the cheapest model. It was moved to
 `anthropic/claude-sonnet-5` because the cheap models could not clear the deterministic gates, and a
@@ -233,6 +274,85 @@ Three things worth carrying forward:
   an average — and note that the two runs above found the same 3/3 flaws and filed no decoys
   despite that spread, so cost variance here is not accuracy variance.
 
+## The first full sweep — measured 2026-09-09
+
+One case, three models, one judge. `npm run evals`, exit 0, 2m40s wall clock at concurrency 4.
+
+| Model | flaw-recall | default-prop | teardown | notes-XSS | precision | Steps | Tool calls | Cost | Latency |
+|---|---|---|---|---|---|---|---|---|---|
+| `deepseek/deepseek-v4-flash` | **0.33** | ✗ | ✓ | ✗ | 1.0 | 1 | 0 | $0.0008 | 23s |
+| `z-ai/glm-5.1` | **0.33** | ✗ | ✗ | ✓ | 1.0 | 1 | 0 | $0.0117 | 29s |
+| `anthropic/claude-sonnet-5` | **1.00** | ✓ | ✓ | ✓ | 1.0 | 6 | 6 | $0.2696 | 151s |
+
+All three cells passed every deterministic gate, so the answer is not "the cheap models are broken".
+It is narrower and more useful than that:
+
+- **The two cheap models each found exactly one flaw, and not the same one.** deepseek found the
+  lost effect teardown and missed the XSS; glm found the XSS and missed the teardown. Neither found
+  the `defaultProps` semantics break — the flaw that requires knowing what React 19 *removed* rather
+  than reading the diff carefully. On a case with three planted defects, 1/3 each is not a
+  cheaper reviewer, it is a different failure per merge.
+- **Both of them argued the flaw away rather than missing it.** deepseek noticed
+  `dangerouslySetInnerHTML` and wrote "noted but is not a defect introduced by this PR — it renders
+  what the old entry point rendered", which is false: the `before/` tree renders notes as text. glm
+  filed `defaultProps` as a **minor** "deprecated in React 19" note, which gets the severity and the
+  semantics both wrong — deprecated is not removed, and the value silently never applies. A recall
+  rubric that accepted a keyword match would have scored those 1.0. This is the single strongest
+  argument for grading recall on the diagnosis rather than on the mention.
+- **Neither cheap model called a single tool, again.** Both answered from the diff text alone, as in
+  the smoke. Sonnet made six calls across six steps — including `read_file(src/lib/services/shelf.ts)`
+  and `search_code(entry.notes)`, files the diff never touches — and it is the only one that scored
+  the flaw whose consequence is only visible outside the changed component. Reading the sandbox is
+  what the case was built to reward, and it is what the price difference buys.
+- **Precision was 1.0 across the board.** No model filed any of the three decoys as a defect; glm and
+  Sonnet both explicitly approved of the ref-as-prop change and the `client:load` island. The
+  decoys did not discriminate on this sweep. Worth remembering when reading the recall numbers: the
+  cheap models are not failing by over-reporting, they are failing by under-reading.
+
+**Cost: $0.33 for the whole sweep** — $0.282 of reviewing plus $0.049 of judging (36,431 grading
+tokens). The plan budgeted ~$1.75. The gap is not a saving to bank: it is Sonnet landing at the
+cheap end of its own 2.4× spread (6 steps here, against 4 and 11 on the two smoke runs), and the
+two cheap cells costing essentially nothing because they read nothing. See the caveat below — one
+sample is not a budget.
+
+**The computed cost column was checked against the bill, once.** The provider does not read a real
+per-request cost back from OpenRouter — it multiplies `config.pricing` by the run's own token counts
+(see the `pricing` comment in `providers/code-reviewer.ts` for why) — so the number is only as good
+as the prices pinned in `promptfooconfig.yaml`. On this sweep the harness computed **$0.331** and
+the OpenRouter credit balance moved **$6.17 → $5.84**, i.e. $0.33. The basis is sound as of
+2026-09-09. It will go quietly wrong when OpenRouter re-prices; `metadata.costBasis` says so in
+every cell, and re-checking the balance across one sweep is how you find out.
+
+### glm-5.1's Phase 2 runaway did not reproduce
+
+The smoke recorded `z-ai/glm-5.1` running away to the 16k output cap with `finishReason: "length"`
+and producing no object at all. On this sweep, with **no configuration change**, it stopped
+normally after 1,743 output tokens and returned a schema-valid review that cleared all four gates.
+
+So the runaway was run-to-run variance, not a deterministic structured-output failure, and the
+`structuredOutputs: { strict: false }` lever (`providers/code-reviewer.ts`) was not needed and was
+not used. Every cell in this sweep ran with identical settings; the model is the only variable, as
+intended. Keep it that way — reaching for a per-model knob to rescue a failing cell leaves that
+column measuring a differently-configured system than its neighbours. If glm's runaway returns,
+that is a data point about its reliability before it is a reason to change the config.
+
+### Judge spot-checks
+
+Four verdicts were read against the raw review text, chosen as the ones most likely to be
+rubber-stamped:
+
+| Verdict | Checked | Correct? |
+|---|---|---|
+| deepseek, notes-XSS = 0 | It *does* name `dangerouslySetInnerHTML` and then dismisses it | yes — naming the sink is not diagnosing it |
+| glm, default-prop = 0 | It files a `minor` "deprecated in React 19" finding | yes — deprecated ≠ removed, and the rubric's "names the API without saying what is wrong" clause is exactly this |
+| Sonnet, 3/3 | Three findings, correct files, `critical`/`critical`/`major` | yes |
+| precision = 1.0 ×3 | No forwardRef / `useMemo` / `client:load` finding in any review | yes |
+
+The judge distinguished "mentioned it" from "diagnosed it" in both cheap cells without being asked
+twice, which is the property the rubric prose was written for. Re-check it whenever the rubric text
+changes: a rubric that has drifted toward keyword matching will show up as recall rising while the
+reviews stay the same.
+
 ### The output cap is a blast radius
 
 `DEFAULT_MAX_OUTPUT_TOKENS` (16k, in `providers/code-reviewer.ts`) exists because the first
@@ -251,9 +371,14 @@ few thousand tokens, and anything approaching the cap is a runaway, not a thorou
 - **One rubric.** `REVIEW_RUBRIC` is weighted toward *test* quality: three of its five criteria are
   about tests, `stack-conventions` is a closed list carrying only two React-relevant entries (no
   Next.js directives, and the `@/` alias), and `security-isolation` is anchored on RLS and secrets
-  rather than DOM injection. The flaw signal therefore rests mainly on `findings[]` and the judge
+  rather than DOM injection. The flaw signal therefore rests on the review prose and the judge
   rather than on the criterion scores — though the notes-as-markup flaw should move
   `security-isolation` too.
+- **One judge, ungraded.** `google/gemini-3.8-flash` grades every rubric and nothing grades it. The
+  spot-checks above are a human reading four verdicts, not a measurement of judge agreement.
+- **One sweep.** Every number above is n=1 per model. Phase 4's `--repeat 3` is what turns them
+  into a claim with a spread attached; until then, treat a 0.33 and a 1.00 as the same kind of
+  evidence the nine hand-driven calibration runs were.
 - **No CI wiring.** This is an on-demand harness. No workflow, no repository secret, no PR gate.
 
 ## See also

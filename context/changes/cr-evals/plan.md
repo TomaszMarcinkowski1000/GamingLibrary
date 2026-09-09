@@ -719,36 +719,36 @@ not depend on promptfoo.
 
 #### Automated
 
-- [x] 2.1 `node -v` reports `>=22.22.0` after the `.nvmrc` bump
-- [x] 2.2 `npm run lint` and `npm run typecheck` pass with the provider and generator typechecked
-- [x] 2.3 `npm run evals` builds the package and exits 0 on a green run
-- [x] 2.4 The run's `Review` satisfies all four deterministic assertions
-- [x] 2.5 `metadata` carries steps, `finishReason`, and non-zero `tokenUsage` / `cost`
+- [x] 2.1 `node -v` reports `>=22.22.0` after the `.nvmrc` bump — 271a341
+- [x] 2.2 `npm run lint` and `npm run typecheck` pass with the provider and generator typechecked — 271a341
+- [x] 2.3 `npm run evals` builds the package and exits 0 on a green run — 271a341
+- [x] 2.4 The run's `Review` satisfies all four deterministic assertions — 271a341
+- [x] 2.5 `metadata` carries steps, `finishReason`, and non-zero `tokenUsage` / `cost` — 271a341
 
 #### Manual
 
-- [x] 2.6 Reported cost for the single cell is cents, not dollars
-- [x] 2.7 `promptfoo view` renders the cell and the review JSON is readable
-- [x] 2.8 A forced failure produces a legible red with an `errorCode`
-- [x] 2.9 Step count shows the agent actually used its tools
+- [x] 2.6 Reported cost for the single cell is cents, not dollars — 271a341
+- [x] 2.7 `promptfoo view` renders the cell and the review JSON is readable — 271a341
+- [x] 2.8 A forced failure produces a legible red with an `errorCode` — 271a341
+- [x] 2.9 Step count shows the agent actually used its tools — 271a341
 
 ### Phase 3: Three-Model Matrix, LLM Judge, and Precision Penalty
 
 #### Automated
 
-- [ ] 3.1 `npm run evals` completes all three cells and exits 0 or 100
-- [ ] 3.2 The report shows three distinctly labelled columns
-- [ ] 3.3 All four named metrics are populated for every cell
-- [ ] 3.4 `flaw-recall` is derived and present per cell
-- [ ] 3.5 No `RangeError` from grader/SUT id collision
-- [ ] 3.6 `npm run lint` and `npm run typecheck` still pass
+- [x] 3.1 `npm run evals` completes all three cells and exits 0 or 100
+- [x] 3.2 The report shows three distinctly labelled columns
+- [x] 3.3 All four named metrics are populated for every cell
+- [x] 3.4 `flaw-recall` is derived and present per cell
+- [x] 3.5 No `RangeError` from grader/SUT id collision
+- [x] 3.6 `npm run lint` and `npm run typecheck` still pass
 
 #### Manual
 
-- [ ] 3.7 Total sweep cost is in the expected range (~$1.75)
-- [ ] 3.8 Spot-checked judge verdicts are credible, not rubber-stamping
-- [ ] 3.9 The three models produce visibly different reviews
-- [ ] 3.10 No cell fails a deterministic gate because of a provider bug
+- [x] 3.7 Total sweep cost is in the expected range (~$1.75)
+- [x] 3.8 Spot-checked judge verdicts are credible, not rubber-stamping
+- [x] 3.9 The three models produce visibly different reviews
+- [x] 3.10 No cell fails a deterministic gate because of a provider bug
 
 ### Phase 4: Calibrate Thresholds and Record the Baseline
 
