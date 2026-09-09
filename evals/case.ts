@@ -17,11 +17,28 @@ import { caseDir } from "./paths.ts";
 /** Finding severities, mirroring `packages/code-reviewer/src/schemas/finding.ts`. */
 export const severities = ["info", "minor", "major", "critical"] as const;
 
+/**
+ * A path the key supplies that must stay inside the tree it is resolved against.
+ *
+ * `rootDir` is the agent's sandbox root — `createPathGuard` confines every `read_file` to whatever
+ * it resolves to. So a key reading `"rootDir": "../../.."` would hand the model the whole
+ * repository, `.env` and its keys included, and nothing downstream would object: the gate's own
+ * "does not resolve under rootDir" message asserted this property without ever testing it. The
+ * check is lexical on purpose, so it holds the same whether the caller joins or resolves.
+ */
+const containedPath = (label: string) =>
+  z
+    .string()
+    .min(1)
+    .refine((value) => !path.isAbsolute(value) && !value.split(/[\\/]/).includes(".."), {
+      message: `${label} must stay inside the case folder — no absolute path and no ".." segment`,
+    });
+
 const flawSchema = z.object({
   /** Stable id — it becomes the promptfoo metric name for this flaw's recall. */
   id: z.string().min(1),
   /** Path relative to `rootDir`, i.e. what the agent's `read_file` tool sees. */
-  file: z.string().min(1),
+  file: containedPath("flaws[].file"),
   /** 1-indexed line in the `after/` tree. */
   line: z.number().int().positive(),
   /** Substring that must still be on `line`; the guard against silent line drift. */
@@ -34,7 +51,7 @@ const flawSchema = z.object({
 
 const decoySchema = z.object({
   id: z.string().min(1),
-  file: z.string().min(1),
+  file: containedPath("decoys[].file"),
   line: z.number().int().positive(),
   anchor: z.string().min(1),
   whyItIsCorrect: z.string().min(1),
@@ -61,11 +78,11 @@ export const evalCaseSchema = z.object({
    */
   prDescription: z.string().min(1),
   /** Directory, relative to the case folder, the agent is sandboxed to. */
-  rootDir: z.string().min(1),
+  rootDir: containedPath("rootDir"),
   /** Root-relative paths named in the review request. */
-  paths: z.array(z.string().min(1)).min(1),
+  paths: z.array(containedPath("paths[] entry")).min(1),
   /** The committed unified diff, relative to the case folder. */
-  diffPath: z.string().min(1),
+  diffPath: containedPath("diffPath"),
   flaws: z.array(flawSchema).min(1),
   decoys: z.array(decoySchema),
 });

@@ -10,8 +10,10 @@
  *
  * Two things it has to get right:
  *
- *   1. `git diff --no-index` exits 1 when the inputs differ, which is the normal case here. Only
- *      an exit code above 1 is a real failure.
+ *   1. `git diff --no-index` exits 1 when the inputs differ, which is the only healthy outcome
+ *      here. Exit 0 (identical trees) is a broken fixture rather than a no-op: that empty diff
+ *      would show the reviewer under test no change at all *and* replace the committed one. It
+ *      and any code above 1 are both hard failures.
  *   2. Paths are rewritten from `before/src/x` / `after/src/x` down to `src/x`. The agent's
  *      sandboxed `rootDir` *is* the `after/` tree, so a path in the diff has to be the same path
  *      its `read_file` tool takes — otherwise every finding cites a file the tools cannot open.
@@ -61,6 +63,14 @@ function normalizePaths(diff) {
     .join("\n");
 }
 
+/**
+ * Produce one case's normalized diff. Deliberately does not write it.
+ *
+ * Every case is generated before any case is written, because the corpus is graded as a set: a
+ * throw partway through a writing loop would leave the earlier cases regenerated and the rest
+ * stale, which is the same silent desync this script exists to prevent — only harder to spot,
+ * since the working tree would then be dirty for reasons that look intentional.
+ */
 function generate(caseDir) {
   const result = spawnSync("git", ["diff", "--no-index", "--no-prefix", "--", "before", "after"], {
     cwd: caseDir,
@@ -69,28 +79,49 @@ function generate(caseDir) {
   });
 
   if (result.error) throw result.error;
-  // 0 = identical trees, 1 = they differ (the expected case). Anything else is git failing.
-  if (result.status !== 0 && result.status !== 1) {
-    throw new Error(`git diff exited ${String(result.status)} in ${caseDir}:\n${result.stderr}`);
+  // 1 = the trees differ, the expected case. 0 = identical trees, which is never legitimate here.
+  // Anything above 1 is git itself failing.
+  if (result.status !== 1) {
+    throw new Error(
+      result.status === 0
+        ? `before/ and after/ are identical in ${caseDir} — refusing to write an empty case.diff`
+        : `git diff exited ${String(result.status)} in ${caseDir}:\n${result.stderr}`,
+    );
   }
 
   const diff = normalizePaths(result.stdout.replace(/\r\n/g, "\n"));
-  const target = path.join(caseDir, "case.diff");
-  writeFileSync(target, diff, "utf8");
-  return { target, bytes: Buffer.byteLength(diff) };
+  if (diff.trim() === "") {
+    throw new Error(`git diff produced no output in ${caseDir} — refusing to write an empty case.diff`);
+  }
+
+  return { target: path.join(caseDir, "case.diff"), diff };
 }
 
-const caseDirs = readdirSync(casesDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => path.join(casesDir, entry.name))
-  .sort();
+function main() {
+  const caseDirs = readdirSync(casesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(casesDir, entry.name))
+    .sort();
 
-if (caseDirs.length === 0) {
-  console.error(`No case directories under ${casesDir}`);
-  process.exit(1);
+  if (caseDirs.length === 0) {
+    console.error(`No case directories under ${casesDir}`);
+    return 1;
+  }
+
+  let generated;
+  try {
+    generated = caseDirs.map((caseDir) => generate(caseDir));
+  } catch (cause) {
+    console.error(`FAIL  ${cause.message}`);
+    console.error("Nothing was written — the corpus is unchanged.");
+    return 1;
+  }
+
+  for (const { target, diff } of generated) {
+    writeFileSync(target, diff, "utf8");
+    console.log(`${path.relative(repoRoot, target)} — ${String(Buffer.byteLength(diff))} bytes`);
+  }
+  return 0;
 }
 
-for (const caseDir of caseDirs) {
-  const { target, bytes } = generate(caseDir);
-  console.log(`${path.relative(repoRoot, target)} — ${String(bytes)} bytes`);
-}
+process.exitCode = main();

@@ -109,3 +109,27 @@ Run it only for code covered by the current change or a risk from test-plan.md,
 prefer narrowed scope with --mutate "path/to/file.ts:start-end", and do not chase
 100% mutation score. Survived mutants should be reviewed one by one: add an
 assertion only when the mutant represents a user-visible or business-relevant bug.
+
+## Evals
+
+promptfoo harness that grades `packages/code-reviewer` against a fixture PR with planted flaws.
+**Read `evals/README.md` before touching it** — it carries the answer-key contract, the judge
+rubric, the calibrated recall bar and its derivation.
+
+- `npm run evals` — the sweep. Real OpenRouter calls, costs money; needs `OPENROUTER_API_KEY` in
+  `.env`. It builds `packages/code-reviewer` itself; a bare `promptfoo eval` on a clean checkout
+  fails on the missing `dist/`.
+- `npm run evals:view` — open the last run's report
+- `npm run evals:diff` — regenerate `evals/cases/*/case.diff` from that case's `before/` + `after/`
+- `npm run evals:check` — validate every `case.json` against its fixture (lines, anchors, paths)
+
+`evals:diff` and `evals:check` make no model call and need no key; the `ci` job runs both and then
+asserts `evals/cases` is unchanged. That step is load-bearing: `evals/cases/**` is deliberately
+excluded from `tsconfig.json`, `eslint.config.js` **and** `.prettierignore` — the fixture is
+intentionally flawed code — so it is the only automated check that touches the tree. Edit a fixture
+without regenerating, and the eval silently grades every model against stale line numbers. Keep
+those three exclusions.
+
+`evals/reviewer.ts` hand-mirrors the package's exported types (the root typecheck never builds
+`packages/*`). Change an exported shape in `packages/code-reviewer` and update that file in the
+same commit — nothing links them at compile time.

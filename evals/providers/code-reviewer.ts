@@ -32,7 +32,11 @@ const DEFAULT_STEP_BUDGET = 20;
  * A hung cell must fail as a cell rather than wedge the sweep. The production failure this guards
  * against is on record: calibration run 5 hit the *job* timeout and left the PR green, because a
  * cancelled job is not a failed one (`context/archive/2026-09-07-ci-cd-code-review/calibration.md`).
- * Twelve minutes is roughly twice the slowest completed calibration run.
+ * Twenty minutes, raised from an earlier twelve. It is deliberately far above anything legitimate:
+ * the slowest completed cell on record is 174.8s (`context/changes/cr-evals/baseline.md`) and the
+ * longest runaway is 9m41s (`calibration.md` run 3). Since `DEFAULT_MAX_OUTPUT_TOKENS` landed, a
+ * runaway ends in minutes with `finishReason: "length"` — a diagnosis — rather than here, so this
+ * ceiling is the backstop for a wedged connection, and a generous one is cheaper than a false kill.
  */
 const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
 

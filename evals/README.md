@@ -168,6 +168,11 @@ an explicit answer to "does this reach the model?"
 
 ## Commands
 
+**Prerequisites**: Node **>= 22.22.0** (`.nvmrc` pins v22.23.2 — the floor is promptfoo's, and an
+older Node fails at install rather than at run time), `OPENROUTER_API_KEY` in `.env` for anything
+that calls a model, and a built `packages/code-reviewer` — which `npm run evals` handles itself.
+`evals:check` and `evals:diff` need neither the key nor the build.
+
 ```bash
 npm run evals         # build the package under test, then run the sweep
 npm run evals:view    # open the last run's report in a browser
@@ -476,7 +481,16 @@ It affects **four** cells, not six: every repeat-1 cell reports `cached: 0`.
   spot-checks above are a human reading four verdicts, not a measurement of judge agreement.
 - **Three repeats of one case.** Enough to see that `glm-5.1` is unreliable and that the other two
   are stable at their respective levels; not enough to put an interval on anything.
-- **No CI wiring.** This is an on-demand harness. No workflow, no repository secret, no PR gate.
+- **The reviewer's types, at arm's length.** `evals/reviewer.ts:26-148` hand-mirrors `Review`,
+  `CriterionScore`, `Finding` and the barrel signatures, because `packages/*` are standalone npm
+  projects whose `dist/` the root typecheck never builds and whose types therefore cannot cross the
+  boundary. Nothing links the copy to the original at compile time: change a schema in the package
+  and this harness keeps compiling, grading against the old shape, until a paid sweep raises a
+  TypeError on cell 1. `packages/code-reviewer/src/index.ts` and `src/schemas/*` carry a pointer
+  back here, which is a human check, not a mechanical one.
+- **No model call in CI.** The `ci` job runs `evals:check` and `evals:diff` so the fixture, its diff
+  and its answer key cannot drift apart unnoticed — but nothing runs a sweep: no repository secret,
+  no PR gate. Cost and run-to-run variance keep this an on-demand harness.
 
 ## See also
 
